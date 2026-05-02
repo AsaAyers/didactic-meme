@@ -1,15 +1,10 @@
-import { visit } from 'unist-util-visit';
-import type { Root, Heading, Text, PhrasingContent, RootContent } from 'mdast';
+import type { Root, Heading, Text, Paragraph, RootContent } from 'mdast';
 import { parseMarkdown } from './parse.js';
 
 function getHeadingText(node: Heading): string {
   return node.children
     .map((child) => (child.type === 'text' ? (child as Text).value : ''))
     .join('');
-}
-
-function headingDepth(node: Heading): number {
-  return node.depth;
 }
 
 export function appendUnderHeading(tree: Root, headingText: string, linesToAppend: string[]): void {
@@ -22,7 +17,7 @@ export function appendUnderHeading(tree: Root, headingText: string, linesToAppen
       const h = node as Heading;
       if (getHeadingText(h) === headingText) {
         headingIdx = i;
-        headingLevel = headingDepth(h);
+        headingLevel = h.depth;
         break;
       }
     }
@@ -71,7 +66,7 @@ export function appendUnderHeading(tree: Root, headingText: string, linesToAppen
 
 function isEmptyNode(node: RootContent): boolean {
   if (node.type === 'paragraph') {
-    const para = node as import('mdast').Paragraph;
+    const para = node as Paragraph;
     if (para.children.length === 0) return true;
     if (
       para.children.length === 1 &&
