@@ -11,7 +11,7 @@ export function parseMarkdown(content: string): Root {
 }
 
 export function stringifyMarkdown(tree: Root): string {
-  const processor = unified().use(remarkStringify, { bullet: '-', listItemIndent: 'one' }).use(remarkGfm);
+  const processor = unified().use(remarkGfm).use(remarkStringify, { bullet: '-', listItemIndent: 'one' });
   return processor.stringify(tree);
 }
 

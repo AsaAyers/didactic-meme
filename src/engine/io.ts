@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { dirname } from 'node:path';
 
 export async function readFile(path: string): Promise<string> {
   try {
@@ -22,7 +23,7 @@ export class FileWriteManager {
       if (dryRun) {
         console.log(`[dry-run] Would write: ${filePath}`);
       } else {
-        await fs.mkdir(filePath.substring(0, filePath.lastIndexOf('/')), { recursive: true });
+        await fs.mkdir(dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, content, 'utf-8');
       }
       written.push(filePath);
