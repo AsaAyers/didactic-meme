@@ -240,17 +240,25 @@ export async function runInitPass(
       continue;
     }
 
-    // Decode UTF-16 encoded files (UTF-16 LE BOM: FF FE, UTF-16 BE BOM: FE FF)
-    // to UTF-8 strings so they can be processed by the remark pipeline.
-    // The file will be written back as UTF-8, which is a lossless conversion.
+    // Decode UTF-16 encoded files to UTF-8 strings so they can be processed by
+    // the remark pipeline.  The file will be written back as UTF-8, which is a
+    // lossless conversion.
+    //
+    // Recognised encodings:
+    //   FF FE …  — UTF-16 LE with BOM
+    //   FE FF …  — UTF-16 BE with BOM
+    //   <no BOM> — Heuristic: if every odd-indexed byte in the first 512 bytes
+    //              is 0x00, the file is almost certainly BOM-less UTF-16 LE.
+    //              Normal UTF-8 Markdown never contains embedded null bytes, so
+    //              false positives are not a practical concern.
     let original: string;
     let wasUtf16 = false;
     if (rawBuffer[0] === 0xff && rawBuffer[1] === 0xfe) {
-      // UTF-16 LE: skip the 2-byte BOM, then decode the rest
+      // UTF-16 LE with BOM: skip the 2-byte BOM, then decode the rest.
       original = rawBuffer.slice(2).toString('utf16le');
       wasUtf16 = true;
     } else if (rawBuffer[0] === 0xfe && rawBuffer[1] === 0xff) {
-      // UTF-16 BE: swap bytes before decoding as UTF-16 LE
+      // UTF-16 BE with BOM: swap bytes before decoding as UTF-16 LE.
       const swapped = Buffer.alloc(rawBuffer.length - 2);
       for (let i = 2; i < rawBuffer.length - 1; i += 2) {
         swapped[i - 2] = rawBuffer[i + 1];
@@ -259,7 +267,23 @@ export async function runInitPass(
       original = swapped.toString('utf16le');
       wasUtf16 = true;
     } else {
-      original = rawBuffer.toString('utf-8');
+      // Heuristic BOM-less UTF-16 LE detection: sample the first 512 bytes and
+      // check whether every byte at an odd index is 0x00.  Require at least 4
+      // bytes so a file that is just a single newline isn't mis-detected.
+      const sampleLen = Math.min(rawBuffer.length, 512);
+      let isBomlessUtf16Le = sampleLen >= 4;
+      for (let i = 1; i < sampleLen; i += 2) {
+        if (rawBuffer[i] !== 0x00) {
+          isBomlessUtf16Le = false;
+          break;
+        }
+      }
+      if (isBomlessUtf16Le) {
+        original = rawBuffer.toString('utf16le');
+        wasUtf16 = true;
+      } else {
+        original = rawBuffer.toString('utf-8');
+      }
     }
 
     const normalized = normalize(original);

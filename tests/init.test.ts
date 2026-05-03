@@ -150,6 +150,35 @@ describe('runInitPass', () => {
     }
   });
 
+  it('converts BOM-less UTF-16 LE files to UTF-8 and processes them', async () => {
+    const TMP_UTF16 = join(__dirname, '..', 'tmp', 'init-utf16le-bomless-test');
+    await fs.mkdir(TMP_UTF16, { recursive: true });
+    try {
+      // Write a UTF-16 LE file WITHOUT a BOM.  This is what some apps produce
+      // when they save UTF-16 LE without the optional byte-order mark.
+      const text = 'Speaker 1  (00:03)';
+      const utf16Buf = Buffer.from(text, 'utf16le'); // no BOM prefix
+      const utf16Path = join(TMP_UTF16, 'transcript.md');
+      await fs.writeFile(utf16Path, utf16Buf);
+
+      const { scanned, rewritten } = await runInitPass(TMP_UTF16, false);
+
+      expect(scanned).toBe(1);
+      expect(rewritten).toBe(1);
+
+      // File on disk is now valid UTF-8 and contains the original text.
+      const afterContent = await fs.readFile(utf16Path, 'utf-8');
+      expect(afterContent).toContain('Speaker 1  (00:03)');
+      // No BOM or null bytes in the output.
+      const afterBuf = await fs.readFile(utf16Path);
+      expect(afterBuf[0]).not.toBe(0xff);
+      expect(afterBuf[0]).not.toBe(0xfe);
+      expect(afterBuf.includes(0x00)).toBe(false);
+    } finally {
+      await fs.rm(TMP_UTF16, { recursive: true, force: true });
+    }
+  });
+
   it('converts UTF-16 BE files to UTF-8 and processes them', async () => {
     const TMP_UTF16 = join(__dirname, '..', 'tmp', 'init-utf16be-test');
     await fs.mkdir(TMP_UTF16, { recursive: true });
