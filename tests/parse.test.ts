@@ -98,3 +98,14 @@ describe('nested list round-trip', () => {
     expect(roundTrip(src)).toBe(src);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Thematic break (horizontal rule)
+// ---------------------------------------------------------------------------
+
+describe('thematic break round-trip', () => {
+  it('preserves --- without converting to ***', () => {
+    const src = 'Above\n\n---\n\nBelow\n';
+    expect(roundTrip(src)).toBe(src);
+  });
+});

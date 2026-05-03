@@ -409,6 +409,7 @@ export function stringifyMarkdown(tree: Root): string {
   const processor = unified().use(remarkGfm).use(remarkStringify, {
     bullet: '*',
     listItemIndent: 'one',
+    rule: '-',
     handlers: customHandlers,
   });
   return processor.stringify(tree);
