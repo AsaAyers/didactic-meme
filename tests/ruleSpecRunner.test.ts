@@ -27,7 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
 import { runRuleSpec } from '../src/engine/ruleSpecRunner.js';
-import { sortRuleSpecs } from '../src/engine/runner.js';
+import { selectRuleSpecs, sortRuleSpecs } from '../src/engine/runner.js';
 import type { RuleContext, RuleSpec } from '../src/rules/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -270,5 +270,80 @@ describe('sortRuleSpecs', () => {
     const b = stubSpec('b', ['a']);
     const c = stubSpec('c', ['b']);
     expect(() => sortRuleSpecs([a, b, c])).toThrow('Circular dependency');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// selectRuleSpecs — subset selection with transitive dependency closure
+// ---------------------------------------------------------------------------
+
+describe('selectRuleSpecs', () => {
+  it('returns only the selected spec when it has no dependencies', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b');
+    const c = stubSpec('c');
+    const result = selectRuleSpecs([a, b, c], ['b']).map((s) => s.name);
+    expect(result).toEqual(['b']);
+  });
+
+  it('includes transitive dependencies before the selected spec', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b', ['a']); // b depends on a
+    const c = stubSpec('c');
+    // Selecting b must pull in a; c is unrelated and must NOT be included.
+    const result = selectRuleSpecs([a, b, c], ['b']).map((s) => s.name);
+    expect(result).toContain('a');
+    expect(result).toContain('b');
+    expect(result).not.toContain('c');
+    expect(result.indexOf('a')).toBeLessThan(result.indexOf('b'));
+  });
+
+  it('does not include unrelated specs', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b', ['a']);
+    const rollover = stubSpec('rollover');
+    const alert = stubSpec('alert');
+    const result = selectRuleSpecs([a, b, rollover, alert], ['b']).map((s) => s.name);
+    expect(result).not.toContain('rollover');
+    expect(result).not.toContain('alert');
+  });
+
+  it('handles multi-level transitive dependencies', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b', ['a']);
+    const c = stubSpec('c', ['b']);
+    const d = stubSpec('d');
+    const result = selectRuleSpecs([a, b, c, d], ['c']).map((s) => s.name);
+    expect(result).toEqual(['a', 'b', 'c']);
+  });
+
+  it('handles selecting multiple specs', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b', ['a']);
+    const c = stubSpec('c');
+    const result = selectRuleSpecs([a, b, c], ['b', 'c']).map((s) => s.name);
+    expect(result).toContain('a');
+    expect(result).toContain('b');
+    expect(result).toContain('c');
+    expect(result.indexOf('a')).toBeLessThan(result.indexOf('b'));
+  });
+
+  it('deduplicates specs that appear as both direct selection and dependency', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b', ['a']);
+    // Selecting both a and b should not duplicate a.
+    const result = selectRuleSpecs([a, b], ['a', 'b']).map((s) => s.name);
+    expect(result).toEqual(['a', 'b']);
+  });
+
+  it('throws for an unknown rule name', () => {
+    const a = stubSpec('a');
+    expect(() => selectRuleSpecs([a], ['missing'])).toThrow('Unknown rule: "missing"');
+  });
+
+  it('includes the available rule names in the error message', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b');
+    expect(() => selectRuleSpecs([a, b], ['x'])).toThrow('a, b');
   });
 });

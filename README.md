@@ -67,16 +67,44 @@ npm install
 npm run build
 ```
 
-### Run (real mode)
+### Show help
 
 ```bash
-VAULT_PATH=/path/to/your/vault npm run run
+VAULT_PATH=/path/to/your/vault yarn run run -- --help
+```
+
+### Run all rules (real mode)
+
+```bash
+VAULT_PATH=/path/to/your/vault yarn run run -- all
+```
+
+### Run specific rules
+
+Pass one or more rule names as positional arguments.  The runner
+automatically includes each rule's transitive dependencies and executes
+them in the correct order.
+
+```bash
+# Stamp completion dates only (normalizeTodayLiteral runs first automatically
+# because it is a declared dependency of stampCompletionDate)
+VAULT_PATH=/path/to/your/vault yarn run run -- stampCompletionDate
+```
+
+```bash
+# Run multiple rules explicitly
+VAULT_PATH=/path/to/your/vault yarn run run -- normalizeTodayLiteral stampCompletionDate
 ```
 
 ### Run with dry-run (prints a unified diff, no files written)
 
 ```bash
-VAULT_PATH=/path/to/your/vault npm run run -- --dry-run
+VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run all
+```
+
+```bash
+# Dry-run for a single rule (dependencies included automatically)
+VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run stampCompletionDate
 ```
 
 `--dry-run` outputs a unified diff (one patch per changed file, sorted by path) to
@@ -86,7 +114,7 @@ stdout without writing anything to disk.  The format is the same as the
 Add `--verbose` to also print rule-progress logs and the run summary:
 
 ```bash
-VAULT_PATH=/path/to/your/vault npm run run -- --dry-run --verbose
+VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run --verbose all
 ```
 
 ### Normalize the vault with `--init`
@@ -150,15 +178,31 @@ The hook is installed automatically when you run `npm install` (via the `prepare
 
 ## Rules
 
-Rules run sequentially in the order listed in the central registry (`src/rules/index.ts`).
+Rules run sequentially in dependency order.  Each rule declares which other
+rules must complete before it, and the runner performs a stable topological
+sort so the order is correct regardless of how rules are listed in the
+registry.
 
-### Rule 1 – Stamp Completion Date
+### Rule 1 – Normalize Today Literal
+
+**Source:** `src/rules/normalizeTodayLiteral.ts`
+
+Scans all `**/*.md` files and replaces relative date literals (`today`,
+`yesterday`, `tomorrow`) in inline date fields with resolved ISO dates
+(`YYYY-MM-DD`).  This runs first so all subsequent rules always operate on
+real dates rather than relative keywords.
+
+**Dependencies:** none
+
+### Rule 2 – Stamp Completion Date
 
 **Source:** `src/rules/stampCompletionDate.ts`
 
 Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps each one that does **not** already carry a `completionDate:YYYY-MM-DD` inline field with `completionDate:<today>`. This ensures every completed task has an explicit, traceable completion timestamp before later rules run.
 
-### Rule 2 – Completed Task Rollover
+**Dependencies:** `normalizeTodayLiteral`
+
+### Rule 3 – Completed Task Rollover
 
 **Source:** `src/rules/completedTaskRollover.ts`
 
@@ -167,7 +211,9 @@ Processes every completed task across all `**/*.md` files in the vault:
 - **With `repeat:`**: Computes the next due date using the repeat grammar and the `completionDate` inline field (falls back to today if the field is not yet present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = completionDate`). Unchecks the task so it stays in its source file for the next cycle.
 - **Without `repeat:`**: Removes the task from its source file in place.
 
-### Rule 3 – Incomplete Task Alert
+**Dependencies:** `stampCompletionDate`
+
+### Rule 4 – Incomplete Task Alert
 
 **Source:** `src/rules/incompleteTaskAlert.ts`
 
@@ -176,11 +222,14 @@ Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vau
 1. Writes them as a Markdown list to `ALERT_FILE` (default: `$VAULT_PATH/tmp_alert.md`).
 2. If `ALERT_URL` is set, performs an HTTP POST of the file contents to that URL with `Content-Type: text/markdown` and, if `ALERT_TOKEN` is set, `Authorization: Bearer <token>`.
 
+**Dependencies:** `completedTaskRollover`
+
 ## Project Structure
 
 ```
 src/
 ├── index.ts                    # CLI entrypoint
+├── helpText.ts                 # --help output text (exported for testing)
 ├── markdown/
 │   ├── parse.ts                # unified/remark parse + stringify + gray-matter helpers
 │   ├── tasks.ts                # extract / toggle / remove / update GFM task items
@@ -188,24 +237,26 @@ src/
 │   └── inlineFields.ts         # getInlineField / setInlineField utilities
 ├── engine/
 │   ├── io.ts                   # readFile, FileWriteManager (stage/commit)
-│   └── runner.ts               # sequential rule runner, runInitPass, + summary log
+│   └── runner.ts               # rule runner, sortRuleSpecs, selectRuleSpecs, runInitPass
 └── rules/
     ├── index.ts                # ← central rule registry (add new rules here)
     ├── types.ts                # Rule / RuleContext / FileChange / RuleResult types
     ├── scheduleUtils.ts        # parseRepeat, computeNextDue, date helpers
-    ├── stampCompletionDate.ts  # Rule 1
-    ├── completedTaskRollover.ts # Rule 2
-    └── incompleteTaskAlert.ts  # Rule 3
+    ├── normalizeTodayLiteral.ts # Rule 1
+    ├── stampCompletionDate.ts  # Rule 2
+    ├── completedTaskRollover.ts # Rule 3
+    └── incompleteTaskAlert.ts  # Rule 4
 tests/
+├── cli.test.ts                 # --help text, selectedRuleNames behaviour
 ├── tasks.test.ts               # extract tasks, toggle, remove, update
 ├── headings.test.ts            # append-under-heading with trim + create
 ├── inlineFields.test.ts        # getInlineField / setInlineField
 ├── scheduleUtils.test.ts       # parseRepeat, computeNextDue, date helpers
-├── stampCompletionDate.test.ts # Rule 1 behaviour
-└── completedTaskRollover.test.ts # Rule 2 behaviour
+└── ruleSpecRunner.test.ts      # runRuleSpec, sortRuleSpecs, selectRuleSpecs
 ```
 
 ## Adding a New Rule
 
-1. Create `src/rules/myRule.ts` implementing the `Rule` interface.
-2. Import and add it to the array in **`src/rules/index.ts`** — that is the single central place rules are declared.
+1. Create `src/rules/myRule.ts` and define a `RuleSpec` object with a unique `name`.
+2. Declare any other rule names that must run before yours in the optional `dependencies` array.
+3. Import and add it to the array in **`src/rules/index.ts`** — that is the single central place rules are declared.  The runner automatically topologically sorts rules by their declared dependencies, so registration order does not matter.

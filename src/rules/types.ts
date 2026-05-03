@@ -16,6 +16,12 @@ export type RuleContext = {
    * changes from earlier rules in the same run are visible to later ones.
    */
   readFile: (path: string) => Promise<string>;
+  /**
+   * Which rule specs to run.  `'all'` (default when omitted) runs every
+   * registered spec in dependency order.  An array of rule names runs only
+   * those rules plus their transitive dependencies.
+   */
+  selectedRuleNames?: string[] | 'all';
 };
 
 export type FileChange = {
