@@ -27,6 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
 import { runRuleSpec } from '../src/engine/ruleSpecRunner.js';
+import { sortRuleSpecs } from '../src/engine/runner.js';
 import type { RuleContext, RuleSpec } from '../src/rules/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -197,5 +198,77 @@ describe('ruleSpecRunner — predicates', () => {
     expect(content).toContain('- [ ] B due:');
     // Task A already had due:today — was not selected, stays as the literal "today".
     expect(content).toContain('due:today');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sortRuleSpecs — dependency-based topological ordering
+// ---------------------------------------------------------------------------
+
+/** Build a minimal stub RuleSpec with optional dependencies. */
+function stubSpec(name: string, dependencies?: string[]): RuleSpec {
+  return {
+    name,
+    sources: [],
+    query: { type: 'tasks' },
+    actions: [],
+    ...(dependencies !== undefined ? { dependencies } : {}),
+  };
+}
+
+describe('sortRuleSpecs', () => {
+  it('returns specs in original order when there are no dependencies', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b');
+    const c = stubSpec('c');
+    expect(sortRuleSpecs([a, b, c]).map((s) => s.name)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('places a dependency before the spec that declares it', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b', ['a']); // b depends on a
+    // Even if registered b-first, a must come out first.
+    const result = sortRuleSpecs([b, a]).map((s) => s.name);
+    expect(result.indexOf('a')).toBeLessThan(result.indexOf('b'));
+  });
+
+  it('handles a chain of dependencies', () => {
+    const a = stubSpec('a');
+    const b = stubSpec('b', ['a']);
+    const c = stubSpec('c', ['b']);
+    const result = sortRuleSpecs([c, b, a]).map((s) => s.name);
+    expect(result).toEqual(['a', 'b', 'c']);
+  });
+
+  it('handles a diamond dependency graph without duplication', () => {
+    // a → b, a → c, b → d, c → d
+    const a = stubSpec('a');
+    const b = stubSpec('b', ['a']);
+    const c = stubSpec('c', ['a']);
+    const d = stubSpec('d', ['b', 'c']);
+    const result = sortRuleSpecs([d, c, b, a]).map((s) => s.name);
+    expect(result).toHaveLength(4);
+    expect(result.indexOf('a')).toBeLessThan(result.indexOf('b'));
+    expect(result.indexOf('a')).toBeLessThan(result.indexOf('c'));
+    expect(result.indexOf('b')).toBeLessThan(result.indexOf('d'));
+    expect(result.indexOf('c')).toBeLessThan(result.indexOf('d'));
+  });
+
+  it('throws when a dependency name does not exist in the set', () => {
+    const a = stubSpec('a', ['missing']);
+    expect(() => sortRuleSpecs([a])).toThrow('unknown spec "missing"');
+  });
+
+  it('throws when there is a direct circular dependency', () => {
+    const a = stubSpec('a', ['b']);
+    const b = stubSpec('b', ['a']);
+    expect(() => sortRuleSpecs([a, b])).toThrow('Circular dependency');
+  });
+
+  it('throws when there is an indirect cycle', () => {
+    const a = stubSpec('a', ['c']);
+    const b = stubSpec('b', ['a']);
+    const c = stubSpec('c', ['b']);
+    expect(() => sortRuleSpecs([a, b, c])).toThrow('Circular dependency');
   });
 });
