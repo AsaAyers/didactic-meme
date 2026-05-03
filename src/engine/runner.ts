@@ -14,6 +14,8 @@ import type { RuleContext, RuleSpec } from '../rules/types.js';
  * circular dependency.
  */
 export function sortRuleSpecs(specs: RuleSpec[]): RuleSpec[] {
+  // sortRuleSpecs validates that every declared dependency exists within the
+  // *same* `specs` array — callers are responsible for passing a complete set.
   const specMap = new Map(specs.map((s) => [s.name, s]));
 
   // Validate that every declared dependency actually exists in the set.
@@ -64,6 +66,42 @@ export function sortRuleSpecs(specs: RuleSpec[]): RuleSpec[] {
 }
 
 /**
+ * From all registered specs, select only those named in `selected` plus their
+ * transitive dependencies, then return them topologically sorted.
+ *
+ * Throws if any name in `selected` does not correspond to a known spec.
+ */
+export function selectRuleSpecs(allSpecs: RuleSpec[], selected: string[]): RuleSpec[] {
+  const specMap = new Map(allSpecs.map((s) => [s.name, s]));
+
+  // Validate that every explicitly requested name exists.
+  for (const name of selected) {
+    if (!specMap.has(name)) {
+      const available = allSpecs.map((s) => s.name).join(', ');
+      throw new Error(`Unknown rule: "${name}". Available rules: ${available}`);
+    }
+  }
+
+  // BFS to collect transitive dependencies of the selected specs.
+  const needed = new Set<string>(selected);
+  const bfsQueue = [...selected];
+  while (bfsQueue.length > 0) {
+    const name = bfsQueue.shift()!;
+    const spec = specMap.get(name)!;
+    for (const dep of spec.dependencies ?? []) {
+      if (!needed.has(dep)) {
+        needed.add(dep);
+        bfsQueue.push(dep);
+      }
+    }
+  }
+
+  // Filter the original list to preserve registration order, then sort.
+  const filteredSpecs = allSpecs.filter((s) => needed.has(s.name));
+  return sortRuleSpecs(filteredSpecs);
+}
+
+/**
  * Run all registered rules against the vault.
  *
  * A single FileWriteManager (transform queue) is shared across every rule:
@@ -106,8 +144,14 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
 
   const summaries: string[] = [];
 
+  // Resolve which specs to run based on the `selectedRuleNames` context field.
+  const specsToRun =
+    ctx.selectedRuleNames === undefined || ctx.selectedRuleNames === 'all'
+      ? sortRuleSpecs(ruleSpecs)
+      : selectRuleSpecs(ruleSpecs, ctx.selectedRuleNames);
+
   // Declarative RuleSpecs (e.g. normalization) run first, ordered by deps.
-  for (const spec of sortRuleSpecs(ruleSpecs)) {
+  for (const spec of specsToRun) {
     logDetail(`Running rule spec: ${spec.name}`);
     try {
       const result = await runRuleSpec(spec, ctx);
