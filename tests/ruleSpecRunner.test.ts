@@ -1,6 +1,16 @@
 /**
  * Unit tests for the ruleSpecRunner engine.
  *
+ * Only tests that are NOT already exercised by the E2E dry-run in
+ * tests/normalizeTodayLiteral.test.ts belong here.  Specifically:
+ *   - Date arithmetic for "yesterday" and "tomorrow" literals.
+ *   - Engine mechanics (source resolution, predicates, actions) that the
+ *     E2E vault does not exercise (no predicates, no path sources, no
+ *     setFieldDateIfMissing action).
+ *
+ * Do NOT add tests that merely re-verify that "today" gets replaced — the
+ * E2E snapshot already catches any regression in that path immediately.
+ *
  * Each test uses a dedicated sub-directory under tests/test_vault/scenarios/
  * as its vaultPath, so no filesystem mocking is needed.  The scenario
  * directories are committed fixtures — create a new sub-directory if you need
@@ -39,6 +49,7 @@ function makeCtx(vaultPath: string): RuleContext {
 describe('ruleSpecRunner — source resolution', () => {
   it('resolves a path source to an absolute path', async () => {
     // scenarios/path-source/TODO.md: "- [ ] Task"
+    // The E2E vault only exercises glob sources, not path sources.
     const ctx = makeCtx(join(SCENARIOS, 'path-source'));
     const spec: RuleSpec = {
       name: 'test',
@@ -51,8 +62,9 @@ describe('ruleSpecRunner — source resolution', () => {
     expect(result.changes).toHaveLength(0);
   });
 
-  it('resolves a **/*.md glob to all markdown files, excluding non-md files', async () => {
-    // scenarios/glob-mixed/: a.md, b.md (no due:today), notes.txt
+  it('glob source excludes non-matching file extensions', async () => {
+    // scenarios/glob-mixed/: a.md, b.md, notes.txt
+    // The E2E vault has no .txt files; this verifies .txt is never matched.
     const ctx = makeCtx(join(SCENARIOS, 'glob-mixed'));
     const spec: RuleSpec = {
       name: 'test',
@@ -60,80 +72,18 @@ describe('ruleSpecRunner — source resolution', () => {
       query: { type: 'tasks' },
       actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
     };
-    // No tasks have due:today → no changes, and .txt is never read.
     const result = await runRuleSpec(spec, ctx);
+    // No tasks have due:today in the .md files, and the .txt is never read.
     expect(result.changes).toHaveLength(0);
   });
 });
 
 // ---------------------------------------------------------------------------
-// task.replaceFieldDateValue
+// Date arithmetic for relative literals
+// (The E2E vault only uses "today"; yesterday/tomorrow are not in main/TODO.md)
 // ---------------------------------------------------------------------------
 
-describe('ruleSpecRunner — task.replaceFieldDateValue', () => {
-  it('replaces a literal "today" due: value with the current date', async () => {
-    // scenarios/replace-due/TODO.md: "- [ ] Pay rent due:today"
-    const ctx = makeCtx(join(SCENARIOS, 'replace-due'));
-    const spec: RuleSpec = {
-      name: 'normalize',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]?.content).toContain(`due:${TODAY_STR}`);
-    expect(result.changes[0]?.content).not.toContain('due:today');
-  });
-
-  it('does not modify a field that does not match from', async () => {
-    // scenarios/no-replace/TODO.md: "- [ ] Pay rent due:2026-05-03"
-    const ctx = makeCtx(join(SCENARIOS, 'no-replace'));
-    const spec: RuleSpec = {
-      name: 'normalize',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(0);
-  });
-
-  it('does not modify tasks without the target field', async () => {
-    // scenarios/no-field/TODO.md: "- [ ] No date fields here"
-    const ctx = makeCtx(join(SCENARIOS, 'no-field'));
-    const spec: RuleSpec = {
-      name: 'normalize',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(0);
-  });
-
-  it('replaces today in multiple fields in one pass, leaving untargeted fields alone', async () => {
-    // scenarios/multi-field/TODO.md: "- [ ] Task due:today start:today snooze:tomorrow"
-    // Only due and start are targeted; snooze:tomorrow is left unchanged.
-    const ctx = makeCtx(join(SCENARIOS, 'multi-field'));
-    const spec: RuleSpec = {
-      name: 'normalize',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [
-        { type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' },
-        { type: 'task.replaceFieldDateValue', key: 'start', from: 'today', to: 'today' },
-      ],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(1);
-    const content = result.changes[0]?.content ?? '';
-    expect(content).toContain(`due:${TODAY_STR}`);
-    expect(content).toContain(`start:${TODAY_STR}`);
-    // snooze:tomorrow was not targeted by this spec → stays as the literal "tomorrow"
-    expect(content).toContain('snooze:tomorrow');
-  });
-
+describe('ruleSpecRunner — date arithmetic', () => {
   it('resolves "yesterday" to the day before today', async () => {
     // scenarios/relative-dates/TODO.md: "- [ ] Task A due:yesterday / - [ ] Task B start:tomorrow"
     const ctx = makeCtx(join(SCENARIOS, 'relative-dates'));
@@ -168,7 +118,42 @@ describe('ruleSpecRunner — task.replaceFieldDateValue', () => {
 });
 
 // ---------------------------------------------------------------------------
+// task.replaceFieldDateValue — negative / edge cases
+// (The E2E verifies the positive case; these cover behavior not visible there)
+// ---------------------------------------------------------------------------
+
+describe('ruleSpecRunner — replaceFieldDateValue edge cases', () => {
+  it('does not modify a field whose value does not match from', async () => {
+    // scenarios/no-replace/TODO.md: "- [ ] Pay rent due:2026-05-03"
+    // Verifies the "from" guard: only exact matches are replaced.
+    const ctx = makeCtx(join(SCENARIOS, 'no-replace'));
+    const spec: RuleSpec = {
+      name: 'normalize',
+      sources: [{ type: 'path', value: 'TODO.md' }],
+      query: { type: 'tasks' },
+      actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
+    };
+    const result = await runRuleSpec(spec, ctx);
+    expect(result.changes).toHaveLength(0);
+  });
+
+  it('does not modify tasks that do not have the target field', async () => {
+    // scenarios/no-field/TODO.md: "- [ ] No date fields here"
+    const ctx = makeCtx(join(SCENARIOS, 'no-field'));
+    const spec: RuleSpec = {
+      name: 'normalize',
+      sources: [{ type: 'path', value: 'TODO.md' }],
+      query: { type: 'tasks' },
+      actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
+    };
+    const result = await runRuleSpec(spec, ctx);
+    expect(result.changes).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // task.setFieldDateIfMissing
+// (Not used by normalizeTodayLiteral; not exercised by the E2E run)
 // ---------------------------------------------------------------------------
 
 describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
@@ -202,6 +187,7 @@ describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
 
 // ---------------------------------------------------------------------------
 // Predicate evaluation
+// (normalizeTodayLiteral uses no predicate; none of these are in the E2E run)
 // ---------------------------------------------------------------------------
 
 describe('ruleSpecRunner — predicates', () => {
