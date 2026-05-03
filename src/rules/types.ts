@@ -115,7 +115,7 @@ export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };
  */
 export type CustomAction = {
   type: 'custom';
-  run: (tasks: Task[]) => Promise<void>;
+  run: (args: { tasks: Task[]; dryRun: boolean }) => Promise<void>;
 };
 
 export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction;

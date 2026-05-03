@@ -275,7 +275,7 @@ export async function runRuleSpec(
   if (!ctx.dryRun && allSelected.length > 0) {
     for (const action of actions) {
       if (action.type === 'custom') {
-        await action.run(allSelected);
+        await action.run({ tasks: allSelected, dryRun: ctx.dryRun });
       }
     }
   }

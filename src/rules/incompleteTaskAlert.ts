@@ -3,7 +3,7 @@ import type { Task } from '../markdown/tasks.js';
 
 const httpAlert: CustomAction = {
   type: 'custom',
-  run: async (tasks: Task[]) => {
+  run: async ({ tasks }: { tasks: Task[]; dryRun: boolean }) => {
     const alertUrl = process.env['ALERT_URL'];
     if (!alertUrl) return;
     const content = tasks.map((t) => `- [${t.checked ? 'x' : ' '}] ${t.text}`).join('\n') + '\n';
