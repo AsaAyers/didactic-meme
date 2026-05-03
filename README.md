@@ -49,7 +49,6 @@ When a repeating task is completed, `due:` is always set to `newDue`. If `start:
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `VAULT_PATH` | **Yes** | — | Absolute path to the Obsidian vault root |
-| `DAILY_NOTE_HEADING` | No | `Completed Tasks` | Heading to append completed tasks under in the daily note |
 | `ALERT_FILE` | No | `$VAULT_PATH/tmp_alert.md` | Path for the incomplete-task alert file |
 | `ALERT_URL` | No | — | HTTP endpoint to POST `tmp_alert.md` content to |
 | `ALERT_TOKEN` | No | — | Bearer token sent as `Authorization: Bearer …` header |
@@ -121,9 +120,7 @@ Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps 
 Processes every completed task across all `**/*.md` files in the vault:
 
 - **With `repeat:`**: Computes the next due date using the repeat grammar and the `completionDate` inline field (falls back to today if the field is not yet present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = completionDate`). Unchecks the task so it stays in its source file for the next cycle.
-- **Without `repeat:`**: Removes the task from its source file.
-
-Every processed task is **appended** to today's daily note at `YYYY/YYYY-MM-DD.md` under the heading defined by `DAILY_NOTE_HEADING` (default: `Completed Tasks`). The heading is created if it doesn't exist, and trailing blank lines are trimmed before appending.
+- **Without `repeat:`**: Removes the task from its source file in place.
 
 ### Rule 3 – Incomplete Task Alert
 

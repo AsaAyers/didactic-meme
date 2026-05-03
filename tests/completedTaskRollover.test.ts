@@ -34,30 +34,26 @@ function getContent(changes: Array<{ path: string; content: string }>, suffix: s
 }
 
 describe('completedTaskRollover — basic rollover (no repeat)', () => {
-  it('removes a non-repeating completed task from the source file and logs it to daily note', async () => {
+  it('removes a non-repeating completed task from the source file', async () => {
     const tasksMd = `- [x] Deploy to production\n- [ ] Write tests\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
 
+    expect(result.changes).toHaveLength(1);
     const tasksContent = getContent(result.changes, 'tasks.md');
-    const dailyContent = getContent(result.changes, `${TODAY_STR}.md`);
-
     expect(tasksContent).not.toContain('Deploy to production');
     expect(tasksContent).toContain('Write tests');
-    expect(dailyContent).toContain('- [x] Deploy to production');
   });
 
   it('does NOT treat a #recurring tag as special — removes the task', async () => {
     const tasksMd = `- [x] Weekly standup #recurring\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
@@ -70,10 +66,9 @@ describe('completedTaskRollover — basic rollover (no repeat)', () => {
 describe('completedTaskRollover — repeat scheduling', () => {
   it('unchecks and advances due: for a task with repeat: (no existing due)', async () => {
     const tasksMd = `- [x] Water plants repeat:s completionDate:${TODAY_STR}\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
@@ -86,10 +81,9 @@ describe('completedTaskRollover — repeat scheduling', () => {
 
   it('uses today as fallback when completionDate field is missing', async () => {
     const tasksMd = `- [x] Water plants repeat:s\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
@@ -101,10 +95,9 @@ describe('completedTaskRollover — repeat scheduling', () => {
 
   it('skipWeeks=1 on Sunday: next due is +14 days (2026-05-17)', async () => {
     const tasksMd = `- [x] Task repeat:1s completionDate:${TODAY_STR}\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
@@ -115,10 +108,9 @@ describe('completedTaskRollover — repeat scheduling', () => {
 
   it('overwrites an existing due: when task repeats', async () => {
     const tasksMd = `- [x] Task due:${TODAY_STR} repeat:s completionDate:${TODAY_STR}\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
@@ -132,10 +124,9 @@ describe('completedTaskRollover — repeat scheduling', () => {
 describe('completedTaskRollover — start/snooze shifting', () => {
   it('shifts start: forward by the same delta as due moved', async () => {
     const tasksMd = `- [x] Task start:2026-04-28 repeat:a completionDate:${TODAY_STR}\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
@@ -147,10 +138,9 @@ describe('completedTaskRollover — start/snooze shifting', () => {
 
   it('shifts snooze: forward by the same delta as due moved', async () => {
     const tasksMd = `- [x] Task snooze:2026-04-30 repeat:a completionDate:${TODAY_STR}\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
@@ -164,10 +154,9 @@ describe('completedTaskRollover — start/snooze shifting', () => {
     const tasksMd =
       `- [x] Task start:2026-04-27 snooze:2026-04-29 ` +
       `due:2026-05-02 repeat:a completionDate:${TODAY_STR}\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);
@@ -180,10 +169,9 @@ describe('completedTaskRollover — start/snooze shifting', () => {
 
   it('uses completionDate as oldDue when no existing due: for start/snooze delta', async () => {
     const tasksMd = `- [x] Task start:2026-05-01 repeat:a completionDate:${TODAY_STR}\n`;
-    const dailyMd = ``;
     mockReadFile.mockImplementation((path: string) => {
       if (path === '/vault/tasks.md') return Promise.resolve(tasksMd);
-      return Promise.resolve(dailyMd);
+      return Promise.resolve('');
     });
 
     const result = await completedTaskRolloverRule.run(baseCtx);

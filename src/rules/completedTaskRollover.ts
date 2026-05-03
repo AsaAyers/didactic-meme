@@ -1,8 +1,6 @@
-import { join } from 'node:path';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
 import { extractTasks, removeTask, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
-import { appendUnderHeading } from '../markdown/headings.js';
 import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
 import {
   parseRepeat,
@@ -13,30 +11,16 @@ import {
 import { walkMarkdownFiles } from '../engine/io.js';
 import type { Rule, RuleContext, RuleResult, FileChange } from './types.js';
 
-function formatDate(date: Date): { year: string; dateStr: string } {
-  const dateStr = formatDateStr(date);
-  const year = dateStr.slice(0, 4);
-  return { year, dateStr };
-}
-
 export const completedTaskRolloverRule: Rule = {
   name: 'completedTaskRollover',
   async run(ctx: RuleContext): Promise<RuleResult> {
-    const { vaultPath, today, env } = ctx;
-    const headingName = (env['DAILY_NOTE_HEADING'] as string | undefined) ?? 'Completed Tasks';
-    const { year, dateStr } = formatDate(today);
-    const dailyNotePath = join(vaultPath, year, `${dateStr}.md`);
-
+    const { vaultPath, today } = ctx;
     const mdFiles = await walkMarkdownFiles(vaultPath);
 
     const changes: FileChange[] = [];
-    const appendedLines: string[] = [];
-    let totalRolled = 0;
+    let totalProcessed = 0;
 
     for (const filePath of mdFiles) {
-      // Skip the daily note itself — it is the rollover target, not a source.
-      if (filePath === dailyNotePath) continue;
-
       const raw = await ctx.readFile(filePath);
       if (!raw) continue;
 
@@ -49,9 +33,6 @@ export const completedTaskRolloverRule: Rule = {
       for (const task of completedTasks) {
         const repeatStr = getInlineField(task.text, 'repeat');
         const schedule = repeatStr ? parseRepeat(repeatStr) : null;
-
-        // Log the original completed task text to the daily note.
-        appendedLines.push(`- [x] ${task.text}`);
 
         if (schedule) {
           // Determine the effective completion date.
@@ -101,27 +82,22 @@ export const completedTaskRolloverRule: Rule = {
           updateTaskText(tree, task.text, newText);
           setTaskChecked(tree, newText, false);
         } else {
-          // No repeat schedule — remove the completed task.
+          // No repeat schedule — remove the completed task in place.
           removeTask(tree, task.text);
         }
       }
 
       changes.push({ path: filePath, content: stringifyMarkdown(tree) });
-      totalRolled += completedTasks.length;
+      totalProcessed += completedTasks.length;
     }
 
-    if (totalRolled === 0) {
+    if (totalProcessed === 0) {
       return { changes: [], summary: 'No completed tasks found.' };
     }
 
-    const dailyNoteRaw = await ctx.readFile(dailyNotePath);
-    const dailyTree = parseMarkdown(dailyNoteRaw);
-    appendUnderHeading(dailyTree, headingName, appendedLines);
-    changes.push({ path: dailyNotePath, content: stringifyMarkdown(dailyTree) });
-
     return {
       changes,
-      summary: `Rolled over ${totalRolled} completed task(s) to ${dateStr}.`,
+      summary: `Processed ${totalProcessed} completed task(s).`,
     };
   },
 };
