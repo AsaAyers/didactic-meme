@@ -1,8 +1,10 @@
+import { format, parse, addDays as dateFnsAddDays, differenceInCalendarDays } from 'date-fns';
+
 /**
  * Weekday characters used in the `repeat:` inline field alphabet.
  * s=Sunday, m=Monday, t=Tuesday, w=Wednesday, h=Thursday, f=Friday, a=Saturday
  */
-const WEEKDAY_MAP: Record<string, number> = {
+const WEEKDAY_MAP = {
   s: 0,
   m: 1,
   t: 2,
@@ -10,7 +12,7 @@ const WEEKDAY_MAP: Record<string, number> = {
   h: 4,
   f: 5,
   a: 6,
-};
+} as const;
 
 export type RepeatSchedule = {
   skipWeeks: number;
@@ -28,21 +30,16 @@ export function parseRepeat(value: string): RepeatSchedule | null {
   if (!match) return null;
   const skipWeeks = match[1] !== undefined ? parseInt(match[1], 10) : 0;
   const days = new Set<number>();
-  for (const ch of match[2]) {
+  for (const ch of match[2] as unknown as Array<keyof typeof WEEKDAY_MAP>) {
     days.add(WEEKDAY_MAP[ch]);
   }
   if (days.size === 0) return null;
   return { skipWeeks, days };
 }
 
-/**
- * Format a Date to an ISO date string "YYYY-MM-DD" using local calendar.
- */
+/** Format a Date to an ISO date string "YYYY-MM-DD". */
 export function formatDateStr(date: Date): string {
-  const year = date.getFullYear().toString();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return format(date, 'yyyy-MM-dd');
 }
 
 /**
@@ -50,31 +47,21 @@ export function formatDateStr(date: Date): string {
  * Returns null if the string is not in the expected format.
  */
 export function parseDateStr(dateStr: string): Date | null {
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  const year = parseInt(match[1], 10);
-  const month = parseInt(match[2], 10) - 1;
-  const day = parseInt(match[3], 10);
-  return new Date(year, month, day);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+  const result = parse(dateStr, 'yyyy-MM-dd', new Date());
+  return isNaN(result.getTime()) ? null : result;
 }
 
-/**
- * Return a new Date that is `n` calendar days after `date`.
- */
+/** Return a new Date that is `n` calendar days after `date`. */
 export function addDays(date: Date, n: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + n);
-  return result;
+  return dateFnsAddDays(date, n);
 }
 
 /**
  * Return the number of calendar days between two dates (later - earlier).
- * Uses UTC to avoid DST skew.
  */
 export function diffDays(later: Date, earlier: Date): number {
-  const laterMs = Date.UTC(later.getFullYear(), later.getMonth(), later.getDate());
-  const earlierMs = Date.UTC(earlier.getFullYear(), earlier.getMonth(), earlier.getDate());
-  return Math.round((laterMs - earlierMs) / (1000 * 60 * 60 * 24));
+  return differenceInCalendarDays(later, earlier);
 }
 
 /**
