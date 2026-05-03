@@ -8,7 +8,10 @@
     "build": "tsc",
     "run": "node dist/index.js",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
@@ -21,9 +24,12 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "eslint": "^9.39.4",
+    "husky": "^9.1.7",
     "mdast": "^3.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",
+    "typescript-eslint": "^8.59.1",
     "vitest": "^1.0.0"
   }
 }

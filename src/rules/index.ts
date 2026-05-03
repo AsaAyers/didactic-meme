@@ -17,5 +17,3 @@ export const rules: Rule[] = [
   completedTaskRolloverRule,
   incompleteTaskAlertRule,
 ];
-
-export type { Rule, RuleSpec, RuleContext, FileChange, RuleResult } from './types.js';

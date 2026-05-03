@@ -1,12 +1,7 @@
 import { join } from 'node:path';
-import {
-  parseMarkdown,
-  stringifyMarkdown,
-  extractTasks,
-  updateTaskText,
-  getInlineField,
-  setInlineField,
-} from '../markdown/index.js';
+import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
+import { extractTasks, updateTaskText } from '../markdown/tasks.js';
+import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
 import { formatDateStr } from './scheduleUtils.js';
 import type { Rule, RuleContext, RuleResult } from './types.js';
 

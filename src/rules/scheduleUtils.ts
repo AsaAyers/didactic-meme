@@ -1,4 +1,4 @@
-import { format, parse, addDays, differenceInCalendarDays } from 'date-fns';
+import { format, parse, addDays } from 'date-fns';
 
 /**
  * Weekday characters used in the `repeat:` inline field alphabet.

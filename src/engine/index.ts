@@ -1,3 +1,2 @@
-export { readFile, FileWriteManager } from './io.js';
-export { runAllRules } from './runner.js';
-export { runRuleSpec } from './ruleSpecRunner.js';
+// This barrel file has been removed. Import directly from the specific module files:
+//   io.ts, runner.ts, ruleSpecRunner.ts

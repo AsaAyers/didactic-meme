@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMarkdown, stringifyMarkdown } from '../src/markdown/parse.js';
+import { parseMarkdown } from '../src/markdown/parse.js';
 import { extractTasks, removeTask, setTaskChecked, updateTaskText } from '../src/markdown/tasks.js';
 
 const SAMPLE_MARKDOWN = `
