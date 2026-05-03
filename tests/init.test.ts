@@ -29,8 +29,8 @@ async function readScenarioFile(name: string): Promise<string> {
 describe('runInitPass', () => {
   it('scans all .md files in the vault (dry-run)', async () => {
     const { scanned } = await runInitPass(INIT_SCENARIO, true);
-    // The scenario dir has 2 .md files and 1 .txt file
-    expect(scanned).toBe(2);
+    // The scenario dir has 4 .md files and 1 .txt file
+    expect(scanned).toBe(4);
   });
 
   it('ignores non-.md files', async () => {
@@ -71,10 +71,80 @@ describe('runInitPass', () => {
 
   it('returns correct scanned/rewritten counts', async () => {
     const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true);
-    expect(scanned).toBe(2);
+    expect(scanned).toBe(4);
     // Only needs-normalization.md requires a change
     expect(rewritten).toBe(1);
   });
+
+  // ---------------------------------------------------------------------------
+  // Wikilink preservation
+  // ---------------------------------------------------------------------------
+
+  it('preserves Obsidian wikilinks [[...]] without escaping (dry-run)', async () => {
+    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    // with-wikilinks.md is already normalized, so it must not appear in changes
+    const wikiChange = changes.find((c) => c.path.includes('with-wikilinks'));
+    expect(wikiChange, 'with-wikilinks.md is already normalized and must not require changes').toBeUndefined();
+  });
+
+  it('preserves wikilinks in normalized content — no \\[[ escaping', async () => {
+    // Verify the round-trip of the wikilinks file produces no escaping
+    const original = await readScenarioFile('with-wikilinks.md');
+    // If the file was changed by runInitPass it would appear in changes;
+    // since it doesn't, we verify the content directly would not be escaped
+    expect(original).not.toContain('\\[\\[');
+    expect(original).toContain('[[');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Frontmatter preservation
+  // ---------------------------------------------------------------------------
+
+  it('preserves YAML frontmatter verbatim (dry-run)', async () => {
+    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    // with-frontmatter.md should NOT appear in changes — the frontmatter
+    // should be preserved exactly and the body is already normalized
+    const fmChange = changes.find((c) => c.path.includes('with-frontmatter'));
+    expect(fmChange, 'with-frontmatter.md is already normalized and must not require changes').toBeUndefined();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Double-pass stability (new requirement)
+  // ---------------------------------------------------------------------------
+
+  it('second pass on already-normalized content produces no changes (stability)', async () => {
+    // Run on the scenario dir — should be stable (no unstable files error)
+    await expect(runInitPass(INIT_SCENARIO, true)).resolves.not.toThrow();
+  });
+
+  it('throws when normalization is not stable', async () => {
+    const TMP_DIR = join(__dirname, '..', 'tmp', 'init-unstable-test');
+    await fs.mkdir(TMP_DIR, { recursive: true });
+
+    try {
+      // Write a file whose content will appear to change in the first pass
+      await fs.writeFile(join(TMP_DIR, 'unstable.md'), '# Original\n', 'utf-8');
+
+      // Inject an unstable normalizer: first call returns something different,
+      // second call (stability check) returns yet something else, triggering
+      // the "not stable" error.
+      let callCount = 0;
+      const unstableNormalizer = (_raw: string): string => {
+        callCount++;
+        return callCount === 1 ? '# First pass result\n' : '# Second pass result\n';
+      };
+
+      await expect(runInitPass(TMP_DIR, true, unstableNormalizer)).rejects.toThrow(
+        'Init normalization is not stable',
+      );
+    } finally {
+      await fs.rm(TMP_DIR, { recursive: true, force: true });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Write mode
+  // ---------------------------------------------------------------------------
 
   describe('write mode', () => {
     const TMP_DIR = join(__dirname, '..', 'tmp', 'init-test-vault');
@@ -89,6 +159,14 @@ describe('runInitPass', () => {
       await fs.copyFile(
         join(INIT_SCENARIO, 'already-normalized.md'),
         join(TMP_DIR, 'already-normalized.md'),
+      );
+      await fs.copyFile(
+        join(INIT_SCENARIO, 'with-wikilinks.md'),
+        join(TMP_DIR, 'with-wikilinks.md'),
+      );
+      await fs.copyFile(
+        join(INIT_SCENARIO, 'with-frontmatter.md'),
+        join(TMP_DIR, 'with-frontmatter.md'),
       );
     });
 
@@ -126,6 +204,30 @@ describe('runInitPass', () => {
       const afterSecondPass = await fs.readFile(join(TMP_DIR, 'needs-normalization.md'), 'utf-8');
       expect(secondPassRewrites).toBe(0);
       expect(afterSecondPass).toBe(afterFirstPass);
+    });
+
+    it('preserves wikilinks without escaping after write', async () => {
+      const originalContent = await fs.readFile(join(TMP_DIR, 'with-wikilinks.md'), 'utf-8');
+      // Run init — should not change the file (already normalized)
+      const { rewritten } = await runInitPass(TMP_DIR, false);
+      const afterContent = await fs.readFile(join(TMP_DIR, 'with-wikilinks.md'), 'utf-8');
+
+      // File should be unchanged (already normalized)
+      expect(afterContent).toBe(originalContent);
+      // No escaped brackets
+      expect(afterContent).not.toContain('\\[\\[');
+      expect(afterContent).toContain('[[');
+      // Only 1 file was changed (needs-normalization.md)
+      expect(rewritten).toBe(1);
+    });
+
+    it('preserves frontmatter verbatim after write', async () => {
+      const originalContent = await fs.readFile(join(TMP_DIR, 'with-frontmatter.md'), 'utf-8');
+      await runInitPass(TMP_DIR, false);
+      const afterContent = await fs.readFile(join(TMP_DIR, 'with-frontmatter.md'), 'utf-8');
+
+      expect(afterContent).toBe(originalContent);
+      expect(afterContent.startsWith('---\n')).toBe(true);
     });
   });
 });

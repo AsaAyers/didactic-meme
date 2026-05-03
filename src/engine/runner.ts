@@ -168,20 +168,53 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
  * through the parse → stringify pipeline, and write it back if the output
  * differs from the original.  No rule-driven transformations occur.
  *
- * This is intended to normalize formatting before starting rule-driven changes
- * so that subsequent diffs reflect only intentional semantic edits.
+ * Files with YAML frontmatter (`---\n…\n---`) are handled correctly: only
+ * the body content is passed through the remark pipeline; the frontmatter
+ * block is preserved verbatim.
+ *
+ * After the first normalization pass the function runs a second pass on the
+ * normalized content to verify stability (idempotency).  If the second pass
+ * would produce further changes the function throws an error listing the
+ * offending files — this means the normalization is not a NOOP on already-
+ * normalized content, which indicates a bug in the parse/stringify pipeline.
  *
  * Dry-run mode: no files are written; a unified diff is printed to stdout for
  * each file that would change.
  *
+ * @param vaultPath  Absolute path to the vault root.
+ * @param dryRun     When true no files are written to disk.
+ * @param normalize  Optional custom normalizer — defaults to
+ *                   `normalizeFileContent`.  Exposed for testing only.
  * @returns `scanned` — total `.md` files found.
  *          `rewritten` — files whose content changed after the round-trip.
  *          `changes` — the (path, normalized content) pairs, sorted by path.
  *          `report` — everything printed to console during the pass.
  */
+
+/** Matches a YAML frontmatter block at the start of a file. */
+const FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+
+/**
+ * Normalize a single file's raw content through the parse → stringify
+ * pipeline, preserving any YAML frontmatter verbatim.
+ */
+export function normalizeFileContent(raw: string): string {
+  const fmMatch = FRONTMATTER_RE.exec(raw);
+  if (fmMatch) {
+    const header = fmMatch[0];
+    const rest = raw.slice(header.length);
+    // Preserve one blank line between frontmatter and body if present.
+    const leadingNewline = rest.startsWith('\n') ? '\n' : '';
+    const bodyContent = leadingNewline ? rest.slice(1) : rest;
+    return header + leadingNewline + stringifyMarkdown(parseMarkdown(bodyContent));
+  }
+  return stringifyMarkdown(parseMarkdown(raw));
+}
+
 export async function runInitPass(
   vaultPath: string,
   dryRun: boolean,
+  normalize: (raw: string) => string = normalizeFileContent,
 ): Promise<{
   scanned: number;
   rewritten: number;
@@ -196,7 +229,8 @@ export async function runInitPass(
 
   const allFiles = await walkMarkdownFiles(vaultPath);
 
-  const changes: Array<{ path: string; content: string }> = [];
+  // First pass: collect the normalized content for every file that changes.
+  const changes: Array<{ path: string; original: string; content: string }> = [];
 
   for (const filePath of allFiles) {
     let original: string;
@@ -206,26 +240,34 @@ export async function runInitPass(
       continue;
     }
 
-    const normalized = stringifyMarkdown(parseMarkdown(original));
+    const normalized = normalize(original);
     if (normalized !== original) {
-      changes.push({ path: filePath, content: normalized });
+      changes.push({ path: filePath, original, content: normalized });
     }
   }
 
   // Sort by path for deterministic output.
   changes.sort((a, b) => a.path.localeCompare(b.path));
 
+  // Second pass: verify stability — the normalized content must itself be a
+  // NOOP when run through the pipeline again.
+  const unstable: string[] = [];
+  for (const change of changes) {
+    const secondPass = normalize(change.content);
+    if (secondPass !== change.content) {
+      unstable.push(relative(vaultPath, change.path));
+    }
+  }
+  if (unstable.length > 0) {
+    throw new Error(
+      `Init normalization is not stable (second pass produced changes) for:\n  ${unstable.join('\n  ')}`,
+    );
+  }
+
   if (dryRun) {
     if (changes.length > 0) {
       for (const change of changes) {
-        const relPath = relative(vaultPath, change.path);
-        let original = '';
-        try {
-          original = await fs.readFile(change.path, 'utf-8');
-        } catch {
-          // new file — treat original as empty
-        }
-        log(createPatch(relPath, original, change.content));
+        log(createPatch(relative(vaultPath, change.path), change.original, change.content));
       }
     } else {
       log('No changes.');
@@ -241,7 +283,7 @@ export async function runInitPass(
   return {
     scanned: allFiles.length,
     rewritten: changes.length,
-    changes,
+    changes: changes.map(({ path, content }) => ({ path, content })),
     report: lines.join('\n'),
   };
 }

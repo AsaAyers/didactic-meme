@@ -105,8 +105,15 @@ subsequent diffs reflect only intentional semantic edits rather than incidental
 formatting noise.
 
 - Only `.md` files are processed; other file types are ignored.
+- YAML frontmatter (`---\n...\n---`) is preserved verbatim; only the body is normalized.
+- Obsidian wikilinks (`[[Page]]`, `![[image.png]]`) are round-tripped without escaping.
 - Hidden directories (e.g. `.git`, `.obsidian`) are skipped automatically.
 - A summary line is printed: `Init: scanned N file(s), rewrote M.`
+
+**Stability guarantee**: after the first normalization pass `--init` runs a
+second pass internally to verify that the normalized output is itself a NOOP.
+If the second pass would still produce changes the command exits with an error
+— this protects against a buggy pipeline that would re-format on every run.
 
 Combine with `--dry-run` to preview which files would be rewritten:
 
