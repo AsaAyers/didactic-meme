@@ -1,6 +1,5 @@
 import { join } from 'node:path';
 import { addDays, differenceInCalendarDays } from 'date-fns';
-import { readFile } from '../engine/io.js';
 import {
   parseMarkdown,
   stringifyMarkdown,
@@ -36,7 +35,7 @@ export const completedTaskRolloverRule: Rule = {
     const todoPath = join(vaultPath, 'TODO.md');
     const dailyNotePath = join(vaultPath, year, `${dateStr}.md`);
 
-    const todoRaw = await readFile(todoPath);
+    const todoRaw = await ctx.readFile(todoPath);
     if (!todoRaw) {
       return { changes: [], summary: 'TODO.md not found, nothing to do.' };
     }
@@ -49,7 +48,7 @@ export const completedTaskRolloverRule: Rule = {
       return { changes: [], summary: 'No completed tasks found.' };
     }
 
-    const dailyNoteRaw = await readFile(dailyNotePath);
+    const dailyNoteRaw = await ctx.readFile(dailyNotePath);
     const dailyTree = parseMarkdown(dailyNoteRaw);
 
     const appendedLines: string[] = [];

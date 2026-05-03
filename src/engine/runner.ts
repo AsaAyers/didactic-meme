@@ -1,17 +1,59 @@
-import { rules } from '../rules/index.js';
+import { rules, ruleSpecs } from '../rules/index.js';
 import { FileWriteManager } from './io.js';
+import { runRuleSpec } from './ruleSpecRunner.js';
 import type { RuleContext } from '../rules/types.js';
 
-export async function runAllRules(ctx: RuleContext): Promise<void> {
-  const manager = new FileWriteManager();
+/**
+ * Run all registered rules against the vault.
+ *
+ * A single FileWriteManager (transform queue) is shared across every rule:
+ *   - Reads go through the queue so staged changes from earlier rules are
+ *     immediately visible to later ones, even in dry-run mode.
+ *   - Writes are queued throughout the run and flushed once at the end.
+ *
+ * @param baseCtx  All RuleContext fields except `readFile` (wired internally).
+ * @returns        `changes` — the list of staged file writes (path + content).
+ *                 `report`  — the full terminal output that was also printed to
+ *                             console, suitable for snapshot testing.
+ */
+export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promise<{
+  changes: Array<{ path: string; content: string }>;
+  report: string;
+}> {
+  const queue = new FileWriteManager();
+  const ctx: RuleContext = { ...baseCtx, readFile: (p: string) => queue.read(p) };
+
+  const lines: string[] = [];
+  /** Emit a line to both the console and the captured report. */
+  const log = (msg: string): void => {
+    console.log(msg);
+    lines.push(msg);
+  };
+
   const summaries: string[] = [];
 
+  // Declarative RuleSpecs (e.g. normalization) run first.
+  for (const spec of ruleSpecs) {
+    log(`Running rule spec: ${spec.name}`);
+    try {
+      const result = await runRuleSpec(spec, ctx);
+      for (const change of result.changes) {
+        queue.stage(change.path, change.content);
+      }
+      summaries.push(`  [${spec.name}] ${result.summary}`);
+    } catch (err) {
+      summaries.push(`  [${spec.name}] ERROR: ${(err as Error).message}`);
+    }
+  }
+
+  // Imperative rules run after; they read through the queue so they see
+  // any normalization applied by the specs above.
   for (const rule of rules) {
-    console.log(`Running rule: ${rule.name}`);
+    log(`Running rule: ${rule.name}`);
     try {
       const result = await rule.run(ctx);
       for (const change of result.changes) {
-        manager.stage(change.path, change.content);
+        queue.stage(change.path, change.content);
       }
       summaries.push(`  [${rule.name}] ${result.summary}`);
     } catch (err) {
@@ -19,18 +61,21 @@ export async function runAllRules(ctx: RuleContext): Promise<void> {
     }
   }
 
-  const written = await manager.commit(ctx.dryRun);
+  // Flush everything once at the end.
+  const written = await queue.commit(ctx.dryRun, log);
 
-  console.log('\n=== Run Summary ===');
+  log('\n=== Run Summary ===');
   for (const s of summaries) {
-    console.log(s);
+    log(s);
   }
   if (written.length > 0) {
-    console.log('\nFiles written:');
-    for (const f of written) {
-      console.log(`  ${f}`);
+    log('\nFiles written:');
+    for (const { path: f } of written) {
+      log(`  ${f}`);
     }
   } else {
-    console.log('\nNo files written.');
+    log('\nNo files written.');
   }
+
+  return { changes: written, report: lines.join('\n') };
 }

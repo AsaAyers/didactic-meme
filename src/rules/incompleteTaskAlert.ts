@@ -1,5 +1,4 @@
 import { join } from 'node:path';
-import { readFile } from '../engine/io.js';
 import { parseMarkdown, extractTasks } from '../markdown/index.js';
 import type { Rule, RuleContext, RuleResult } from './types.js';
 
@@ -13,7 +12,7 @@ export const incompleteTaskAlertRule: Rule = {
     const alertUrl = env['ALERT_URL'] as string | undefined;
     const alertToken = env['ALERT_TOKEN'] as string | undefined;
 
-    const todoRaw = await readFile(todoPath);
+    const todoRaw = await ctx.readFile(todoPath);
     if (!todoRaw) {
       return { changes: [], summary: 'TODO.md not found, nothing to do.' };
     }

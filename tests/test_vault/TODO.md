@@ -1,0 +1,3 @@
+- [ ] Pay bills due:today
+- [ ] Call dentist start:today
+- [ ] Take meds snooze:today

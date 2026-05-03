@@ -1,26 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { stampCompletionDateRule } from '../src/rules/stampCompletionDate.js';
 
-// Mock the io module so we don't need real files.
-vi.mock('../src/engine/io.js', () => ({
-  readFile: vi.fn(),
-}));
-
-import { readFile } from '../src/engine/io.js';
-const mockReadFile = readFile as ReturnType<typeof vi.fn>;
-
 const TODAY = new Date(2026, 4, 3); // 2026-05-03 (Sunday)
 const TODAY_STR = '2026-05-03';
+
+let mockReadFile = vi.fn<[string], Promise<string>>();
 
 const baseCtx = {
   vaultPath: '/vault',
   today: TODAY,
   dryRun: false,
   env: {},
+  readFile: (path: string) => mockReadFile(path),
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  mockReadFile = vi.fn<[string], Promise<string>>();
 });
 
 describe('stampCompletionDate rule', () => {
@@ -39,10 +34,8 @@ describe('stampCompletionDate rule', () => {
 
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0].content;
-    // Both checked tasks should now carry completionDate
     expect(content).toContain(`Buy milk completionDate:${TODAY_STR}`);
     expect(content).toContain(`Deploy completionDate:${TODAY_STR}`);
-    // Unchecked task must not be touched
     expect(content).toContain('Write tests');
     expect(content).not.toMatch(/Write tests.*completionDate/);
     expect(result.summary).toContain('2');
@@ -56,9 +49,7 @@ describe('stampCompletionDate rule', () => {
 
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0].content;
-    // Original date preserved
     expect(content).toContain('completionDate:2026-04-01');
-    // Only the task without a date gets stamped
     expect(content).toContain(`Deploy completionDate:${TODAY_STR}`);
     expect(result.summary).toContain('1');
   });

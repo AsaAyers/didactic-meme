@@ -1,5 +1,4 @@
 import { join } from 'node:path';
-import { readFile } from '../engine/io.js';
 import {
   parseMarkdown,
   stringifyMarkdown,
@@ -17,7 +16,7 @@ export const stampCompletionDateRule: Rule = {
     const { vaultPath, today } = ctx;
     const todoPath = join(vaultPath, 'TODO.md');
 
-    const todoRaw = await readFile(todoPath);
+    const todoRaw = await ctx.readFile(todoPath);
     if (!todoRaw) {
       return { changes: [], summary: 'TODO.md not found, nothing to do.' };
     }
