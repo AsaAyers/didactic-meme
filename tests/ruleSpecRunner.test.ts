@@ -15,6 +15,7 @@
  *   - task.setFieldDateIfMissing — not used by normalizeTodayLiteral
  *   - Predicates (checked, unchecked, fieldExists, fieldDateBefore, not) —
  *     normalizeTodayLiteral uses no predicate
+ *   - .md-only path enforcement — verifies the engine throws for non-.md paths
  *
  * Each test uses a dedicated sub-directory under tests/test_vault/scenarios/
  * as its vaultPath, so no filesystem mocking is needed.  The scenario
@@ -46,17 +47,35 @@ function makeCtx(vaultPath: string): RuleContext {
 }
 
 // ---------------------------------------------------------------------------
+// .md-only path enforcement
+// (The engine must refuse to process non-.md paths)
+// ---------------------------------------------------------------------------
+
+describe('ruleSpecRunner — .md-only enforcement', () => {
+  it('throws when a path source does not end in .md', async () => {
+    const ctx = makeCtx(join(SCENARIOS, 'set-missing'));
+    const spec: RuleSpec = {
+      name: 'test',
+      sources: [{ type: 'path', value: 'tasks.txt' }],
+      query: { type: 'tasks' },
+      actions: [],
+    };
+    await expect(runRuleSpec(spec, ctx)).rejects.toThrow('.md');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // task.setFieldDateIfMissing
 // (Not used by normalizeTodayLiteral; not exercised by the E2E run)
 // ---------------------------------------------------------------------------
 
 describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
   it('sets a missing field to the current date', async () => {
-    // scenarios/set-missing/TODO.md: "- [x] Finished task"
+    // scenarios/set-missing/tasks.md: "- [x] Finished task"
     const ctx = makeCtx(join(SCENARIOS, 'set-missing'));
     const spec: RuleSpec = {
       name: 'stamp',
-      sources: [{ type: 'path', value: 'TODO.md' }],
+      sources: [{ type: 'path', value: 'tasks.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
       actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
     };
@@ -66,11 +85,11 @@ describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
   });
 
   it('does not overwrite an existing field', async () => {
-    // scenarios/set-existing/TODO.md: "- [x] Finished task completionDate:2026-01-01"
+    // scenarios/set-existing/tasks.md: "- [x] Finished task completionDate:2026-01-01"
     const ctx = makeCtx(join(SCENARIOS, 'set-existing'));
     const spec: RuleSpec = {
       name: 'stamp',
-      sources: [{ type: 'path', value: 'TODO.md' }],
+      sources: [{ type: 'path', value: 'tasks.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
       actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
     };
@@ -86,11 +105,11 @@ describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
 
 describe('ruleSpecRunner — predicates', () => {
   it('checked predicate selects only checked tasks', async () => {
-    // scenarios/checked-unchecked/TODO.md: "- [x] Done / - [ ] Todo"
+    // scenarios/checked-unchecked/tasks.md: "- [x] Done / - [ ] Todo"
     const ctx = makeCtx(join(SCENARIOS, 'checked-unchecked'));
     const spec: RuleSpec = {
       name: 'test',
-      sources: [{ type: 'path', value: 'TODO.md' }],
+      sources: [{ type: 'path', value: 'tasks.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
       actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
     };
@@ -103,11 +122,11 @@ describe('ruleSpecRunner — predicates', () => {
   });
 
   it('unchecked predicate selects only unchecked tasks', async () => {
-    // scenarios/unchecked-today/TODO.md: "- [x] Done / - [ ] Todo due:today"
+    // scenarios/unchecked-today/tasks.md: "- [x] Done / - [ ] Todo due:today"
     const ctx = makeCtx(join(SCENARIOS, 'unchecked-today'));
     const spec: RuleSpec = {
       name: 'test',
-      sources: [{ type: 'path', value: 'TODO.md' }],
+      sources: [{ type: 'path', value: 'tasks.md' }],
       query: { type: 'tasks', predicate: { type: 'unchecked' } },
       actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
     };
@@ -120,11 +139,11 @@ describe('ruleSpecRunner — predicates', () => {
   });
 
   it('fieldExists predicate returns only tasks with that field', async () => {
-    // scenarios/field-exists/TODO.md: "- [ ] With due:2026-05-01 / - [ ] Without"
+    // scenarios/field-exists/tasks.md: "- [ ] With due:2026-05-01 / - [ ] Without"
     const ctx = makeCtx(join(SCENARIOS, 'field-exists'));
     const spec: RuleSpec = {
       name: 'test',
-      sources: [{ type: 'path', value: 'TODO.md' }],
+      sources: [{ type: 'path', value: 'tasks.md' }],
       query: { type: 'tasks', predicate: { type: 'fieldExists', key: 'due' } },
       actions: [
         { type: 'task.replaceFieldDateValue', key: 'due', from: '2026-05-01', to: TODAY_STR },
@@ -138,11 +157,11 @@ describe('ruleSpecRunner — predicates', () => {
   });
 
   it('fieldDateBefore predicate selects tasks whose date field is before the reference', async () => {
-    // scenarios/date-before/TODO.md: overdue (2026-04-01) and future (2026-06-01)
+    // scenarios/date-before/tasks.md: overdue (2026-04-01) and future (2026-06-01)
     const ctx = makeCtx(join(SCENARIOS, 'date-before'));
     const spec: RuleSpec = {
       name: 'test',
-      sources: [{ type: 'path', value: 'TODO.md' }],
+      sources: [{ type: 'path', value: 'tasks.md' }],
       query: {
         type: 'tasks',
         predicate: { type: 'fieldDateBefore', key: 'due', date: 'today' },
@@ -160,12 +179,12 @@ describe('ruleSpecRunner — predicates', () => {
   });
 
   it('not predicate inverts selection', async () => {
-    // scenarios/not-predicate/TODO.md: "- [ ] A due:today / - [ ] B"
+    // scenarios/not-predicate/tasks.md: "- [ ] A due:today / - [ ] B"
     // Select tasks WITHOUT a due field → only B gets due:today set.
     const ctx = makeCtx(join(SCENARIOS, 'not-predicate'));
     const spec: RuleSpec = {
       name: 'test',
-      sources: [{ type: 'path', value: 'TODO.md' }],
+      sources: [{ type: 'path', value: 'tasks.md' }],
       query: {
         type: 'tasks',
         predicate: { type: 'not', predicate: { type: 'fieldExists', key: 'due' } },

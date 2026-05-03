@@ -1,4 +1,3 @@
-import { promises as fs } from 'node:fs';
 import { join, relative } from 'node:path';
 import { addDays, format } from 'date-fns';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
@@ -6,6 +5,7 @@ import { extractTasks, updateTaskText } from '../markdown/tasks.js';
 import type { Task } from '../markdown/tasks.js';
 import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
 import { parseDateStr } from '../rules/scheduleUtils.js';
+import { walkMarkdownFiles } from './io.js';
 import type {
   Action,
   FileChange,
@@ -20,26 +20,6 @@ import type {
 // ---------------------------------------------------------------------------
 // Source resolution
 // ---------------------------------------------------------------------------
-
-async function walkDirectory(dir: string): Promise<string[]> {
-  const results: string[] = [];
-  try {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-    for (const entry of entries) {
-      const name = entry.name as string;
-      const fullPath = join(dir, name);
-      if (entry.isDirectory() && !name.startsWith('.')) {
-        results.push(...(await walkDirectory(fullPath)));
-      } else if (entry.isFile()) {
-        results.push(fullPath);
-      }
-    }
-  } catch {
-    // Directory doesn't exist or is not accessible — skip silently.
-  }
-  return results;
-}
 
 /**
  * Minimal glob matcher that supports the patterns the engine needs:
@@ -86,7 +66,7 @@ async function resolveSource(vaultPath: string, source: GlobSource | PathSource)
     return [join(vaultPath, source.value)];
   }
   // glob
-  const allFiles = await walkDirectory(vaultPath);
+  const allFiles = await walkMarkdownFiles(vaultPath);
   return allFiles.filter((f) => matchesGlob(relative(vaultPath, f), source.pattern));
 }
 
@@ -194,6 +174,12 @@ export async function runRuleSpec(
   const { query, actions } = spec;
 
   const filePaths = await resolveSources(vaultPath, spec.sources);
+
+  for (const p of filePaths) {
+    if (!p.endsWith('.md')) {
+      throw new Error(`Engine only processes .md files; refusing to process: ${p}`);
+    }
+  }
 
   const changes: FileChange[] = [];
   let totalModified = 0;

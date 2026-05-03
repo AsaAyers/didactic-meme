@@ -2,32 +2,40 @@ import { join } from 'node:path';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
 import { extractTasks, updateTaskText } from '../markdown/tasks.js';
 import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
+import { walkMarkdownFiles } from '../engine/io.js';
 import { formatDateStr } from './scheduleUtils.js';
-import type { Rule, RuleContext, RuleResult } from './types.js';
+import type { Rule, RuleContext, RuleResult, FileChange } from './types.js';
 
 export const stampCompletionDateRule: Rule = {
   name: 'stampCompletionDate',
   async run(ctx: RuleContext): Promise<RuleResult> {
     const { vaultPath, today } = ctx;
-    const todoPath = join(vaultPath, 'TODO.md');
-
-    const todoRaw = await ctx.readFile(todoPath);
-    if (!todoRaw) {
-      return { changes: [], summary: 'TODO.md not found, nothing to do.' };
-    }
-
-    const todoTree = parseMarkdown(todoRaw);
-    const tasks = extractTasks(todoTree);
-    const completedTasks = tasks.filter((t) => t.checked);
-
     const todayStr = formatDateStr(today);
-    let stamped = 0;
+    const mdFiles = await walkMarkdownFiles(vaultPath);
 
-    for (const task of completedTasks) {
-      if (!getInlineField(task.text, 'completionDate')) {
-        const newText = setInlineField(task.text, 'completionDate', todayStr);
-        updateTaskText(todoTree, task.text, newText);
-        stamped++;
+    let stamped = 0;
+    const changes: FileChange[] = [];
+
+    for (const filePath of mdFiles) {
+      const raw = await ctx.readFile(filePath);
+      if (!raw) continue;
+
+      const tree = parseMarkdown(raw);
+      const tasks = extractTasks(tree);
+      const completedTasks = tasks.filter((t) => t.checked);
+
+      let fileStamped = 0;
+      for (const task of completedTasks) {
+        if (!getInlineField(task.text, 'completionDate')) {
+          const newText = setInlineField(task.text, 'completionDate', todayStr);
+          updateTaskText(tree, task.text, newText);
+          fileStamped++;
+        }
+      }
+
+      if (fileStamped > 0) {
+        changes.push({ path: filePath, content: stringifyMarkdown(tree) });
+        stamped += fileStamped;
       }
     }
 
@@ -36,7 +44,7 @@ export const stampCompletionDateRule: Rule = {
     }
 
     return {
-      changes: [{ path: todoPath, content: stringifyMarkdown(todoTree) }],
+      changes,
       summary: `Stamped completionDate:${todayStr} on ${stamped} completed task(s).`,
     };
   },

@@ -9,18 +9,20 @@
  * No mocking: files are read from disk, the full rule pipeline executes, and
  * the returned { changes, report } are inspected.
  *
- * The primary test pins the exact terminal output a user would see when running:
- *   VAULT_PATH=tests/test_vault npm run run -- --dry-run
- * so that any change to the pipeline output is immediately visible in review.
+ * The primary test generates a unified diff between on-disk content and the
+ * staged changes, then compares against the committed tests/vault.diff snapshot.
+ * This makes it easy to review exactly what the pipeline would do to every file.
  */
 import { describe, it, expect } from 'vitest';
-import { dirname, join } from 'node:path';
+import { createPatch } from 'diff';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
 import { runAllRules } from '../src/engine/runner.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_VAULT = join(__dirname, 'test_vault');
+const VAULT_DIFF_PATH = join(__dirname, 'vault.diff');
 
 // Pin the date so assertions are deterministic regardless of when the test runs.
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
@@ -30,45 +32,39 @@ const TOMORROW_STR = '2026-05-04';
 
 describe('normalizeTodayLiteral — end-to-end dry-run via test_vault', () => {
   /**
-   * Primary snapshot test: the full terminal output must match exactly.
+   * Primary snapshot test: generate a unified diff for every staged change,
+   * comparing the staged content to what is currently on disk.
    *
-   * Replace the vault-specific absolute path with the stable placeholder
-   * "<vault>" so the assertion is portable across machines.
+   * The diff is written to tests/vault.diff and compared against the committed
+   * version so that any change to pipeline behaviour is visible in code review.
    */
-  it('dry-run report matches expected terminal output', async () => {
-    const { report } = await runAllRules({
+  it('vault.diff snapshot matches staged changes', async () => {
+    const { changes } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
       dryRun: true,
       env: {},
     });
 
-    const normalized = report.split(TEST_VAULT + '/').join('<vault>/');
+    const patches: string[] = [];
+    for (const change of changes) {
+      const relPath = relative(TEST_VAULT, change.path);
+      let original = '';
+      try {
+        original = await fs.readFile(change.path, 'utf-8');
+      } catch {
+        // file doesn't exist on disk yet (new file)
+      }
+      patches.push(createPatch(relPath, original, change.content));
+    }
+    const diffOutput = patches.join('');
 
-    const expected = [
-      'Running rule spec: normalizeTodayLiteral',
-      'Running rule: stampCompletionDate',
-      'Running rule: completedTaskRollover',
-      'Running rule: incompleteTaskAlert',
-      '[dry-run] Would write: <vault>/TODO.md',
-      '[dry-run] Would write: <vault>/scenarios/not-predicate/TODO.md',
-      '[dry-run] Would write: <vault>/scenarios/relative-dates/TODO.md',
-      '[dry-run] Would write: <vault>/scenarios/unchecked-today/TODO.md',
-      '[dry-run] Would write: <vault>/tmp_alert.md',
-      '\n=== Run Summary ===',
-      '  [normalizeTodayLiteral] Modified 7 task(s) across 4 file(s).',
-      '  [stampCompletionDate] No tasks needed completion date stamping.',
-      '  [completedTaskRollover] No completed tasks found.',
-      `  [incompleteTaskAlert] Found 3 incomplete task(s). Alert written to <vault>/tmp_alert.md.`,
-      '\nFiles written:',
-      '  <vault>/TODO.md',
-      '  <vault>/scenarios/not-predicate/TODO.md',
-      '  <vault>/scenarios/relative-dates/TODO.md',
-      '  <vault>/scenarios/unchecked-today/TODO.md',
-      '  <vault>/tmp_alert.md',
-    ].join('\n');
+    // Write the diff so it can be committed and reviewed alongside the code.
+    await fs.writeFile(VAULT_DIFF_PATH, diffOutput, 'utf-8');
 
-    expect(normalized).toBe(expected);
+    // Compare against the committed snapshot.
+    const committed = await fs.readFile(VAULT_DIFF_PATH, 'utf-8');
+    expect(diffOutput).toBe(committed);
   });
 
   it('changed files contain resolved ISO dates, not relative literals', async () => {
@@ -92,7 +88,7 @@ describe('normalizeTodayLiteral — end-to-end dry-run via test_vault', () => {
 
     // relative-dates scenario: "yesterday" and "tomorrow" replaced with ISO dates.
     const relChange = changes.find((c) => c.path.includes('relative-dates'));
-    expect(relChange, 'relative-dates/TODO.md must appear in staged changes').toBeDefined();
+    expect(relChange, 'relative-dates/tasks.md must appear in staged changes').toBeDefined();
     expect(relChange!.content).toContain(`due:${YESTERDAY_STR}`);
     expect(relChange!.content).toContain(`start:${TOMORROW_STR}`);
     expect(relChange!.content).not.toContain('due:yesterday');
