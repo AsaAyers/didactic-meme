@@ -198,7 +198,7 @@ export async function runRuleSpec(
   for (const filePath of filePaths) {
     let raw: string;
     try {
-      raw = await fs.readFile(filePath, 'utf-8');
+      raw = await ctx.readFile(filePath);
     } catch {
       continue;
     }

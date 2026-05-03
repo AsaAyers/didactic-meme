@@ -3,6 +3,12 @@ export type RuleContext = {
   today: Date;
   dryRun: boolean;
   env: NodeJS.ProcessEnv;
+  /**
+   * Read a file through the shared transform queue.
+   * Always use this instead of importing io.readFile directly so that staged
+   * changes from earlier rules in the same run are visible to later ones.
+   */
+  readFile: (path: string) => Promise<string>;
 };
 
 export type FileChange = {
