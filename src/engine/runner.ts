@@ -1,8 +1,11 @@
-import { join } from 'node:path';
 import { collectSpecs, ruleSpecs } from '../rules/index.js';
 import { FileWriteManager } from './io.js';
 import { runCollectSpec, runRuleSpec } from './ruleSpecRunner.js';
-import type { RuleContext } from '../rules/types.js';
+import type { RuleContext, RuleSpec } from '../rules/types.js';
+
+function hasCustomAction(spec: RuleSpec): boolean {
+  return spec.actions.some((a) => a.type === 'custom');
+}
 
 /**
  * Run all registered rules against the vault.
@@ -33,8 +36,8 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
 
   const summaries: string[] = [];
 
-  // Declarative RuleSpecs (e.g. normalization) run first.
-  for (const spec of ruleSpecs) {
+  // Phase 1: RuleSpecs without CustomAction run first (task mutations + normalization).
+  for (const spec of ruleSpecs.filter((s) => !hasCustomAction(s))) {
     log(`Running rule spec: ${spec.name}`);
     try {
       const result = await runRuleSpec(spec, ctx);
@@ -47,8 +50,7 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
     }
   }
 
-  // Imperative rules run after; they read through the queue so they see
-  // any normalization applied by the specs above.
+  // Phase 2: CollectSpecs aggregate tasks into output files.
   for (const spec of collectSpecs) {
     log(`Running collect spec: ${spec.name}`);
     try {
@@ -62,19 +64,22 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
     }
   }
 
-  // Flush everything once at the end.
+  // Flush everything to disk before running CustomAction specs.
   const written = await queue.commit(ctx.dryRun, log);
 
-  // After files are on disk, invoke any CustomAction escape hatches (skipped in dry-run).
-  if (!ctx.dryRun) {
-    for (const spec of collectSpecs) {
-      if (spec.action) {
-        try {
-          await spec.action.run(join(ctx.vaultPath, spec.outputFile));
-        } catch (err) {
-          log(`  [${spec.name}] custom action ERROR: ${(err as Error).message}`);
-        }
+  // Phase 3: RuleSpecs with CustomAction run after the flush so their
+  // CustomAction.run(filePath) sees files already on disk. Skipped in dry-run
+  // (runRuleSpec guards each CustomAction call with !ctx.dryRun).
+  for (const spec of ruleSpecs.filter(hasCustomAction)) {
+    log(`Running rule spec: ${spec.name}`);
+    try {
+      const result = await runRuleSpec(spec, ctx);
+      for (const change of result.changes) {
+        queue.stage(change.path, change.content);
       }
+      summaries.push(`  [${spec.name}] ${result.summary}`);
+    } catch (err) {
+      summaries.push(`  [${spec.name}] ERROR: ${(err as Error).message}`);
     }
   }
 

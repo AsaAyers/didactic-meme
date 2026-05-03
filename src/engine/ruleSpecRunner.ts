@@ -197,6 +197,9 @@ function applyAction(taskText: string, action: Action, today: Date): ActionOutco
 
       return { text: newText, uncheck: true };
     }
+    case 'custom':
+      // Side-effect action — no text transformation. Fired separately per-file.
+      return { text: taskText };
   }
 }
 
@@ -263,6 +266,16 @@ export async function runRuleSpec(
     if (modified > 0) {
       changes.push({ path: filePath, content: stringifyMarkdown(tree) });
       totalModified += modified;
+    }
+
+    // Fire CustomAction side effects once per file when tasks were selected
+    // (skipped in dry-run; fires regardless of whether task text was modified).
+    if (!ctx.dryRun && selected.length > 0) {
+      for (const action of actions) {
+        if (action.type === 'custom') {
+          await action.run(filePath);
+        }
+      }
     }
   }
 

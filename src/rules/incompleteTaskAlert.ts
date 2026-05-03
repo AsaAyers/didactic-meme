@@ -1,5 +1,5 @@
 import { readFile } from '../engine/io.js';
-import type { CollectSpec, CustomAction } from './types.js';
+import type { CollectSpec, CustomAction, RuleSpec } from './types.js';
 
 const httpAlert: CustomAction = {
   type: 'custom',
@@ -19,5 +19,11 @@ export const incompleteTaskAlertSpec: CollectSpec = {
   sources: [{ type: 'glob', pattern: '**/*.md' }],
   predicate: { type: 'unchecked' },
   outputFile: 'tmp_alert.md',
-  action: httpAlert,
+};
+
+export const httpAlertSpec: RuleSpec = {
+  name: 'httpAlert',
+  sources: [{ type: 'path', value: 'tmp_alert.md' }],
+  query: { type: 'tasks' },
+  actions: [httpAlert],
 };
