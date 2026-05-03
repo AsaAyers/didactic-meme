@@ -29,10 +29,7 @@ async function readScenarioFile(name: string): Promise<string> {
 describe('runInitPass', () => {
   it('scans all .md files in the vault (dry-run)', async () => {
     const { scanned } = await runInitPass(INIT_SCENARIO, true);
-    expect(scanned).toBe(6);
-  });
-
-  it('ignores non-.md files', async () => {
+    expect(scanned).toBe(7);
     const { changes } = await runInitPass(INIT_SCENARIO, true);
     const paths = changes.map((c) => c.path);
     expect(paths.every((p) => p.endsWith('.md'))).toBe(true);
@@ -70,7 +67,7 @@ describe('runInitPass', () => {
 
   it('returns correct scanned/rewritten counts', async () => {
     const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true);
-    expect(scanned).toBe(6);
+    expect(scanned).toBe(7);
     // Only needs-normalization.md requires a change
     expect(rewritten).toBe(1);
   });
@@ -114,6 +111,27 @@ describe('runInitPass', () => {
     expect(output).not.toContain('\\#');
     expect(output).toContain('#feeling/good');
     expect(output).toContain('#work/project');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Link URL preservation
+  // ---------------------------------------------------------------------------
+
+  it('preserves link query-string ampersands without escaping (dry-run)', async () => {
+    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    // with-links.md is already normalized — & must not become \&
+    const linkChange = changes.find((c) => c.path.includes('with-links'));
+    expect(linkChange, 'should not require changes').toBeUndefined();
+  });
+
+  it('normalizeFileContent does not escape & in link URLs', async () => {
+    const { normalizeFileContent } = await import('../src/engine/runner.js');
+    const input =
+      '![Card](https://example.com/image?id=1&type=card)\n\n[link](https://example.com?a=1&b=2)\n';
+    const output = normalizeFileContent(input);
+    expect(output).not.toContain('\\&');
+    expect(output).toContain('?id=1&type=card');
+    expect(output).toContain('?a=1&b=2');
   });
 
   // ---------------------------------------------------------------------------

@@ -254,6 +254,131 @@ function protectInertAsterisks(tree: Root): void {
 }
 
 // ---------------------------------------------------------------------------
+// Link / image URL protection
+// ---------------------------------------------------------------------------
+
+/**
+ * The default mdast-util-to-markdown unsafe rule
+ *   `{ character: '&', after: '[#A-Za-z]', inConstruct: 'phrasing' }`
+ * fires even inside `destinationRaw` because the enclosing `phrasing`
+ * construct stays on the stack.  Since `&` needs no escaping inside the
+ * `(url)` delimiters of a resource link, we override the `link` and `image`
+ * handlers to emit `node.url` verbatim instead of going through `state.safe`.
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function imageHandler(node: any, _: any, state: any, info: any): string {
+  const quote: string = state.options.quote || '"';
+  const suffix = quote === '"' ? 'Quote' : 'Apostrophe';
+  const exit = state.enter('image');
+  let subexit = state.enter('label');
+  const tracker = state.createTracker(info);
+  let value = tracker.move('![');
+  value += tracker.move(
+    state.safe(node.alt || '', { before: value, after: ']', ...tracker.current() }),
+  );
+  value += tracker.move('](');
+  subexit();
+  if ((!node.url && node.title) || /[\0- \u007F]/.test(node.url || '')) {
+    subexit = state.enter('destinationLiteral');
+    value += tracker.move('<');
+    value += tracker.move(node.url || '');
+    value += tracker.move('>');
+  } else {
+    subexit = state.enter('destinationRaw');
+    value += tracker.move(node.url || '');
+  }
+  subexit();
+  if (node.title) {
+    subexit = state.enter(`title${suffix}`);
+    value += tracker.move(' ' + quote);
+    value += tracker.move(
+      state.safe(node.title, { before: value, after: quote, ...tracker.current() }),
+    );
+    value += tracker.move(quote);
+    subexit();
+  }
+  value += tracker.move(')');
+  exit();
+  return value;
+}
+imageHandler.peek = (): string => '!';
+
+/** Returns true if the link should be serialised as `<url>` (autolink form). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isAutolink(node: any, state: any): boolean {
+  const child = node.children?.length === 1 ? node.children[0] : null;
+  const raw: string = child?.type === 'text' ? child.value : '';
+  return Boolean(
+    !state.options.resourceLink &&
+      node.url &&
+      !node.title &&
+      raw &&
+      (raw === node.url || 'mailto:' + raw === node.url) &&
+      /^[a-z][a-z+.-]+:/i.test(node.url) &&
+      !/[\0- <>\u007F]/.test(node.url),
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function linkHandler(node: any, _: any, state: any, info: any): string {
+  const quote: string = state.options.quote || '"';
+  const suffix = quote === '"' ? 'Quote' : 'Apostrophe';
+  const tracker = state.createTracker(info);
+  let exit: () => void;
+  let subexit: () => void;
+
+  if (isAutolink(node, state)) {
+    // Hide the phrasing context so escapes don't apply inside `<url>`.
+    const stack = state.stack;
+    state.stack = [];
+    exit = state.enter('autolink');
+    let value = tracker.move('<');
+    value += tracker.move(
+      state.containerPhrasing(node, { before: value, after: '>', ...tracker.current() }),
+    );
+    value += tracker.move('>');
+    exit();
+    state.stack = stack;
+    return value;
+  }
+
+  exit = state.enter('link');
+  subexit = state.enter('label');
+  let value = tracker.move('[');
+  value += tracker.move(
+    state.containerPhrasing(node, { before: value, after: '](', ...tracker.current() }),
+  );
+  value += tracker.move('](');
+  subexit();
+  if ((!node.url && node.title) || /[\0- \u007F]/.test(node.url || '')) {
+    subexit = state.enter('destinationLiteral');
+    value += tracker.move('<');
+    value += tracker.move(node.url || '');
+    value += tracker.move('>');
+  } else {
+    subexit = state.enter('destinationRaw');
+    value += tracker.move(node.url || '');
+  }
+  subexit();
+  if (node.title) {
+    subexit = state.enter(`title${suffix}`);
+    value += tracker.move(' ' + quote);
+    value += tracker.move(
+      state.safe(node.title, { before: value, after: quote, ...tracker.current() }),
+    );
+    value += tracker.move(quote);
+    subexit();
+  }
+  value += tracker.move(')');
+  exit();
+  return value;
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+linkHandler.peek = (node: any, _: any, state: any): string =>
+  isAutolink(node, state) ? '<' : '[';
+
+// ---------------------------------------------------------------------------
 // mdast-util-to-markdown handlers
 // ---------------------------------------------------------------------------
 
@@ -264,6 +389,8 @@ const customHandlers = {
   rawAsterisk: () => '*',
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   obsidianTag: (node: any) => (node as ObsidianTagNode).value,
+  link: linkHandler,
+  image: imageHandler,
 } as Partial<Handlers>;
 
 // ---------------------------------------------------------------------------
