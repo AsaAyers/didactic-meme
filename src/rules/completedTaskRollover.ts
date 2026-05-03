@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { addDays, differenceInCalendarDays } from 'date-fns';
 import { readFile } from '../engine/io.js';
 import {
   parseMarkdown,
@@ -16,8 +17,6 @@ import {
   computeNextDue,
   parseDateStr,
   formatDateStr,
-  diffDays,
-  addDays,
 } from './scheduleUtils.js';
 import type { Rule, RuleContext, RuleResult, FileChange } from './types.js';
 
@@ -83,7 +82,7 @@ export const completedTaskRolloverRule: Rule = {
           ? (parseDateStr(existingDueStr) ?? completionDate)
           : completionDate;
 
-        const delta = diffDays(newDue, oldDue);
+        const delta = differenceInCalendarDays(newDue, oldDue);
 
         // Build the updated task text with new due: field.
         let newText = setInlineField(task.text, 'due', newDueStr);

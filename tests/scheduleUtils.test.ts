@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { addDays, differenceInCalendarDays } from 'date-fns';
 import {
   parseRepeat,
   computeNextDue,
   formatDateStr,
   parseDateStr,
-  addDays,
-  diffDays,
 } from '../src/rules/scheduleUtils.js';
 
 describe('parseRepeat', () => {
@@ -127,7 +126,7 @@ describe('date helpers', () => {
   it('diffDays computes the difference', () => {
     const a = new Date(2026, 4, 3);
     const b = new Date(2026, 4, 17);
-    expect(diffDays(b, a)).toBe(14);
-    expect(diffDays(a, b)).toBe(-14);
+    expect(differenceInCalendarDays(b, a)).toBe(14);
+    expect(differenceInCalendarDays(a, b)).toBe(-14);
   });
 });

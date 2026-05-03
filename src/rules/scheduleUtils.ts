@@ -1,4 +1,4 @@
-import { format, parse, addDays as dateFnsAddDays, differenceInCalendarDays } from 'date-fns';
+import { format, parse, addDays, differenceInCalendarDays } from 'date-fns';
 
 /**
  * Weekday characters used in the `repeat:` inline field alphabet.
@@ -50,18 +50,6 @@ export function parseDateStr(dateStr: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
   const result = parse(dateStr, 'yyyy-MM-dd', new Date());
   return isNaN(result.getTime()) ? null : result;
-}
-
-/** Return a new Date that is `n` calendar days after `date`. */
-export function addDays(date: Date, n: number): Date {
-  return dateFnsAddDays(date, n);
-}
-
-/**
- * Return the number of calendar days between two dates (later - earlier).
- */
-export function diffDays(later: Date, earlier: Date): number {
-  return differenceInCalendarDays(later, earlier);
 }
 
 /**
