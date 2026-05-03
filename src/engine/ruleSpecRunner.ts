@@ -224,6 +224,7 @@ export async function runRuleSpec(
 
   const changes: FileChange[] = [];
   let totalModified = 0;
+  const allSelected: Task[] = [];
 
   for (const filePath of filePaths) {
     let raw: string;
@@ -268,13 +269,14 @@ export async function runRuleSpec(
       totalModified += modified;
     }
 
-    // Fire CustomAction side effects once per file when tasks were selected
-    // (skipped in dry-run; fires regardless of whether task text was modified).
-    if (!ctx.dryRun && selected.length > 0) {
-      for (const action of actions) {
-        if (action.type === 'custom') {
-          await action.run(filePath);
-        }
+    allSelected.push(...selected);
+  }
+
+  // Fire CustomAction side effects once with ALL matched tasks (skipped in dry-run).
+  if (!ctx.dryRun && allSelected.length > 0) {
+    for (const action of actions) {
+      if (action.type === 'custom') {
+        await action.run(allSelected);
       }
     }
   }

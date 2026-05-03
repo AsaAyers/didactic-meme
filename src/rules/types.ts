@@ -1,3 +1,5 @@
+import type { Task } from '../markdown/tasks.js';
+
 export type RuleContext = {
   vaultPath: string;
   today: Date;
@@ -106,14 +108,14 @@ export type ReplaceFieldDateValueAction = {
 export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };
 
 /**
- * Escape hatch for side effects that require the file to be on disk.
- * Called once per source file after the file queue has been flushed.
- * Skipped in dry-run mode.
- * The absolute path to the file is the only argument.
+ * Escape hatch for side effects that need the full set of matched tasks.
+ * Called once per RuleSpec run, with all tasks selected across all source
+ * files, after the file queue has been flushed to disk.
+ * Skipped in dry-run mode. No-op (and not called) when no tasks were matched.
  */
 export type CustomAction = {
   type: 'custom';
-  run: (filePath: string) => Promise<void>;
+  run: (tasks: Task[]) => Promise<void>;
 };
 
 export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction;

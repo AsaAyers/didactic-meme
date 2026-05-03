@@ -1,12 +1,12 @@
-import { readFile } from '../engine/io.js';
 import type { CollectSpec, CustomAction, RuleSpec } from './types.js';
+import type { Task } from '../markdown/tasks.js';
 
 const httpAlert: CustomAction = {
   type: 'custom',
-  run: async (filePath: string) => {
+  run: async (tasks: Task[]) => {
     const alertUrl = process.env['ALERT_URL'];
     if (!alertUrl) return;
-    const content = await readFile(filePath);
+    const content = tasks.map((t) => `- [${t.checked ? 'x' : ' '}] ${t.text}`).join('\n') + '\n';
     const alertToken = process.env['ALERT_TOKEN'];
     const headers: Record<string, string> = { 'Content-Type': 'text/markdown' };
     if (alertToken) headers['Authorization'] = `Bearer ${alertToken}`;
