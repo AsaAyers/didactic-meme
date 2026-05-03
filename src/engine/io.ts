@@ -2,10 +2,10 @@ import { promises as fs } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 /**
- * Recursively collect every file under `dir`, sorted lexicographically so
- * results are deterministic across OS/filesystem implementations.
+ * Recursively collect every `.md` file under `dir`, sorted lexicographically
+ * so results are deterministic across OS/filesystem implementations.
  */
-async function walkDirectory(dir: string): Promise<string[]> {
+export async function walkMarkdownFiles(dir: string): Promise<string[]> {
   const results: string[] = [];
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -14,8 +14,8 @@ async function walkDirectory(dir: string): Promise<string[]> {
       const name = entry.name as string;
       const fullPath = join(dir, name);
       if (entry.isDirectory() && !name.startsWith('.')) {
-        results.push(...(await walkDirectory(fullPath)));
-      } else if (entry.isFile()) {
+        results.push(...(await walkMarkdownFiles(fullPath)));
+      } else if (entry.isFile() && name.endsWith('.md')) {
         results.push(fullPath);
       }
     }
@@ -23,12 +23,6 @@ async function walkDirectory(dir: string): Promise<string[]> {
     // Directory doesn't exist or is not accessible — skip silently.
   }
   return results;
-}
-
-/** Return all `.md` files under `dir`, sorted lexicographically. */
-export async function walkMarkdownFiles(dir: string): Promise<string[]> {
-  const all = await walkDirectory(dir);
-  return all.filter((f) => f.endsWith('.md'));
 }
 
 export async function readFile(path: string): Promise<string> {
