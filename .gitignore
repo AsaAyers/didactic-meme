@@ -4,3 +4,4 @@ dist/
 *.d.ts
 .env
 tmp_alert.md
+coverage/
