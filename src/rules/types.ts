@@ -1,3 +1,5 @@
+import type { Task } from '../markdown/tasks.js';
+
 export type RuleContext = {
   vaultPath: string;
   today: Date;
@@ -100,17 +102,49 @@ export type ReplaceFieldDateValueAction = {
   to: string;
 };
 
-export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction;
+/**
+ * For a checked task with a `repeat:` field: compute the next due date from
+ * the completion date and the repeat schedule, shift `start:` and `snooze:`
+ * by the same delta, then uncheck the task to reschedule it.
+ *
+ * Falls back to `ctx.today` when the `completionDate:` field is absent.
+ * No-op when the task has no valid `repeat:` field.
+ */
+export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };
+
+/**
+ * Escape hatch for side effects that need the full set of matched tasks.
+ * Called once per RuleSpec run, with all tasks selected across all source
+ * files. No-op (and not called) when no tasks were matched.
+ * `readFile` reads from the in-memory transform queue so staged-but-not-yet-
+ * flushed content is visible. `dryRun` lets implementations skip side effects.
+ */
+export type CustomAction = {
+  type: 'custom';
+  run: (args: {
+    tasks: Task[];
+    dryRun: boolean;
+    readFile: (path: string) => Promise<string>;
+  }) => Promise<void>;
+};
+
+export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction;
 
 // --- RuleSpec ---------------------------------------------------------------
 
 /**
  * Declarative rule: the engine resolves sources, runs the query, then applies
  * each action to every selected task and writes changed files back.
+ *
+ * `dependencies` — names of other RuleSpecs that must run before this one.
+ * The runner performs a topological sort so that ordering is enforced even
+ * when specs are registered in arbitrary order.
  */
 export type RuleSpec = {
   name: string;
   sources: Source[];
   query: Query;
   actions: Action[];
+  /** Names of RuleSpecs that must complete before this spec runs. */
+  dependencies?: string[];
 };

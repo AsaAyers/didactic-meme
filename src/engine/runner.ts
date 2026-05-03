@@ -1,10 +1,65 @@
 import { createPatch } from 'diff';
 import { promises as fs } from 'node:fs';
 import { relative } from 'node:path';
-import { rules, ruleSpecs } from '../rules/index.js';
+import { ruleSpecs } from '../rules/index.js';
 import { FileWriteManager } from './io.js';
 import { runRuleSpec } from './ruleSpecRunner.js';
-import type { RuleContext } from '../rules/types.js';
+import type { RuleContext, RuleSpec } from '../rules/types.js';
+
+/**
+ * Sort `specs` so that every spec's dependencies appear before it in the
+ * returned array.  Throws if a dependency name is unknown or if there is a
+ * circular dependency.
+ */
+export function sortRuleSpecs(specs: RuleSpec[]): RuleSpec[] {
+  const specMap = new Map(specs.map((s) => [s.name, s]));
+
+  // Validate that every declared dependency actually exists in the set.
+  for (const spec of specs) {
+    for (const dep of spec.dependencies ?? []) {
+      if (!specMap.has(dep)) {
+        throw new Error(`RuleSpec "${spec.name}" depends on unknown spec "${dep}"`);
+      }
+    }
+  }
+
+  // Kahn's algorithm: build an adjacency list (dep → dependents) and an
+  // in-degree counter, then process nodes with no remaining dependencies.
+  const inDegree = new Map(specs.map((s) => [s.name, 0]));
+  const adjList = new Map<string, string[]>(specs.map((s) => [s.name, []]));
+
+  for (const spec of specs) {
+    for (const dep of spec.dependencies ?? []) {
+      adjList.get(dep)!.push(spec.name);
+      inDegree.set(spec.name, (inDegree.get(spec.name) ?? 0) + 1);
+    }
+  }
+
+  const queue: string[] = [];
+  for (const [name, degree] of inDegree) {
+    if (degree === 0) queue.push(name);
+  }
+
+  const sorted: RuleSpec[] = [];
+  while (queue.length > 0) {
+    // shift() (FIFO) keeps the original registration order for independent
+    // specs, which is a useful stability property.  Spec lists are small, so
+    // the O(n) cost is negligible.
+    const name = queue.shift()!;
+    sorted.push(specMap.get(name)!);
+    for (const neighbor of adjList.get(name) ?? []) {
+      const newDegree = (inDegree.get(neighbor) ?? 0) - 1;
+      inDegree.set(neighbor, newDegree);
+      if (newDegree === 0) queue.push(neighbor);
+    }
+  }
+
+  if (sorted.length !== specs.length) {
+    throw new Error('Circular dependency detected among RuleSpecs');
+  }
+
+  return sorted;
+}
 
 /**
  * Run all registered rules against the vault.
@@ -49,8 +104,8 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
 
   const summaries: string[] = [];
 
-  // Declarative RuleSpecs (e.g. normalization) run first.
-  for (const spec of ruleSpecs) {
+  // Declarative RuleSpecs (e.g. normalization) run first, ordered by deps.
+  for (const spec of sortRuleSpecs(ruleSpecs)) {
     logDetail(`Running rule spec: ${spec.name}`);
     try {
       const result = await runRuleSpec(spec, ctx);
@@ -60,21 +115,6 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
       summaries.push(`  [${spec.name}] ${result.summary}`);
     } catch (err) {
       summaries.push(`  [${spec.name}] ERROR: ${(err as Error).message}`);
-    }
-  }
-
-  // Imperative rules run after; they read through the queue so they see
-  // any normalization applied by the specs above.
-  for (const rule of rules) {
-    logDetail(`Running rule: ${rule.name}`);
-    try {
-      const result = await rule.run(ctx);
-      for (const change of result.changes) {
-        queue.stage(change.path, change.content);
-      }
-      summaries.push(`  [${rule.name}] ${result.summary}`);
-    } catch (err) {
-      summaries.push(`  [${rule.name}] ERROR: ${(err as Error).message}`);
     }
   }
 
