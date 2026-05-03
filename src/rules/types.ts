@@ -95,7 +95,17 @@ export type ReplaceFieldDateValueAction = {
   to: string;
 };
 
-export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction;
+/**
+ * For a checked task with a `repeat:` field: compute the next due date from
+ * the completion date and the repeat schedule, shift `start:` and `snooze:`
+ * by the same delta, then uncheck the task to reschedule it.
+ *
+ * Falls back to `ctx.today` when the `completionDate:` field is absent.
+ * No-op when the task has no valid `repeat:` field.
+ */
+export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };
+
+export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction;
 
 // --- RuleSpec ---------------------------------------------------------------
 

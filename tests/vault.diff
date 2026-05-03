@@ -30,34 +30,52 @@ Index: scenarios/unchecked-today/tasks.md
 ===================================================================
 --- scenarios/unchecked-today/tasks.md
 +++ scenarios/unchecked-today/tasks.md
-@@ -1,2 +1,1 @@
+@@ -1,2 +1,2 @@
 -- [x] Done
 -- [ ] Todo due:today
++- [x] Done completionDate:2026-05-03
 +- [ ] Todo due:2026-05-03
 Index: scenarios/checked-unchecked/tasks.md
 ===================================================================
 --- scenarios/checked-unchecked/tasks.md
 +++ scenarios/checked-unchecked/tasks.md
-@@ -1,2 +1,1 @@
+@@ -1,2 +1,2 @@
 -- [x] Done
++- [x] Done completionDate:2026-05-03
  - [ ] Todo
+Index: scenarios/repeat-today-fallback/tasks.md
+===================================================================
+--- scenarios/repeat-today-fallback/tasks.md
++++ scenarios/repeat-today-fallback/tasks.md
+@@ -1,1 +1,1 @@
+-- [x] Water plants repeat:s
++- [ ] Water plants repeat:s completionDate:2026-05-03 due:2026-05-10
 Index: scenarios/set-missing/tasks.md
 ===================================================================
 --- scenarios/set-missing/tasks.md
 +++ scenarios/set-missing/tasks.md
-@@ -1,1 +0,0 @@
+@@ -1,1 +1,1 @@
 -- [x] Finished task
-Index: scenarios/set-existing/tasks.md
++- [x] Finished task completionDate:2026-05-03
+Index: scenarios/repeat-basic/tasks.md
 ===================================================================
---- scenarios/set-existing/tasks.md
-+++ scenarios/set-existing/tasks.md
-@@ -1,1 +0,0 @@
--- [x] Finished task completionDate:2026-01-01
+--- scenarios/repeat-basic/tasks.md
++++ scenarios/repeat-basic/tasks.md
+@@ -1,1 +1,1 @@
+-- [x] Water plants repeat:s completionDate:2026-05-03
++- [ ] Water plants repeat:s completionDate:2026-05-03 due:2026-05-10
+Index: scenarios/repeat-rollover/tasks.md
+===================================================================
+--- scenarios/repeat-rollover/tasks.md
++++ scenarios/repeat-rollover/tasks.md
+@@ -1,1 +1,1 @@
+-- [x] Task start:2026-04-27 snooze:2026-04-29 due:2026-05-02 repeat:a completionDate:2026-05-03
++- [ ] Task start:2026-05-04 snooze:2026-05-06 due:2026-05-09 repeat:a completionDate:2026-05-03
 Index: tmp_alert.md
 ===================================================================
 --- tmp_alert.md
 +++ tmp_alert.md
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,16 @@
 +- [ ] Pay bills due:2026-05-03
 +- [ ] Call dentist start:2026-05-03
 +- [ ] Take meds snooze:2026-05-03
@@ -70,4 +88,7 @@ Index: tmp_alert.md
 +- [ ] B
 +- [ ] Task A due:2026-05-02
 +- [ ] Task B start:2026-05-04
++- [ ] Water plants repeat:s completionDate:2026-05-03 due:2026-05-10
++- [ ] Task start:2026-05-04 snooze:2026-05-06 due:2026-05-09 repeat:a completionDate:2026-05-03
++- [ ] Water plants repeat:s completionDate:2026-05-03 due:2026-05-10
 +- [ ] Todo due:2026-05-03

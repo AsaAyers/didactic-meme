@@ -1,5 +1,5 @@
 import { stampCompletionDateSpec } from './stampCompletionDate.js';
-import { completedTaskRolloverRule } from './completedTaskRollover.js';
+import { completedTaskRolloverSpec } from './completedTaskRollover.js';
 import { incompleteTaskAlertRule } from './incompleteTaskAlert.js';
 import { normalizeTodayLiteralSpec } from './normalizeTodayLiteral.js';
 import type { Rule, RuleSpec } from './types.js';
@@ -9,7 +9,11 @@ import type { Rule, RuleSpec } from './types.js';
  * Listed in execution order: normalization runs first so subsequent rules
  * always see resolved date values rather than the "today" keyword.
  */
-export const ruleSpecs: RuleSpec[] = [normalizeTodayLiteralSpec, stampCompletionDateSpec];
+export const ruleSpecs: RuleSpec[] = [
+  normalizeTodayLiteralSpec,
+  stampCompletionDateSpec,
+  completedTaskRolloverSpec,
+];
 
 /** Imperative rules (legacy model), run after all ruleSpecs are committed. */
-export const rules: Rule[] = [completedTaskRolloverRule, incompleteTaskAlertRule];
+export const rules: Rule[] = [incompleteTaskAlertRule];

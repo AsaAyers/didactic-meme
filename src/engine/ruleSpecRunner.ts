@@ -1,10 +1,10 @@
 import { join, relative } from 'node:path';
-import { addDays, format } from 'date-fns';
+import { addDays, differenceInCalendarDays, format } from 'date-fns';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
-import { extractTasks, updateTaskText } from '../markdown/tasks.js';
+import { extractTasks, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
 import type { Task } from '../markdown/tasks.js';
 import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
-import { parseDateStr } from '../rules/scheduleUtils.js';
+import { parseDateStr, parseRepeat, computeNextDue } from '../rules/scheduleUtils.js';
 import { walkMarkdownFiles } from './io.js';
 import type {
   Action,
@@ -147,17 +147,54 @@ function evaluatePredicate(task: Task, predicate: TaskPredicate, today: Date): b
 // Action application
 // ---------------------------------------------------------------------------
 
-function applyAction(taskText: string, action: Action, today: Date): string {
+type ActionOutcome = { text: string; uncheck?: boolean };
+
+function applyAction(taskText: string, action: Action, today: Date): ActionOutcome {
   switch (action.type) {
     case 'task.setFieldDateIfMissing': {
-      if (getInlineField(taskText, action.key) !== undefined) return taskText;
-      return setInlineField(taskText, action.key, resolveToValue(action.value, today));
+      if (getInlineField(taskText, action.key) !== undefined) return { text: taskText };
+      return { text: setInlineField(taskText, action.key, resolveToValue(action.value, today)) };
     }
     case 'task.replaceFieldDateValue': {
       const existing = getInlineField(taskText, action.key);
       // `from` is compared as a raw literal (not resolved).
-      if (existing === undefined || existing !== action.from) return taskText;
-      return setInlineField(taskText, action.key, resolveToValue(action.to, today));
+      if (existing === undefined || existing !== action.from) return { text: taskText };
+      return { text: setInlineField(taskText, action.key, resolveToValue(action.to, today)) };
+    }
+    case 'task.advanceRepeat': {
+      const repeatStr = getInlineField(taskText, 'repeat');
+      const schedule = repeatStr ? parseRepeat(repeatStr) : null;
+      if (!schedule) return { text: taskText };
+
+      const completionDateStr = getInlineField(taskText, 'completionDate');
+      const completionDate = completionDateStr ? (parseDateStr(completionDateStr) ?? today) : today;
+
+      const newDue = computeNextDue(completionDate, schedule);
+      const newDueStr = formatDate(newDue);
+
+      const existingDueStr = getInlineField(taskText, 'due');
+      const oldDue = existingDueStr ? (parseDateStr(existingDueStr) ?? completionDate) : completionDate;
+      const delta = differenceInCalendarDays(newDue, oldDue);
+
+      let newText = setInlineField(taskText, 'due', newDueStr);
+
+      const startStr = getInlineField(taskText, 'start');
+      if (startStr) {
+        const startDate = parseDateStr(startStr);
+        if (startDate) {
+          newText = setInlineField(newText, 'start', formatDate(addDays(startDate, delta)));
+        }
+      }
+
+      const snoozeStr = getInlineField(taskText, 'snooze');
+      if (snoozeStr) {
+        const snoozeDate = parseDateStr(snoozeStr);
+        if (snoozeDate) {
+          newText = setInlineField(newText, 'snooze', formatDate(addDays(snoozeDate, delta)));
+        }
+      }
+
+      return { text: newText, uncheck: true };
     }
   }
 }
@@ -204,11 +241,20 @@ export async function runRuleSpec(
     let modified = 0;
     for (const task of selected) {
       let newText = task.text;
+      let shouldUncheck = false;
       for (const action of actions) {
-        newText = applyAction(newText, action, today);
+        const outcome = applyAction(newText, action, today);
+        newText = outcome.text;
+        if (outcome.uncheck) shouldUncheck = true;
       }
-      if (newText !== task.text) {
+      const textChanged = newText !== task.text;
+      if (textChanged) {
         updateTaskText(tree, task.text, newText);
+      }
+      if (shouldUncheck) {
+        setTaskChecked(tree, newText, false);
+      }
+      if (textChanged || shouldUncheck) {
         modified++;
       }
     }
