@@ -1,5 +1,2 @@
-export { parseMarkdown, stringifyMarkdown, parseFrontmatter, stringifyFrontmatter } from './parse.js';
-export { extractTasks, removeTask, setTaskChecked, updateTaskText } from './tasks.js';
-export type { Task } from './tasks.js';
-export { appendUnderHeading } from './headings.js';
-export { getInlineField, setInlineField } from './inlineFields.js';
+// This barrel file has been removed. Import directly from the specific module files:
+//   parse.ts, tasks.ts, headings.ts, inlineFields.ts

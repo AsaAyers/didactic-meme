@@ -1,13 +1,9 @@
 import { join, relative } from 'node:path';
 import { addDays, format } from 'date-fns';
-import {
-  parseMarkdown,
-  stringifyMarkdown,
-  extractTasks,
-  updateTaskText,
-  getInlineField,
-  setInlineField,
-} from '../markdown/index.js';
+import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
+import { extractTasks, updateTaskText } from '../markdown/tasks.js';
+import type { Task } from '../markdown/tasks.js';
+import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
 import { parseDateStr } from '../rules/scheduleUtils.js';
 import { walkMarkdownFiles } from './io.js';
 import type {
@@ -20,7 +16,6 @@ import type {
   Source,
   TaskPredicate,
 } from '../rules/types.js';
-import type { Task } from '../markdown/index.js';
 
 // ---------------------------------------------------------------------------
 // Source resolution

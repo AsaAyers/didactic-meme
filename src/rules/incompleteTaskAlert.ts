@@ -1,6 +1,8 @@
 import { join } from 'node:path';
-import { parseMarkdown, extractTasks } from '../markdown/index.js';
 import { walkMarkdownFiles } from '../engine/io.js';
+import { parseMarkdown } from '../markdown/parse.js';
+import { extractTasks } from '../markdown/tasks.js';
+
 import type { Rule, RuleContext, RuleResult } from './types.js';
 
 export const incompleteTaskAlertRule: Rule = {

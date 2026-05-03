@@ -86,6 +86,24 @@ VAULT_PATH=/path/to/your/vault npm run run -- --dry-run
 npm test
 ```
 
+### Lint
+
+```bash
+npm run lint
+```
+
+Auto-fix lint issues:
+
+```bash
+npm run lint:fix
+```
+
+## Git Hooks (Husky)
+
+A Husky pre-commit hook runs `npm run lint` before every commit. If lint fails the commit is aborted, so all committed code is guaranteed to be lint-clean.
+
+The hook is installed automatically when you run `npm install` (via the `prepare` script).
+
 ## Rules
 
 Rules run sequentially in the order listed in the central registry (`src/rules/index.ts`).
