@@ -89,6 +89,34 @@ Add `--verbose` to also print rule-progress logs and the run summary:
 VAULT_PATH=/path/to/your/vault npm run run -- --dry-run --verbose
 ```
 
+### Normalize the vault with `--init`
+
+```bash
+VAULT_PATH=/path/to/your/vault npm run run -- --init
+```
+
+`--init` performs a formatting-only normalization pass over every `.md` file in
+the vault.  Each file is read, round-tripped through the parse → stringify
+pipeline (remark), and written back **only if the content changed**.  No
+rule-driven transformations are applied (e.g. `due:today` is left as-is).
+
+This is intended to be run once before making rule-driven changes so that
+subsequent diffs reflect only intentional semantic edits rather than incidental
+formatting noise.
+
+- Only `.md` files are processed; other file types are ignored.
+- Hidden directories (e.g. `.git`, `.obsidian`) are skipped automatically.
+- A summary line is printed: `Init: scanned N file(s), rewrote M.`
+
+Combine with `--dry-run` to preview which files would be rewritten:
+
+```bash
+VAULT_PATH=/path/to/your/vault npm run run -- --init --dry-run
+```
+
+`--init` and the normal rule-pipeline mode are mutually exclusive: use one or
+the other per invocation.
+
 ### Run tests
 
 ```bash
@@ -153,7 +181,7 @@ src/
 │   └── inlineFields.ts         # getInlineField / setInlineField utilities
 ├── engine/
 │   ├── io.ts                   # readFile, FileWriteManager (stage/commit)
-│   └── runner.ts               # sequential rule runner + summary log
+│   └── runner.ts               # sequential rule runner, runInitPass, + summary log
 └── rules/
     ├── index.ts                # ← central rule registry (add new rules here)
     ├── types.ts                # Rule / RuleContext / FileChange / RuleResult types

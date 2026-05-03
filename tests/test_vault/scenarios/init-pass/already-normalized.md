@@ -1,0 +1,1 @@
+- [ ] Already normalized task due:today

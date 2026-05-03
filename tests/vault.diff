@@ -6,6 +6,21 @@ Index: scenarios/checked-unchecked/tasks.md
 -- [x] Done
 +- [x] Done completionDate:2026-05-03
  - [ ] Todo
+Index: scenarios/init-pass/already-normalized.md
+===================================================================
+--- scenarios/init-pass/already-normalized.md
++++ scenarios/init-pass/already-normalized.md
+@@ -1,1 +1,1 @@
+-- [ ] Already normalized task due:today
++- [ ] Already normalized task due:2026-05-03
+Index: scenarios/init-pass/needs-normalization.md
+===================================================================
+--- scenarios/init-pass/needs-normalization.md
++++ scenarios/init-pass/needs-normalization.md
+@@ -1,1 +1,1 @@
+-- [ ] Task without trailing newline due:today
+\ No newline at end of file
++- [ ] Task without trailing newline due:2026-05-03
 Index: scenarios/not-predicate/tasks.md
 ===================================================================
 --- scenarios/not-predicate/tasks.md

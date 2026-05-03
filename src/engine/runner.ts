@@ -1,7 +1,9 @@
 import { createPatch } from 'diff';
 import { promises as fs } from 'node:fs';
 import { relative } from 'node:path';
+import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
 import { ruleSpecs } from '../rules/index.js';
+import { walkMarkdownFiles } from './io.js';
 import { FileWriteManager } from './io.js';
 import { runRuleSpec } from './ruleSpecRunner.js';
 import type { RuleContext, RuleSpec } from '../rules/types.js';
@@ -159,4 +161,87 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
   }
 
   return { changes: written, report: lines.join('\n') };
+}
+
+/**
+ * Normalization-only pass: read every `.md` file in the vault, round-trip it
+ * through the parse → stringify pipeline, and write it back if the output
+ * differs from the original.  No rule-driven transformations occur.
+ *
+ * This is intended to normalize formatting before starting rule-driven changes
+ * so that subsequent diffs reflect only intentional semantic edits.
+ *
+ * Dry-run mode: no files are written; a unified diff is printed to stdout for
+ * each file that would change.
+ *
+ * @returns `scanned` — total `.md` files found.
+ *          `rewritten` — files whose content changed after the round-trip.
+ *          `changes` — the (path, normalized content) pairs, sorted by path.
+ *          `report` — everything printed to console during the pass.
+ */
+export async function runInitPass(
+  vaultPath: string,
+  dryRun: boolean,
+): Promise<{
+  scanned: number;
+  rewritten: number;
+  changes: Array<{ path: string; content: string }>;
+  report: string;
+}> {
+  const lines: string[] = [];
+  const log = (msg: string): void => {
+    console.log(msg);
+    lines.push(msg);
+  };
+
+  const allFiles = await walkMarkdownFiles(vaultPath);
+
+  const changes: Array<{ path: string; content: string }> = [];
+
+  for (const filePath of allFiles) {
+    let original: string;
+    try {
+      original = await fs.readFile(filePath, 'utf-8');
+    } catch {
+      continue;
+    }
+
+    const normalized = stringifyMarkdown(parseMarkdown(original));
+    if (normalized !== original) {
+      changes.push({ path: filePath, content: normalized });
+    }
+  }
+
+  // Sort by path for deterministic output.
+  changes.sort((a, b) => a.path.localeCompare(b.path));
+
+  if (dryRun) {
+    if (changes.length > 0) {
+      for (const change of changes) {
+        const relPath = relative(vaultPath, change.path);
+        let original = '';
+        try {
+          original = await fs.readFile(change.path, 'utf-8');
+        } catch {
+          // new file — treat original as empty
+        }
+        log(createPatch(relPath, original, change.content));
+      }
+    } else {
+      log('No changes.');
+    }
+  } else {
+    for (const change of changes) {
+      await fs.writeFile(change.path, change.content, 'utf-8');
+    }
+  }
+
+  log(`Init: scanned ${allFiles.length} file(s), ${dryRun ? 'would rewrite' : 'rewrote'} ${changes.length}.`);
+
+  return {
+    scanned: allFiles.length,
+    rewritten: changes.length,
+    changes,
+    report: lines.join('\n'),
+  };
 }
