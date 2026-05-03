@@ -1,8 +1,8 @@
 import { stampCompletionDateSpec } from './stampCompletionDate.js';
 import { completedTaskRolloverSpec } from './completedTaskRollover.js';
-import { incompleteTaskAlertRule } from './incompleteTaskAlert.js';
+import { incompleteTaskAlertSpec } from './incompleteTaskAlert.js';
 import { normalizeTodayLiteralSpec } from './normalizeTodayLiteral.js';
-import type { Rule, RuleSpec } from './types.js';
+import type { CollectSpec, RuleSpec } from './types.js';
 
 /**
  * Declarative rule specs — interpreted by runRuleSpec in the engine.
@@ -15,5 +15,8 @@ export const ruleSpecs: RuleSpec[] = [
   completedTaskRolloverSpec,
 ];
 
-/** Imperative rules (legacy model), run after all ruleSpecs are committed. */
-export const rules: Rule[] = [incompleteTaskAlertRule];
+/**
+ * Collect specs: aggregate tasks across files into a single output file.
+ * The optional CustomAction on each spec runs after the file is flushed to disk.
+ */
+export const collectSpecs: CollectSpec[] = [incompleteTaskAlertSpec];

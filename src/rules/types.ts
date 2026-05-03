@@ -119,3 +119,28 @@ export type RuleSpec = {
   query: Query;
   actions: Action[];
 };
+
+// --- CollectSpec / CustomAction ---------------------------------------------
+
+/**
+ * Escape hatch for the last step of a CollectSpec.
+ * Called after the output file has been written to disk (skipped in dry-run).
+ * The absolute path to the vault output file is the only argument.
+ */
+export type CustomAction = {
+  type: 'custom';
+  run: (filePath: string) => Promise<void>;
+};
+
+/**
+ * Collects the text of all tasks matching the optional predicate across all
+ * source files and writes them as a GFM task list to a vault-relative path.
+ * An optional CustomAction runs after the file is written (non-dry-run only).
+ */
+export type CollectSpec = {
+  name: string;
+  sources: Source[];
+  predicate?: TaskPredicate;
+  outputFile: string;
+  action?: CustomAction;
+};

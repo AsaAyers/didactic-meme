@@ -1,6 +1,7 @@
-import { rules, ruleSpecs } from '../rules/index.js';
+import { join } from 'node:path';
+import { collectSpecs, ruleSpecs } from '../rules/index.js';
 import { FileWriteManager } from './io.js';
-import { runRuleSpec } from './ruleSpecRunner.js';
+import { runCollectSpec, runRuleSpec } from './ruleSpecRunner.js';
 import type { RuleContext } from '../rules/types.js';
 
 /**
@@ -48,21 +49,34 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
 
   // Imperative rules run after; they read through the queue so they see
   // any normalization applied by the specs above.
-  for (const rule of rules) {
-    log(`Running rule: ${rule.name}`);
+  for (const spec of collectSpecs) {
+    log(`Running collect spec: ${spec.name}`);
     try {
-      const result = await rule.run(ctx);
+      const result = await runCollectSpec(spec, ctx);
       for (const change of result.changes) {
         queue.stage(change.path, change.content);
       }
-      summaries.push(`  [${rule.name}] ${result.summary}`);
+      summaries.push(`  [${spec.name}] ${result.summary}`);
     } catch (err) {
-      summaries.push(`  [${rule.name}] ERROR: ${(err as Error).message}`);
+      summaries.push(`  [${spec.name}] ERROR: ${(err as Error).message}`);
     }
   }
 
   // Flush everything once at the end.
   const written = await queue.commit(ctx.dryRun, log);
+
+  // After files are on disk, invoke any CustomAction escape hatches (skipped in dry-run).
+  if (!ctx.dryRun) {
+    for (const spec of collectSpecs) {
+      if (spec.action) {
+        try {
+          await spec.action.run(join(ctx.vaultPath, spec.outputFile));
+        } catch (err) {
+          log(`  [${spec.name}] custom action ERROR: ${(err as Error).message}`);
+        }
+      }
+    }
+  }
 
   log('\n=== Run Summary ===');
   for (const s of summaries) {
