@@ -407,7 +407,7 @@ export function stringifyMarkdown(tree: Root): string {
   protectObsidianTags(tree);
   protectInertAsterisks(tree);
   const processor = unified().use(remarkGfm).use(remarkStringify, {
-    bullet: '*',
+    bullet: '-',
     listItemIndent: 'one',
     rule: '-',
     handlers: customHandlers,
