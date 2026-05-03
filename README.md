@@ -73,10 +73,20 @@ npm run build
 VAULT_PATH=/path/to/your/vault npm run run
 ```
 
-### Run with dry-run (no files written)
+### Run with dry-run (prints a unified diff, no files written)
 
 ```bash
 VAULT_PATH=/path/to/your/vault npm run run -- --dry-run
+```
+
+`--dry-run` outputs a unified diff (one patch per changed file, sorted by path) to
+stdout without writing anything to disk.  The format is the same as the
+`tests/vault.diff` snapshot used by the test suite.
+
+Add `--verbose` to also print rule-progress logs and the run summary:
+
+```bash
+VAULT_PATH=/path/to/your/vault npm run run -- --dry-run --verbose
 ```
 
 ### Run tests
