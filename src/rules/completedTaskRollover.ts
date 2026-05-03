@@ -1,16 +1,9 @@
 import { join } from 'node:path';
 import { addDays, differenceInCalendarDays } from 'date-fns';
-import {
-  parseMarkdown,
-  stringifyMarkdown,
-  extractTasks,
-  removeTask,
-  setTaskChecked,
-  updateTaskText,
-  appendUnderHeading,
-  getInlineField,
-  setInlineField,
-} from '../markdown/index.js';
+import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
+import { extractTasks, removeTask, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
+import { appendUnderHeading } from '../markdown/headings.js';
+import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
 import {
   parseRepeat,
   computeNextDue,
