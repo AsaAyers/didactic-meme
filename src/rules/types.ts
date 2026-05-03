@@ -130,10 +130,16 @@ export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction |
 /**
  * Declarative rule: the engine resolves sources, runs the query, then applies
  * each action to every selected task and writes changed files back.
+ *
+ * `dependencies` — names of other RuleSpecs that must run before this one.
+ * The runner performs a topological sort so that ordering is enforced even
+ * when specs are registered in arbitrary order.
  */
 export type RuleSpec = {
   name: string;
   sources: Source[];
   query: Query;
   actions: Action[];
+  /** Names of RuleSpecs that must complete before this spec runs. */
+  dependencies?: string[];
 };
