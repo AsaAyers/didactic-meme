@@ -1,100 +1,66 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/**
+ * Unit tests for the ruleSpecRunner engine.
+ *
+ * Each test uses a dedicated sub-directory under tests/test_vault/scenarios/
+ * as its vaultPath, so no filesystem mocking is needed.  The scenario
+ * directories are committed fixtures — create a new sub-directory if you need
+ * a different file layout for a new test.
+ */
+import { describe, it, expect } from 'vitest';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promises as fs } from 'node:fs';
 import { runRuleSpec } from '../src/engine/ruleSpecRunner.js';
 import type { RuleContext, RuleSpec } from '../src/rules/types.js';
 
-// ---------------------------------------------------------------------------
-// Only fs.readdir needs to be mocked for directory-walk / glob resolution.
-// File content is supplied through ctx.readFile, so no fs.readFile mock needed.
-// ---------------------------------------------------------------------------
-
-vi.mock('node:fs', () => {
-  const readdirMock = vi.fn(async (_dir: string, _opts?: unknown) => []);
-  return {
-    promises: {
-      readdir: readdirMock,
-    },
-  };
-});
-
-import { promises as fs } from 'node:fs';
-const mockReaddir = fs.readdir as ReturnType<typeof vi.fn>;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SCENARIOS = join(__dirname, 'test_vault', 'scenarios');
 
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 const TODAY_STR = '2026-05-03';
+const YESTERDAY_STR = '2026-05-02';
+const TOMORROW_STR = '2026-05-04';
 
-/** Build a fake Dirent-like object for mocking readdir. */
-function makeEntry(name: string, kind: 'file' | 'dir') {
+/** Build a context that reads directly from disk (no transform queue). */
+function makeCtx(vaultPath: string): RuleContext {
   return {
-    name,
-    isFile: () => kind === 'file',
-    isDirectory: () => kind === 'dir',
-  };
-}
-
-/**
- * Create a RuleContext whose readFile serves content from an in-memory map.
- * readdir is wired to the mock to support glob source resolution.
- */
-function makeCtx(files: Record<string, string>): RuleContext {
-  mockReaddir.mockImplementation(async (dir: string) => {
-    const prefix = dir.endsWith('/') ? dir : `${dir}/`;
-    return Object.keys(files)
-      .filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
-      .map((p) => makeEntry(p.slice(prefix.length), 'file'));
-  });
-
-  return {
-    vaultPath: '/vault',
+    vaultPath,
     today: TODAY,
     dryRun: false,
     env: {},
-    readFile: async (path: string) => files[path] ?? '',
+    readFile: (path: string) => fs.readFile(path, 'utf-8').catch(() => ''),
   };
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 // ---------------------------------------------------------------------------
-// glob resolution
+// Source resolution
 // ---------------------------------------------------------------------------
 
 describe('ruleSpecRunner — source resolution', () => {
   it('resolves a path source to an absolute path', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [ ] Task\n' });
-
+    // scenarios/path-source/TODO.md: "- [ ] Task"
+    const ctx = makeCtx(join(SCENARIOS, 'path-source'));
     const spec: RuleSpec = {
       name: 'test',
       sources: [{ type: 'path', value: 'TODO.md' }],
       query: { type: 'tasks' },
       actions: [],
     };
-
+    // No actions → file is read but not modified.
     const result = await runRuleSpec(spec, ctx);
-    // No actions → no modifications
     expect(result.changes).toHaveLength(0);
   });
 
-  it('resolves a **/*.md glob to all markdown files', async () => {
-    const ctx = makeCtx({
-      '/vault/a.md': '- [ ] Task A\n',
-      '/vault/b.md': '- [ ] Task B\n',
-      '/vault/notes.txt': 'not markdown',
-    });
-
+  it('resolves a **/*.md glob to all markdown files, excluding non-md files', async () => {
+    // scenarios/glob-mixed/: a.md, b.md (no due:today), notes.txt
+    const ctx = makeCtx(join(SCENARIOS, 'glob-mixed'));
     const spec: RuleSpec = {
       name: 'test',
       sources: [{ type: 'glob', pattern: '**/*.md' }],
       query: { type: 'tasks' },
       actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
     };
-
-    // No tasks have due:today, so no changes expected — but we verify .txt is excluded.
+    // No tasks have due:today → no changes, and .txt is never read.
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(0);
   });
@@ -106,15 +72,14 @@ describe('ruleSpecRunner — source resolution', () => {
 
 describe('ruleSpecRunner — task.replaceFieldDateValue', () => {
   it('replaces a literal "today" due: value with the current date', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [ ] Pay rent due:today\n' });
-
+    // scenarios/replace-due/TODO.md: "- [ ] Pay rent due:today"
+    const ctx = makeCtx(join(SCENARIOS, 'replace-due'));
     const spec: RuleSpec = {
       name: 'normalize',
       sources: [{ type: 'path', value: 'TODO.md' }],
       query: { type: 'tasks' },
       actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]?.content).toContain(`due:${TODAY_STR}`);
@@ -122,38 +87,35 @@ describe('ruleSpecRunner — task.replaceFieldDateValue', () => {
   });
 
   it('does not modify a field that does not match from', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': `- [ ] Pay rent due:${TODAY_STR}\n` });
-
+    // scenarios/no-replace/TODO.md: "- [ ] Pay rent due:2026-05-03"
+    const ctx = makeCtx(join(SCENARIOS, 'no-replace'));
     const spec: RuleSpec = {
       name: 'normalize',
       sources: [{ type: 'path', value: 'TODO.md' }],
       query: { type: 'tasks' },
       actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(0);
   });
 
   it('does not modify tasks without the target field', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [ ] No date fields here\n' });
-
+    // scenarios/no-field/TODO.md: "- [ ] No date fields here"
+    const ctx = makeCtx(join(SCENARIOS, 'no-field'));
     const spec: RuleSpec = {
       name: 'normalize',
       sources: [{ type: 'path', value: 'TODO.md' }],
       query: { type: 'tasks' },
       actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(0);
   });
 
-  it('replaces today in multiple fields in one pass', async () => {
-    const ctx = makeCtx({
-      '/vault/TODO.md': '- [ ] Task due:today start:today snooze:tomorrow\n',
-    });
-
+  it('replaces today in multiple fields in one pass, leaving untargeted fields alone', async () => {
+    // scenarios/multi-field/TODO.md: "- [ ] Task due:today start:today snooze:tomorrow"
+    // Only due and start are targeted; snooze:tomorrow is left unchanged.
+    const ctx = makeCtx(join(SCENARIOS, 'multi-field'));
     const spec: RuleSpec = {
       name: 'normalize',
       sources: [{ type: 'path', value: 'TODO.md' }],
@@ -163,13 +125,45 @@ describe('ruleSpecRunner — task.replaceFieldDateValue', () => {
         { type: 'task.replaceFieldDateValue', key: 'start', from: 'today', to: 'today' },
       ],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0]?.content ?? '';
     expect(content).toContain(`due:${TODAY_STR}`);
     expect(content).toContain(`start:${TODAY_STR}`);
+    // snooze:tomorrow was not targeted by this spec → stays as the literal "tomorrow"
     expect(content).toContain('snooze:tomorrow');
+  });
+
+  it('resolves "yesterday" to the day before today', async () => {
+    // scenarios/relative-dates/TODO.md: "- [ ] Task A due:yesterday / - [ ] Task B start:tomorrow"
+    const ctx = makeCtx(join(SCENARIOS, 'relative-dates'));
+    const spec: RuleSpec = {
+      name: 'normalize',
+      sources: [{ type: 'path', value: 'TODO.md' }],
+      query: { type: 'tasks' },
+      actions: [
+        { type: 'task.replaceFieldDateValue', key: 'due', from: 'yesterday', to: 'yesterday' },
+      ],
+    };
+    const result = await runRuleSpec(spec, ctx);
+    expect(result.changes).toHaveLength(1);
+    expect(result.changes[0]?.content).toContain(`due:${YESTERDAY_STR}`);
+  });
+
+  it('resolves "tomorrow" to the day after today', async () => {
+    // scenarios/relative-dates/TODO.md: "- [ ] Task A due:yesterday / - [ ] Task B start:tomorrow"
+    const ctx = makeCtx(join(SCENARIOS, 'relative-dates'));
+    const spec: RuleSpec = {
+      name: 'normalize',
+      sources: [{ type: 'path', value: 'TODO.md' }],
+      query: { type: 'tasks' },
+      actions: [
+        { type: 'task.replaceFieldDateValue', key: 'start', from: 'tomorrow', to: 'tomorrow' },
+      ],
+    };
+    const result = await runRuleSpec(spec, ctx);
+    expect(result.changes).toHaveLength(1);
+    expect(result.changes[0]?.content).toContain(`start:${TOMORROW_STR}`);
   });
 });
 
@@ -179,30 +173,28 @@ describe('ruleSpecRunner — task.replaceFieldDateValue', () => {
 
 describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
   it('sets a missing field to the current date', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [x] Finished task\n' });
-
+    // scenarios/set-missing/TODO.md: "- [x] Finished task"
+    const ctx = makeCtx(join(SCENARIOS, 'set-missing'));
     const spec: RuleSpec = {
       name: 'stamp',
       sources: [{ type: 'path', value: 'TODO.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
       actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]?.content).toContain(`completionDate:${TODAY_STR}`);
   });
 
   it('does not overwrite an existing field', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [x] Finished task completionDate:2026-01-01\n' });
-
+    // scenarios/set-existing/TODO.md: "- [x] Finished task completionDate:2026-01-01"
+    const ctx = makeCtx(join(SCENARIOS, 'set-existing'));
     const spec: RuleSpec = {
       name: 'stamp',
       sources: [{ type: 'path', value: 'TODO.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
       actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(0);
   });
@@ -214,15 +206,14 @@ describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
 
 describe('ruleSpecRunner — predicates', () => {
   it('checked predicate selects only checked tasks', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [x] Done\n- [ ] Todo\n' });
-
+    // scenarios/checked-unchecked/TODO.md: "- [x] Done / - [ ] Todo"
+    const ctx = makeCtx(join(SCENARIOS, 'checked-unchecked'));
     const spec: RuleSpec = {
       name: 'test',
       sources: [{ type: 'path', value: 'TODO.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
       actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0]?.content ?? '';
@@ -232,25 +223,25 @@ describe('ruleSpecRunner — predicates', () => {
   });
 
   it('unchecked predicate selects only unchecked tasks', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [x] Done\n- [ ] Todo due:today\n' });
-
+    // scenarios/unchecked-today/TODO.md: "- [x] Done / - [ ] Todo due:today"
+    const ctx = makeCtx(join(SCENARIOS, 'unchecked-today'));
     const spec: RuleSpec = {
       name: 'test',
       sources: [{ type: 'path', value: 'TODO.md' }],
       query: { type: 'tasks', predicate: { type: 'unchecked' } },
       actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0]?.content ?? '';
     expect(content).toContain(`due:${TODAY_STR}`);
+    // The checked task had no due field and was not selected.
     expect(content).toContain('- [x] Done');
   });
 
   it('fieldExists predicate returns only tasks with that field', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [ ] With due:2026-05-01\n- [ ] Without\n' });
-
+    // scenarios/field-exists/TODO.md: "- [ ] With due:2026-05-01 / - [ ] Without"
+    const ctx = makeCtx(join(SCENARIOS, 'field-exists'));
     const spec: RuleSpec = {
       name: 'test',
       sources: [{ type: 'path', value: 'TODO.md' }],
@@ -259,7 +250,6 @@ describe('ruleSpecRunner — predicates', () => {
         { type: 'task.replaceFieldDateValue', key: 'due', from: '2026-05-01', to: TODAY_STR },
       ],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]?.content).toContain(`due:${TODAY_STR}`);
@@ -268,10 +258,8 @@ describe('ruleSpecRunner — predicates', () => {
   });
 
   it('fieldDateBefore predicate selects tasks whose date field is before the reference', async () => {
-    const ctx = makeCtx({
-      '/vault/TODO.md': '- [ ] Overdue due:2026-04-01\n- [ ] Future due:2026-06-01\n',
-    });
-
+    // scenarios/date-before/TODO.md: overdue (2026-04-01) and future (2026-06-01)
+    const ctx = makeCtx(join(SCENARIOS, 'date-before'));
     const spec: RuleSpec = {
       name: 'test',
       sources: [{ type: 'path', value: 'TODO.md' }],
@@ -283,17 +271,18 @@ describe('ruleSpecRunner — predicates', () => {
         { type: 'task.replaceFieldDateValue', key: 'due', from: '2026-04-01', to: TODAY_STR },
       ],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0]?.content ?? '';
     expect(content).toContain(`due:${TODAY_STR}`);
+    // Future task is not selected and its date is unchanged.
     expect(content).toContain('due:2026-06-01');
   });
 
   it('not predicate inverts selection', async () => {
-    const ctx = makeCtx({ '/vault/TODO.md': '- [ ] A due:today\n- [ ] B\n' });
-
+    // scenarios/not-predicate/TODO.md: "- [ ] A due:today / - [ ] B"
+    // Select tasks WITHOUT a due field → only B gets due:today set.
+    const ctx = makeCtx(join(SCENARIOS, 'not-predicate'));
     const spec: RuleSpec = {
       name: 'test',
       sources: [{ type: 'path', value: 'TODO.md' }],
@@ -303,11 +292,11 @@ describe('ruleSpecRunner — predicates', () => {
       },
       actions: [{ type: 'task.setFieldDateIfMissing', key: 'due', value: 'today' }],
     };
-
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0]?.content ?? '';
     expect(content).toContain('- [ ] B due:');
+    // Task A already had due:today — was not selected, stays as the literal "today".
     expect(content).toContain('due:today');
   });
 });

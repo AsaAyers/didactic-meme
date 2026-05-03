@@ -1,33 +1,77 @@
 /**
- * Integration test for the normalizeTodayLiteral rule.
+ * End-to-end integration tests for the full pipeline run in dry-run mode.
  *
- * Uses tests/test_vault — a real directory committed to the repository — and
- * runs the full pipeline in dry-run mode.  No mocking: the test reads actual
- * files from disk and inspects the in-memory transform queue output.
+ * Tests use tests/test_vault/main/ — a committed vault containing only the
+ * tasks used in the E2E scenario.  Using a dedicated sub-directory ensures the
+ * normalizeTodayLiteral "**" glob does not pick up scenario files that
+ * live in tests/test_vault/scenarios/.
+ *
+ * No mocking: files are read from disk, the full rule pipeline executes, and
+ * the returned { changes, report } are inspected.
+ *
+ * The primary test pins the exact terminal output a user would see when running:
+ *   VAULT_PATH=tests/test_vault/main npm run run -- --dry-run
+ * so that any change to the pipeline output is immediately visible in review.
  */
 import { describe, it, expect } from 'vitest';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promises as fs } from 'node:fs';
 import { runAllRules } from '../src/engine/runner.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TEST_VAULT = join(__dirname, 'test_vault');
+// Isolated E2E vault — only contains tests/test_vault/main/TODO.md.
+const TEST_VAULT = join(__dirname, 'test_vault', 'main');
 
-// Fix today so dates in assertions are deterministic regardless of when the
-// test is run.
+// Pin the date so assertions are deterministic regardless of when the test runs.
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 const TODAY_STR = '2026-05-03';
 
-describe('normalizeTodayLiteral — dry-run integration via test_vault', () => {
-  it('replaces all "today" inline-field literals in TODO.md with the run date', async () => {
-    const changes = await runAllRules({
+describe('normalizeTodayLiteral — end-to-end dry-run via test_vault/main', () => {
+  /**
+   * Primary snapshot test: the full terminal output must match exactly.
+   *
+   * Replace the vault-specific absolute path with the stable placeholder
+   * "<vault>" so the assertion is portable across machines.
+   */
+  it('dry-run report matches expected terminal output', async () => {
+    const { report } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
       dryRun: true,
       env: {},
     });
 
-    // The normalization rule must have staged TODO.md.
+    const normalized = report.split(TEST_VAULT + '/').join('<vault>/');
+
+    const expected = [
+      'Running rule spec: normalizeTodayLiteral',
+      'Running rule: stampCompletionDate',
+      'Running rule: completedTaskRollover',
+      'Running rule: incompleteTaskAlert',
+      '[dry-run] Would write: <vault>/TODO.md',
+      '[dry-run] Would write: <vault>/tmp_alert.md',
+      '\n=== Run Summary ===',
+      '  [normalizeTodayLiteral] Modified 3 task(s) across 1 file(s).',
+      '  [stampCompletionDate] No tasks needed completion date stamping.',
+      '  [completedTaskRollover] No completed tasks found.',
+      `  [incompleteTaskAlert] Found 3 incomplete task(s). Alert written to <vault>/tmp_alert.md.`,
+      '\nFiles written:',
+      '  <vault>/TODO.md',
+      '  <vault>/tmp_alert.md',
+    ].join('\n');
+
+    expect(normalized).toBe(expected);
+  });
+
+  it('TODO.md changes contain resolved ISO dates, not the "today" literal', async () => {
+    const { changes } = await runAllRules({
+      vaultPath: TEST_VAULT,
+      today: TODAY,
+      dryRun: true,
+      env: {},
+    });
+
     const todoChange = changes.find((c) => c.path.endsWith('TODO.md'));
     expect(todoChange, 'TODO.md must appear in staged changes').toBeDefined();
 
@@ -35,18 +79,12 @@ describe('normalizeTodayLiteral — dry-run integration via test_vault', () => {
     expect(content).toContain(`due:${TODAY_STR}`);
     expect(content).toContain(`start:${TODAY_STR}`);
     expect(content).toContain(`snooze:${TODAY_STR}`);
-
-    // The raw "today" literal must be gone.
     expect(content).not.toMatch(/\bdue:today\b/);
     expect(content).not.toMatch(/\bstart:today\b/);
     expect(content).not.toMatch(/\bsnooze:today\b/);
   });
 
   it('does not modify the test_vault files on disk (dry-run guard)', async () => {
-    // Running with dryRun: true must never write to the real filesystem.
-    // We verify this by reading the raw file after the run and confirming it
-    // still contains the original "today" literals.
-    const { promises: fs } = await import('node:fs');
     const rawBefore = await fs.readFile(join(TEST_VAULT, 'TODO.md'), 'utf-8');
 
     await runAllRules({

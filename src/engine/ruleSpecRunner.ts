@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { join, relative } from 'node:path';
-import { format } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import {
   parseMarkdown,
   stringifyMarkdown,
@@ -116,9 +116,16 @@ function formatDate(date: Date): string {
   return format(date, 'yyyy-MM-dd');
 }
 
-/** Resolve "today" to the formatted date; pass other strings through unchanged. */
+/**
+ * Resolve date-relative literals to ISO date strings.
+ * Handles "today", "yesterday" (today - 1 day), and "tomorrow" (today + 1 day).
+ * Other values are passed through unchanged.
+ */
 function resolveToValue(value: string, today: Date): string {
-  return value === 'today' ? formatDate(today) : value;
+  if (value === 'today') return formatDate(today);
+  if (value === 'yesterday') return formatDate(addDays(today, -1));
+  if (value === 'tomorrow') return formatDate(addDays(today, 1));
+  return value;
 }
 
 // ---------------------------------------------------------------------------
