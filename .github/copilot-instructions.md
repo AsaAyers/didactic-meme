@@ -15,7 +15,7 @@ The E2E vault is `tests/test_vault/`.  All markdown files anywhere under this di
 
 **Bad** — redundant tests that the E2E already covers:
 - A test that verifies `"due:today"` is transformed to an ISO date.  If that breaks, the E2E snapshot fails immediately.
-- A test that verifies `"due:yesterday"` or `"due:tomorrow"` is resolved — `scenarios/relative-dates/TODO.md` is processed in the E2E run, so the snapshot catches any regression.
+- A test that verifies `"due:yesterday"` or `"due:tomorrow"` is resolved — `scenarios/relative-dates/tasks.md` is processed in the E2E run, so the snapshot catches any regression.
 - A test that verifies multiple `today` fields are replaced in one pass.  The vault has three such fields and the snapshot captures the count.
 
 When the E2E vault is the right place to add a scenario, commit a new fixture file anywhere under `tests/test_vault/` and update the `const expected` snapshot accordingly.  For isolated engine mechanics (predicates, setFieldDateIfMissing), add a fixture file under `tests/test_vault/scenarios/<scenario-name>/` and write a focused unit test.

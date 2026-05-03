@@ -76,8 +76,8 @@ describe('normalizeTodayLiteral — end-to-end dry-run via test_vault', () => {
     });
 
     // Main vault file: three "today" literals replaced.
-    const todoChange = changes.find((c) => c.path === join(TEST_VAULT, 'TODO.md'));
-    expect(todoChange, 'TODO.md must appear in staged changes').toBeDefined();
+    const todoChange = changes.find((c) => c.path === join(TEST_VAULT, 'tasks.md'));
+    expect(todoChange, 'tasks.md must appear in staged changes').toBeDefined();
     const todoContent = todoChange!.content;
     expect(todoContent).toContain(`due:${TODAY_STR}`);
     expect(todoContent).toContain(`start:${TODAY_STR}`);
@@ -96,7 +96,7 @@ describe('normalizeTodayLiteral — end-to-end dry-run via test_vault', () => {
   });
 
   it('does not modify the test_vault files on disk (dry-run guard)', async () => {
-    const rawBefore = await fs.readFile(join(TEST_VAULT, 'TODO.md'), 'utf-8');
+    const rawBefore = await fs.readFile(join(TEST_VAULT, 'tasks.md'), 'utf-8');
 
     await runAllRules({
       vaultPath: TEST_VAULT,
@@ -105,7 +105,7 @@ describe('normalizeTodayLiteral — end-to-end dry-run via test_vault', () => {
       env: {},
     });
 
-    const rawAfter = await fs.readFile(join(TEST_VAULT, 'TODO.md'), 'utf-8');
+    const rawAfter = await fs.readFile(join(TEST_VAULT, 'tasks.md'), 'utf-8');
     expect(rawAfter).toBe(rawBefore);
   });
 });

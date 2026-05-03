@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
 import { extractTasks, updateTaskText } from '../markdown/tasks.js';
 import { getInlineField, setInlineField } from '../markdown/inlineFields.js';

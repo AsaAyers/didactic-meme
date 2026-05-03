@@ -6,7 +6,7 @@
  *
  * The E2E vault (tests/test_vault/) is scanned by normalizeTodayLiteral with
  * a "**\/*.md" glob, which covers:
- *   - "today" replacement (main TODO.md)
+ *   - "today" replacement (main tasks.md)
  *   - "yesterday" / "tomorrow" date arithmetic (scenarios/relative-dates/)
  *   - Negative cases: files without matching fields are not modified
  *     (scenarios/date-before/, scenarios/field-exists/, etc.)
