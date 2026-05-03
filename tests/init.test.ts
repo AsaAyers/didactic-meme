@@ -29,8 +29,7 @@ async function readScenarioFile(name: string): Promise<string> {
 describe('runInitPass', () => {
   it('scans all .md files in the vault (dry-run)', async () => {
     const { scanned } = await runInitPass(INIT_SCENARIO, true);
-    // The scenario dir has 5 .md files and 1 .txt file
-    expect(scanned).toBe(5);
+    expect(scanned).toBe(6);
   });
 
   it('ignores non-.md files', async () => {
@@ -71,7 +70,7 @@ describe('runInitPass', () => {
 
   it('returns correct scanned/rewritten counts', async () => {
     const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true);
-    expect(scanned).toBe(5);
+    expect(scanned).toBe(6);
     // Only needs-normalization.md requires a change
     expect(rewritten).toBe(1);
   });
@@ -94,6 +93,27 @@ describe('runInitPass', () => {
     // since it doesn't, we verify the content directly would not be escaped
     expect(original).not.toContain('\\[\\[');
     expect(original).toContain('[[');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Obsidian tag preservation
+  // ---------------------------------------------------------------------------
+
+  it('preserves Obsidian hashtags without escaping (dry-run)', async () => {
+    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    // with-obsidian-tags.md is already normalized — # must not become \#
+    const tagChange = changes.find((c) => c.path.includes('with-obsidian-tags'));
+    expect(tagChange, 'should not require changes').toBeUndefined();
+  });
+
+  it('normalizeFileContent does not escape # in Obsidian tags', async () => {
+    const { normalizeFileContent } = await import('../src/engine/runner.js');
+    // Tag at start of paragraph (atBreak position — the case remark escapes)
+    const input = '#feeling/good\n\nSome text with #work/project inline.\n';
+    const output = normalizeFileContent(input);
+    expect(output).not.toContain('\\#');
+    expect(output).toContain('#feeling/good');
+    expect(output).toContain('#work/project');
   });
 
   // ---------------------------------------------------------------------------

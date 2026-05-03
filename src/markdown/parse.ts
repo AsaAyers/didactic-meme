@@ -61,6 +61,67 @@ function protectWikilinks(tree: Root): void {
 }
 
 // ---------------------------------------------------------------------------
+// Obsidian hashtag protection
+// ---------------------------------------------------------------------------
+
+/**
+ * Obsidian tag syntax: `#tagname` or `#parent/child`.
+ * remark-stringify escapes `#` at the start of a line (the CommonMark
+ * "atBreak" unsafe rule) because `# text` opens a heading.  However,
+ * `#feeling/good` is not a heading — Obsidian tags follow `#` immediately
+ * with a non-space character.  We protect them by splitting text nodes that
+ * contain `#tags` into alternating `text` / `obsidianTag` nodes before
+ * stringification so the raw value is emitted verbatim.
+ */
+interface ObsidianTagNode {
+  type: 'obsidianTag';
+  value: string;
+}
+
+/**
+ * Matches an Obsidian hashtag: `#` immediately followed by a letter or
+ * underscore (preventing pure-number tags which Obsidian disallows), then
+ * any run of word characters, hyphens, or forward slashes.
+ * Supports Unicode letters via the `u` flag and `\p{L}` property.
+ */
+const OBSIDIAN_TAG_RE = /#[\p{L}_][\p{L}\p{N}_\-/]*/gu;
+
+function splitObsidianTagText(value: string): Array<Text | ObsidianTagNode> {
+  const parts: Array<Text | ObsidianTagNode> = [];
+  let lastIndex = 0;
+  OBSIDIAN_TAG_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = OBSIDIAN_TAG_RE.exec(value)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', value: value.slice(lastIndex, match.index) } as Text);
+    }
+    parts.push({ type: 'obsidianTag', value: match[0] } as ObsidianTagNode);
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < value.length) {
+    parts.push({ type: 'text', value: value.slice(lastIndex) } as Text);
+  }
+  return parts;
+}
+
+/**
+ * Walk the AST and replace text nodes containing Obsidian hashtags with a mix
+ * of `text` and `obsidianTag` nodes so the stringify step emits them verbatim.
+ *
+ * Mutates `tree` in place — call just before stringification.
+ */
+function protectObsidianTags(tree: Root): void {
+  visit(tree, 'text', (node: Text, index: number | undefined, parent: Parent | undefined) => {
+    if (!parent || index === undefined) return;
+    if (!node.value.includes('#')) return;
+    const parts = splitObsidianTagText(node.value);
+    if (parts.length === 0 || (parts.length === 1 && parts[0].type === 'text')) return;
+    (parent.children as Array<Text | ObsidianTagNode>).splice(index, 1, ...parts);
+    return [SKIP, index + parts.length];
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Inert-asterisk protection
 // ---------------------------------------------------------------------------
 
@@ -201,6 +262,8 @@ const customHandlers = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   wikilink: (node: any) => (node as WikilinkNode).value,
   rawAsterisk: () => '*',
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  obsidianTag: (node: any) => (node as ObsidianTagNode).value,
 } as Partial<Handlers>;
 
 // ---------------------------------------------------------------------------
@@ -214,6 +277,7 @@ export function parseMarkdown(content: string): Root {
 
 export function stringifyMarkdown(tree: Root): string {
   protectWikilinks(tree);
+  protectObsidianTags(tree);
   protectInertAsterisks(tree);
   const processor = unified().use(remarkGfm).use(remarkStringify, {
     bullet: '*',
