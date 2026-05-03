@@ -240,20 +240,32 @@ export async function runInitPass(
       continue;
     }
 
-    // Skip UTF-16 encoded files (UTF-16 LE BOM: FF FE, UTF-16 BE BOM: FE FF).
-    // These cannot be round-tripped through the UTF-8 remark pipeline without
-    // corruption, so we leave them untouched.
-    if (
-      (rawBuffer[0] === 0xff && rawBuffer[1] === 0xfe) ||
-      (rawBuffer[0] === 0xfe && rawBuffer[1] === 0xff)
-    ) {
-      log(`Init: skipping UTF-16 file: ${relative(vaultPath, filePath)}`);
-      continue;
+    // Decode UTF-16 encoded files (UTF-16 LE BOM: FF FE, UTF-16 BE BOM: FE FF)
+    // to UTF-8 strings so they can be processed by the remark pipeline.
+    // The file will be written back as UTF-8, which is a lossless conversion.
+    let original: string;
+    let wasUtf16 = false;
+    if (rawBuffer[0] === 0xff && rawBuffer[1] === 0xfe) {
+      // UTF-16 LE: skip the 2-byte BOM, then decode the rest
+      original = rawBuffer.slice(2).toString('utf16le');
+      wasUtf16 = true;
+    } else if (rawBuffer[0] === 0xfe && rawBuffer[1] === 0xff) {
+      // UTF-16 BE: swap bytes before decoding as UTF-16 LE
+      const swapped = Buffer.alloc(rawBuffer.length - 2);
+      for (let i = 2; i < rawBuffer.length - 1; i += 2) {
+        swapped[i - 2] = rawBuffer[i + 1];
+        swapped[i - 1] = rawBuffer[i];
+      }
+      original = swapped.toString('utf16le');
+      wasUtf16 = true;
+    } else {
+      original = rawBuffer.toString('utf-8');
     }
 
-    const original = rawBuffer.toString('utf-8');
     const normalized = normalize(original);
-    if (normalized !== original) {
+    // Always record a change for UTF-16 files: even if the text is already
+    // normalized, the encoding itself needs to be converted to UTF-8.
+    if (normalized !== original || wasUtf16) {
       changes.push({ path: filePath, original, content: normalized });
     }
   }

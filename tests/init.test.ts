@@ -119,12 +119,12 @@ describe('runInitPass', () => {
   // UTF-16 file handling
   // ---------------------------------------------------------------------------
 
-  it('skips UTF-16 LE files and does not corrupt them', async () => {
+  it('converts UTF-16 LE files to UTF-8 and processes them', async () => {
     const TMP_UTF16 = join(__dirname, '..', 'tmp', 'init-utf16-test');
     await fs.mkdir(TMP_UTF16, { recursive: true });
     try {
-      // Write a UTF-16 LE file (with BOM)
-      const text = 'Speaker 1  (00:03)\n';
+      // Write a UTF-16 LE file (with BOM) that has no trailing newline
+      const text = 'Speaker 1  (00:03)';
       const utf16Buf = Buffer.concat([
         Buffer.from([0xff, 0xfe]), // UTF-16 LE BOM
         Buffer.from(text, 'utf16le'),
@@ -132,39 +132,49 @@ describe('runInitPass', () => {
       const utf16Path = join(TMP_UTF16, 'transcript.md');
       await fs.writeFile(utf16Path, utf16Buf);
 
-      const { scanned, rewritten, changes } = await runInitPass(TMP_UTF16, true);
+      const { scanned, rewritten } = await runInitPass(TMP_UTF16, false);
 
-      // File should be scanned but skipped (not in changes)
+      // File should be scanned and rewritten (encoding conversion + trailing newline)
       expect(scanned).toBe(1);
-      expect(rewritten).toBe(0);
-      expect(changes).toHaveLength(0);
+      expect(rewritten).toBe(1);
 
-      // File on disk must be untouched
-      const after = await fs.readFile(utf16Path);
-      expect(after.equals(utf16Buf)).toBe(true);
+      // File on disk is now valid UTF-8 and contains the original text
+      const afterContent = await fs.readFile(utf16Path, 'utf-8');
+      expect(afterContent).toContain('Speaker 1  (00:03)');
+      // No BOM in the output
+      const afterBuf = await fs.readFile(utf16Path);
+      expect(afterBuf[0]).not.toBe(0xff);
+      expect(afterBuf[0]).not.toBe(0xfe);
     } finally {
       await fs.rm(TMP_UTF16, { recursive: true, force: true });
     }
   });
 
-  it('skips UTF-16 BE files and does not corrupt them', async () => {
+  it('converts UTF-16 BE files to UTF-8 and processes them', async () => {
     const TMP_UTF16 = join(__dirname, '..', 'tmp', 'init-utf16be-test');
     await fs.mkdir(TMP_UTF16, { recursive: true });
     try {
-      const text = 'Hello world\n';
-      const utf16Buf = Buffer.concat([
-        Buffer.from([0xfe, 0xff]), // UTF-16 BE BOM
-        Buffer.from(text, 'utf16le'), // content (simplified; BOM detection is the key)
-      ]);
+      const text = 'Hello world';
+      // Build a proper UTF-16 BE buffer: BOM FE FF, then each char as big-endian 16-bit
+      const charBuf = Buffer.alloc(text.length * 2);
+      for (let i = 0; i < text.length; i++) {
+        charBuf.writeUInt16BE(text.charCodeAt(i), i * 2);
+      }
+      const utf16Buf = Buffer.concat([Buffer.from([0xfe, 0xff]), charBuf]);
       const utf16Path = join(TMP_UTF16, 'notes.md');
       await fs.writeFile(utf16Path, utf16Buf);
 
-      const { rewritten } = await runInitPass(TMP_UTF16, true);
-      expect(rewritten).toBe(0);
+      const { scanned, rewritten } = await runInitPass(TMP_UTF16, false);
 
-      // File on disk must be untouched
-      const after = await fs.readFile(utf16Path);
-      expect(after.equals(utf16Buf)).toBe(true);
+      expect(scanned).toBe(1);
+      expect(rewritten).toBe(1);
+
+      // File is now valid UTF-8
+      const afterContent = await fs.readFile(utf16Path, 'utf-8');
+      expect(afterContent).toContain('Hello world');
+      const afterBuf = await fs.readFile(utf16Path);
+      expect(afterBuf[0]).not.toBe(0xfe);
+      expect(afterBuf[0]).not.toBe(0xff);
     } finally {
       await fs.rm(TMP_UTF16, { recursive: true, force: true });
     }

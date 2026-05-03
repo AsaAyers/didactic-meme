@@ -156,3 +156,39 @@ describe('round-trip: YAML front-matter', () => {
     expect(normalizeFileContent(src)).toBe(src);
   });
 });
+
+// ---------------------------------------------------------------------------
+// UTF-16 → UTF-8 conversion
+// ---------------------------------------------------------------------------
+
+describe('round-trip: UTF-16 decoding', () => {
+  it('decodes UTF-16 LE content to the same text as UTF-8', async () => {
+    const { runInitPass } = await import('../src/engine/runner.js');
+    const { promises: fs } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const __dir = dirname(fileURLToPath(import.meta.url));
+
+    const TMP = join(__dir, '..', 'tmp', 'roundtrip-utf16-test');
+    await fs.mkdir(TMP, { recursive: true });
+    try {
+      const text = 'Speaker 1  (00:03)\n';
+      const utf16Buf = Buffer.concat([
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from(text, 'utf16le'),
+      ]);
+      const filePath = join(TMP, 'transcript.md');
+      await fs.writeFile(filePath, utf16Buf);
+
+      await runInitPass(TMP, false);
+
+      const result = await fs.readFile(filePath, 'utf-8');
+      expect(result).toContain('Speaker 1  (00:03)');
+      // No BOM in the output
+      const resultBuf = await fs.readFile(filePath);
+      expect(resultBuf[0]).not.toBe(0xff);
+    } finally {
+      await fs.rm(TMP, { recursive: true, force: true });
+    }
+  });
+});
