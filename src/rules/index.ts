@@ -1,8 +1,10 @@
+import { stampCompletionDateRule } from './stampCompletionDate.js';
 import { completedTaskRolloverRule } from './completedTaskRollover.js';
 import { incompleteTaskAlertRule } from './incompleteTaskAlert.js';
 import type { Rule } from './types.js';
 
 export const rules: Rule[] = [
+  stampCompletionDateRule,
   completedTaskRolloverRule,
   incompleteTaskAlertRule,
 ];

@@ -4,6 +4,46 @@ A TypeScript-based Markdown automation pipeline for an [Obsidian](https://obsidi
 
 Reads and writes Markdown files structurally (AST-based, not regex) using the [unified/remark](https://github.com/remarkjs/remark) ecosystem. Rules are declared in one central registry and run sequentially.
 
+## Inline Fields
+
+Tasks in `/TODO.md` may carry **inline fields** — `key:value` tokens embedded in the task text. All date-valued fields use the `YYYY-MM-DD` format.
+
+| Field | Example | Description |
+|---|---|---|
+| `completionDate` | `completionDate:2026-05-03` | Date the task was checked off. Stamped automatically by Rule 1. |
+| `due` | `due:2026-05-10` | Target/deadline date. Set automatically on repeat. |
+| `start` | `start:2026-05-04` | Task should not be surfaced before this date. |
+| `snooze` | `snooze:2026-05-06` | Suppress surfacing until this date (stronger than `start`). |
+| `repeat` | `repeat:1s` | Recurrence schedule (see grammar below). |
+
+### `repeat` grammar
+
+```
+repeat := <skipWeeks>? <days>
+skipWeeks := one or more decimal digits   (number of weeks to skip; default 0)
+days      := one or more characters from the alphabet  s m t w h f a
+```
+
+Weekday alphabet: `s`=Sunday · `m`=Monday · `t`=Tuesday · `w`=Wednesday · `h`=Thursday · `f`=Friday · `a`=Saturday
+
+**Examples:**
+
+| Value | Meaning |
+|---|---|
+| `repeat:smtwhfa` | Daily (every day, skipWeeks=0) |
+| `repeat:s` | Weekly on Sunday (skipWeeks=0) |
+| `repeat:1s` | Every other Sunday — skip 1 week, then next Sunday |
+| `repeat:2mwf` | Skip 2 weeks then schedule on the next Mon, Wed, or Fri |
+
+**Next-due algorithm:**
+
+```
+minDate = completionDate + skipWeeks × 7 + 1 day
+newDue  = first date ≥ minDate whose weekday is in <days>
+```
+
+When a repeating task is completed, `due:` is always set to `newDue`. If `start:` or `snooze:` are present they are shifted forward by the same number of days as `due` moved (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = completionDate`).
+
 ## Environment Variables
 
 | Variable | Required | Default | Description |
@@ -48,17 +88,26 @@ npm test
 
 ## Rules
 
-### Rule 1 – Completed Task Rollover
+Rules run sequentially in the order listed in the central registry (`src/rules/index.ts`).
+
+### Rule 1 – Stamp Completion Date
+
+**Source:** `src/rules/stampCompletionDate.ts`
+
+Scans `/TODO.md` for completed (checked) tasks and stamps each one that does **not** already carry a `completionDate:YYYY-MM-DD` inline field with `completionDate:<today>`. This ensures every completed task has an explicit, traceable completion timestamp before later rules run.
+
+### Rule 2 – Completed Task Rollover
 
 **Source:** `src/rules/completedTaskRollover.ts`
 
-Processes `/TODO.md` in the vault and handles completed (checked) tasks:
+Processes every completed task in `/TODO.md`:
 
-- If the task text contains the tag `#recurring`, the task is **unchecked** (reset to incomplete) in `/TODO.md`.
-- Otherwise, the completed task is **removed** from `/TODO.md`.
-- Every processed task (recurring or not) is **appended** to today's daily note at `YYYY/YYYY-MM-DD.md` under the heading defined by `DAILY_NOTE_HEADING` (default: `Completed Tasks`). The heading is created if it doesn't exist, and trailing blank lines are trimmed before appending.
+- **With `repeat:`**: Computes the next due date using the repeat grammar and the `completionDate` inline field (falls back to today if the field is not yet present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = completionDate`). Unchecks the task so it stays in `TODO.md` for the next cycle.
+- **Without `repeat:`**: Removes the task from `TODO.md`.
 
-### Rule 2 – Incomplete Task Alert
+Every processed task is **appended** to today's daily note at `YYYY/YYYY-MM-DD.md` under the heading defined by `DAILY_NOTE_HEADING` (default: `Completed Tasks`). The heading is created if it doesn't exist, and trailing blank lines are trimmed before appending.
+
+### Rule 3 – Incomplete Task Alert
 
 **Source:** `src/rules/incompleteTaskAlert.ts`
 
@@ -74,19 +123,26 @@ src/
 ├── index.ts                    # CLI entrypoint
 ├── markdown/
 │   ├── parse.ts                # unified/remark parse + stringify + gray-matter helpers
-│   ├── tasks.ts                # extract / toggle / remove GFM task items
-│   └── headings.ts             # append-under-heading with auto-create + trim
+│   ├── tasks.ts                # extract / toggle / remove / update GFM task items
+│   ├── headings.ts             # append-under-heading with auto-create + trim
+│   └── inlineFields.ts         # getInlineField / setInlineField utilities
 ├── engine/
 │   ├── io.ts                   # readFile, FileWriteManager (stage/commit)
 │   └── runner.ts               # sequential rule runner + summary log
 └── rules/
     ├── index.ts                # ← central rule registry (add new rules here)
     ├── types.ts                # Rule / RuleContext / FileChange / RuleResult types
-    ├── completedTaskRollover.ts
-    └── incompleteTaskAlert.ts
+    ├── scheduleUtils.ts        # parseRepeat, computeNextDue, date helpers
+    ├── stampCompletionDate.ts  # Rule 1
+    ├── completedTaskRollover.ts # Rule 2
+    └── incompleteTaskAlert.ts  # Rule 3
 tests/
-├── tasks.test.ts               # extract tasks, toggle, remove
-└── headings.test.ts            # append-under-heading with trim + create
+├── tasks.test.ts               # extract tasks, toggle, remove, update
+├── headings.test.ts            # append-under-heading with trim + create
+├── inlineFields.test.ts        # getInlineField / setInlineField
+├── scheduleUtils.test.ts       # parseRepeat, computeNextDue, date helpers
+├── stampCompletionDate.test.ts # Rule 1 behaviour
+└── completedTaskRollover.test.ts # Rule 2 behaviour
 ```
 
 ## Adding a New Rule

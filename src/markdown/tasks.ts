@@ -70,3 +70,26 @@ export function setTaskChecked(tree: Root, taskText: string, checked: boolean): 
   });
   return found;
 }
+
+/**
+ * Replace the text content of a task list item in the AST.
+ * Finds the item whose displayed text equals `oldText` and rewrites the
+ * paragraph's inline children to a single Text node with `newText`.
+ * Returns true if the item was found and updated.
+ */
+export function updateTaskText(tree: Root, oldText: string, newText: string): boolean {
+  let found = false;
+  visit(tree, 'listItem', (node: ListItem) => {
+    if (node.checked !== null && node.checked !== undefined) {
+      if (getListItemText(node) === oldText) {
+        for (const child of node.children) {
+          if (child.type === 'paragraph') {
+            (child as Paragraph).children = [{ type: 'text', value: newText } as Text];
+            found = true;
+          }
+        }
+      }
+    }
+  });
+  return found;
+}
