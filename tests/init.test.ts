@@ -9,10 +9,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promises as fs } from 'node:fs';
-import { runInitPass } from '../src/engine/runner.js';
+import { runInitPass, normalizeFileContentForInit } from '../src/engine/runner.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const INIT_SCENARIO = join(__dirname, 'test_vault', 'scenarios', 'init-pass');
+const COMPLETION_DATE_SCENARIO = join(__dirname, 'test_vault', 'scenarios', 'init-completion-date');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -384,5 +385,89 @@ describe('runInitPass', () => {
       expect(afterContent).toBe(originalContent);
       expect(afterContent.startsWith('---\n')).toBe(true);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeFileContentForInit — completionDate:unknown stamping
+// ---------------------------------------------------------------------------
+
+describe('normalizeFileContentForInit — completionDate stamping', () => {
+  it('sets completionDate:unknown on a checked task without completionDate', () => {
+    const input = '- [x] Finished task\n';
+    const output = normalizeFileContentForInit(input);
+    expect(output).toContain('completionDate:unknown');
+  });
+
+  it('does not overwrite an existing completionDate', () => {
+    const input = '- [x] Finished task completionDate:2026-01-15\n';
+    const output = normalizeFileContentForInit(input);
+    expect(output).toContain('completionDate:2026-01-15');
+    expect(output).not.toContain('completionDate:unknown');
+  });
+
+  it('does not set completionDate on unchecked tasks', () => {
+    const input = '- [ ] Not done yet\n';
+    const output = normalizeFileContentForInit(input);
+    expect(output).not.toContain('completionDate');
+  });
+
+  it('output is stable — second pass produces no further changes', () => {
+    const input = '- [x] Finished task\n';
+    const firstPass = normalizeFileContentForInit(input);
+    const secondPass = normalizeFileContentForInit(firstPass);
+    expect(secondPass).toBe(firstPass);
+  });
+
+  it('stamps completionDate:unknown on multiple checked tasks in one file', () => {
+    const input = '- [x] Task one\n- [x] Task two\n- [ ] Pending\n';
+    const output = normalizeFileContentForInit(input);
+    const matches = output.match(/completionDate:unknown/g);
+    expect(matches).toHaveLength(2);
+    expect(output).not.toContain('Pending completionDate');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// runInitPass — completionDate stamping integration
+// ---------------------------------------------------------------------------
+
+describe('runInitPass — completionDate stamping (init-completion-date scenario)', () => {
+  it('stamps completionDate:unknown on a checked task that lacks one (dry-run)', async () => {
+    const { changes } = await runInitPass(COMPLETION_DATE_SCENARIO, true);
+    const change = changes.find((c) => c.path.includes('checked-without-date'));
+    expect(change, 'checked-without-date.md must appear in changes').toBeDefined();
+    expect(change!.content).toContain('completionDate:unknown');
+  });
+
+  it('does not rewrite a file whose checked task already has completionDate (dry-run)', async () => {
+    const { changes } = await runInitPass(COMPLETION_DATE_SCENARIO, true);
+    const change = changes.find((c) => c.path.includes('checked-with-date'));
+    expect(change, 'checked-with-date.md must NOT appear in changes').toBeUndefined();
+  });
+
+  it('does not add completionDate to unchecked tasks (dry-run)', async () => {
+    const { changes } = await runInitPass(COMPLETION_DATE_SCENARIO, true);
+    const change = changes.find((c) => c.path.includes('unchecked-task'));
+    expect(change, 'unchecked-task.md must NOT appear in changes').toBeUndefined();
+  });
+
+  it('dry-run does not write files to disk', async () => {
+    const original = await fs.readFile(
+      join(COMPLETION_DATE_SCENARIO, 'checked-without-date.md'),
+      'utf-8',
+    );
+
+    await runInitPass(COMPLETION_DATE_SCENARIO, true);
+
+    const after = await fs.readFile(
+      join(COMPLETION_DATE_SCENARIO, 'checked-without-date.md'),
+      'utf-8',
+    );
+    expect(after).toBe(original);
+  });
+
+  it('normalization is stable (second pass is a NOOP)', async () => {
+    await expect(runInitPass(COMPLETION_DATE_SCENARIO, true)).resolves.not.toThrow();
   });
 });

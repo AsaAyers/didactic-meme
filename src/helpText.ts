@@ -22,8 +22,10 @@ Options:
   --verbose                Show rule-progress logs and the run summary (normally
                            suppressed in --dry-run mode).
   --init                   Normalize vault via the parse/rewrite pipeline only
-                           (no rule-driven transforms).  Mutually exclusive with
-                           rule selection.
+                           (no rule-driven transforms).  Also stamps
+                           completionDate:unknown on checked tasks that lack a
+                           completionDate — existing values are never overwritten.
+                           Mutually exclusive with rule selection.
   --help, -h               Show this help message and exit.
 
 Environment variables:

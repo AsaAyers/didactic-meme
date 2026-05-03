@@ -128,6 +128,13 @@ the vault.  Each file is read, round-tripped through the parse → stringify
 pipeline (remark), and written back **only if the content changed**.  No
 rule-driven transformations are applied (e.g. `due:today` is left as-is).
 
+In addition to formatting normalization, `--init` stamps a `completionDate:unknown`
+sentinel on every checked task that does not already carry a `completionDate`
+field.  This prevents future date-based queries (e.g. "completed after date X")
+from accidentally matching tasks that were completed before the vault was first
+managed by this tool.  If a task already has a `completionDate`, it is left
+unchanged.
+
 This is intended to be run once before making rule-driven changes so that
 subsequent diffs reflect only intentional semantic edits rather than incidental
 formatting noise.
@@ -137,6 +144,7 @@ formatting noise.
 - Obsidian wikilinks (`[[Page]]`, `![[image.png]]`) are round-tripped without escaping.
 - Hidden directories (e.g. `.git`, `.obsidian`) are skipped automatically.
 - A summary line is printed: `Init: scanned N file(s), rewrote M.`
+- `completionDate:unknown` is set only when missing — existing values are never overwritten.
 
 **Stability guarantee**: after the first normalization pass `--init` runs a
 second pass internally to verify that the normalized output is itself a NOOP.

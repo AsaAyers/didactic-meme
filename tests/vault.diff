@@ -7,6 +7,13 @@ Index: scenarios/checked-unchecked/tasks.md
 -- [ ] Todo
 +* [x] Done completionDate:2026-05-03
 +* [ ] Todo
+Index: scenarios/init-completion-date/checked-without-date.md
+===================================================================
+--- scenarios/init-completion-date/checked-without-date.md
++++ scenarios/init-completion-date/checked-without-date.md
+@@ -1,1 +1,1 @@
+-* [x] Finished task
++* [x] Finished task completionDate:2026-05-03
 Index: scenarios/init-pass/already-normalized.md
 ===================================================================
 --- scenarios/init-pass/already-normalized.md

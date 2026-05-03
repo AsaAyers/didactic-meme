@@ -2,6 +2,8 @@ import { createPatch } from 'diff';
 import { promises as fs } from 'node:fs';
 import { relative } from 'node:path';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
+import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
+import { extractTasks, updateTaskText } from '../markdown/tasks.js';
 import { ruleSpecs } from '../rules/index.js';
 import { walkMarkdownFiles } from './io.js';
 import { FileWriteManager } from './io.js';
@@ -255,10 +257,46 @@ export function normalizeFileContent(raw: string): string {
   return stringifyMarkdown(parseMarkdown(raw));
 }
 
+/**
+ * Parse markdown body content, stamp `completionDate:unknown` on every
+ * checked task that lacks a `completionDate` field, then stringify.
+ */
+function stampAndStringify(body: string): string {
+  const tree = parseMarkdown(body);
+  const tasks = extractTasks(tree);
+  for (const task of tasks) {
+    if (task.checked && getInlineField(task.text, 'completionDate') === undefined) {
+      const newText = setInlineField(task.text, 'completionDate', 'unknown');
+      updateTaskText(tree, task.text, newText);
+    }
+  }
+  return stringifyMarkdown(tree);
+}
+
+/**
+ * Like `normalizeFileContent` but also stamps `completionDate:unknown` on
+ * every checked task that does not already carry a `completionDate` field.
+ *
+ * Only used during `--init` so that previously-completed tasks receive a
+ * sentinel value that prevents future date-based queries from accidentally
+ * matching them as recently-completed tasks.
+ */
+export function normalizeFileContentForInit(raw: string): string {
+  const fmMatch = FRONTMATTER_RE.exec(raw);
+  if (fmMatch) {
+    const header = fmMatch[0];
+    const rest = raw.slice(header.length);
+    const leadingNewline = rest.startsWith('\n') ? '\n' : '';
+    const bodyContent = leadingNewline ? rest.slice(1) : rest;
+    return header + leadingNewline + stampAndStringify(bodyContent);
+  }
+  return stampAndStringify(raw);
+}
+
 export async function runInitPass(
   vaultPath: string,
   dryRun: boolean,
-  normalize: (raw: string) => string = normalizeFileContent,
+  normalize: (raw: string) => string = normalizeFileContentForInit,
 ): Promise<{
   scanned: number;
   rewritten: number;
