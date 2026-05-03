@@ -6,7 +6,7 @@ Reads and writes Markdown files structurally (AST-based, not regex) using the [u
 
 ## Inline Fields
 
-Tasks in `/TODO.md` may carry **inline fields** — `key:value` tokens embedded in the task text. All date-valued fields use the `YYYY-MM-DD` format.
+Tasks in any `.md` file in the vault may carry **inline fields** — `key:value` tokens embedded in the task text. All date-valued fields use the `YYYY-MM-DD` format.
 
 | Field | Example | Description |
 |---|---|---|
@@ -94,16 +94,16 @@ Rules run sequentially in the order listed in the central registry (`src/rules/i
 
 **Source:** `src/rules/stampCompletionDate.ts`
 
-Scans `/TODO.md` for completed (checked) tasks and stamps each one that does **not** already carry a `completionDate:YYYY-MM-DD` inline field with `completionDate:<today>`. This ensures every completed task has an explicit, traceable completion timestamp before later rules run.
+Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps each one that does **not** already carry a `completionDate:YYYY-MM-DD` inline field with `completionDate:<today>`. This ensures every completed task has an explicit, traceable completion timestamp before later rules run.
 
 ### Rule 2 – Completed Task Rollover
 
 **Source:** `src/rules/completedTaskRollover.ts`
 
-Processes every completed task in `/TODO.md`:
+Processes every completed task across all `**/*.md` files in the vault:
 
-- **With `repeat:`**: Computes the next due date using the repeat grammar and the `completionDate` inline field (falls back to today if the field is not yet present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = completionDate`). Unchecks the task so it stays in `TODO.md` for the next cycle.
-- **Without `repeat:`**: Removes the task from `TODO.md`.
+- **With `repeat:`**: Computes the next due date using the repeat grammar and the `completionDate` inline field (falls back to today if the field is not yet present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = completionDate`). Unchecks the task so it stays in its source file for the next cycle.
+- **Without `repeat:`**: Removes the task from its source file.
 
 Every processed task is **appended** to today's daily note at `YYYY/YYYY-MM-DD.md` under the heading defined by `DAILY_NOTE_HEADING` (default: `Completed Tasks`). The heading is created if it doesn't exist, and trailing blank lines are trimmed before appending.
 
@@ -111,7 +111,7 @@ Every processed task is **appended** to today's daily note at `YYYY/YYYY-MM-DD.m
 
 **Source:** `src/rules/incompleteTaskAlert.ts`
 
-Finds all **incomplete** (unchecked) tasks in `/TODO.md` and:
+Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vault and:
 
 1. Writes them as a Markdown list to `ALERT_FILE` (default: `$VAULT_PATH/tmp_alert.md`).
 2. If `ALERT_URL` is set, performs an HTTP POST of the file contents to that URL with `Content-Type: text/markdown` and, if `ALERT_TOKEN` is set, `Authorization: Bearer <token>`.

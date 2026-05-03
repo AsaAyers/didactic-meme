@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { stampCompletionDateRule } from '../src/rules/stampCompletionDate.js';
 
+vi.mock('../src/engine/io.js', () => ({
+  walkMarkdownFiles: vi.fn(),
+}));
+
+import { walkMarkdownFiles } from '../src/engine/io.js';
+
 const TODAY = new Date(2026, 4, 3); // 2026-05-03 (Sunday)
 const TODAY_STR = '2026-05-03';
 
@@ -16,14 +22,15 @@ const baseCtx = {
 
 beforeEach(() => {
   mockReadFile = vi.fn<[string], Promise<string>>();
+  vi.mocked(walkMarkdownFiles).mockResolvedValue(['/vault/tasks.md']);
 });
 
 describe('stampCompletionDate rule', () => {
-  it('returns early when TODO.md is missing', async () => {
+  it('returns no changes when the vault file is empty', async () => {
     mockReadFile.mockResolvedValue('');
     const result = await stampCompletionDateRule.run(baseCtx);
     expect(result.changes).toHaveLength(0);
-    expect(result.summary).toContain('TODO.md not found');
+    expect(result.summary).toContain('No tasks needed');
   });
 
   it('stamps completionDate on completed tasks that lack it', async () => {

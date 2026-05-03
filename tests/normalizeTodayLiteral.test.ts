@@ -51,20 +51,28 @@ describe('normalizeTodayLiteral — end-to-end dry-run via test_vault', () => {
       'Running rule: completedTaskRollover',
       'Running rule: incompleteTaskAlert',
       '[dry-run] Would write: <vault>/TODO.md',
-      '[dry-run] Would write: <vault>/scenarios/not-predicate/TODO.md',
-      '[dry-run] Would write: <vault>/scenarios/relative-dates/TODO.md',
-      '[dry-run] Would write: <vault>/scenarios/unchecked-today/TODO.md',
+      '[dry-run] Would write: <vault>/scenarios/not-predicate/tasks.md',
+      '[dry-run] Would write: <vault>/scenarios/relative-dates/tasks.md',
+      '[dry-run] Would write: <vault>/scenarios/unchecked-today/tasks.md',
+      '[dry-run] Would write: <vault>/scenarios/checked-unchecked/tasks.md',
+      '[dry-run] Would write: <vault>/scenarios/set-missing/tasks.md',
+      '[dry-run] Would write: <vault>/scenarios/set-existing/tasks.md',
+      '[dry-run] Would write: <vault>/2026/2026-05-03.md',
       '[dry-run] Would write: <vault>/tmp_alert.md',
       '\n=== Run Summary ===',
       '  [normalizeTodayLiteral] Modified 7 task(s) across 4 file(s).',
-      '  [stampCompletionDate] No tasks needed completion date stamping.',
-      '  [completedTaskRollover] No completed tasks found.',
-      `  [incompleteTaskAlert] Found 3 incomplete task(s). Alert written to <vault>/tmp_alert.md.`,
+      '  [stampCompletionDate] Stamped completionDate:2026-05-03 on 3 completed task(s).',
+      '  [completedTaskRollover] Rolled over 4 completed task(s) to 2026-05-03.',
+      `  [incompleteTaskAlert] Found 13 incomplete task(s). Alert written to <vault>/tmp_alert.md.`,
       '\nFiles written:',
       '  <vault>/TODO.md',
-      '  <vault>/scenarios/not-predicate/TODO.md',
-      '  <vault>/scenarios/relative-dates/TODO.md',
-      '  <vault>/scenarios/unchecked-today/TODO.md',
+      '  <vault>/scenarios/not-predicate/tasks.md',
+      '  <vault>/scenarios/relative-dates/tasks.md',
+      '  <vault>/scenarios/unchecked-today/tasks.md',
+      '  <vault>/scenarios/checked-unchecked/tasks.md',
+      '  <vault>/scenarios/set-missing/tasks.md',
+      '  <vault>/scenarios/set-existing/tasks.md',
+      '  <vault>/2026/2026-05-03.md',
       '  <vault>/tmp_alert.md',
     ].join('\n');
 
@@ -92,7 +100,7 @@ describe('normalizeTodayLiteral — end-to-end dry-run via test_vault', () => {
 
     // relative-dates scenario: "yesterday" and "tomorrow" replaced with ISO dates.
     const relChange = changes.find((c) => c.path.includes('relative-dates'));
-    expect(relChange, 'relative-dates/TODO.md must appear in staged changes').toBeDefined();
+    expect(relChange, 'relative-dates/tasks.md must appear in staged changes').toBeDefined();
     expect(relChange!.content).toContain(`due:${YESTERDAY_STR}`);
     expect(relChange!.content).toContain(`start:${TOMORROW_STR}`);
     expect(relChange!.content).not.toContain('due:yesterday');
