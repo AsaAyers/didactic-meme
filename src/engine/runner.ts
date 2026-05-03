@@ -1,11 +1,7 @@
 import { ruleSpecs } from '../rules/index.js';
 import { FileWriteManager } from './io.js';
 import { runRuleSpec } from './ruleSpecRunner.js';
-import type { RuleContext, RuleSpec } from '../rules/types.js';
-
-function hasCustomAction(spec: RuleSpec): boolean {
-  return spec.actions.some((a) => a.type === 'custom');
-}
+import type { RuleContext } from '../rules/types.js';
 
 /**
  * Run all registered rules against the vault.
@@ -36,8 +32,7 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
 
   const summaries: string[] = [];
 
-  // Phase 1: RuleSpecs without CustomAction run first (task mutations + normalization).
-  for (const spec of ruleSpecs.filter((s) => !hasCustomAction(s))) {
+  for (const spec of ruleSpecs) {
     log(`Running rule spec: ${spec.name}`);
     try {
       const result = await runRuleSpec(spec, ctx);
@@ -50,24 +45,7 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
     }
   }
 
-  // Flush everything to disk before running CustomAction specs.
   const written = await queue.commit(ctx.dryRun, log);
-
-  // Phase 2: RuleSpecs with CustomAction run after the flush so their
-  // CustomAction.run(tasks) sees files already on disk. Skipped in dry-run
-  // (runRuleSpec guards each CustomAction call with !ctx.dryRun).
-  for (const spec of ruleSpecs.filter(hasCustomAction)) {
-    log(`Running rule spec: ${spec.name}`);
-    try {
-      const result = await runRuleSpec(spec, ctx);
-      for (const change of result.changes) {
-        queue.stage(change.path, change.content);
-      }
-      summaries.push(`  [${spec.name}] ${result.summary}`);
-    } catch (err) {
-      summaries.push(`  [${spec.name}] ERROR: ${(err as Error).message}`);
-    }
-  }
 
   log('\n=== Run Summary ===');
   for (const s of summaries) {

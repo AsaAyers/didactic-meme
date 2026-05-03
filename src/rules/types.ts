@@ -110,12 +110,17 @@ export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };
 /**
  * Escape hatch for side effects that need the full set of matched tasks.
  * Called once per RuleSpec run, with all tasks selected across all source
- * files, after the file queue has been flushed to disk.
- * Skipped in dry-run mode. No-op (and not called) when no tasks were matched.
+ * files. No-op (and not called) when no tasks were matched.
+ * `readFile` reads from the in-memory transform queue so staged-but-not-yet-
+ * flushed content is visible. `dryRun` lets implementations skip side effects.
  */
 export type CustomAction = {
   type: 'custom';
-  run: (args: { tasks: Task[]; dryRun: boolean }) => Promise<void>;
+  run: (args: {
+    tasks: Task[];
+    dryRun: boolean;
+    readFile: (path: string) => Promise<string>;
+  }) => Promise<void>;
 };
 
 export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction;

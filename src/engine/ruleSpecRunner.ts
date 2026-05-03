@@ -271,11 +271,11 @@ export async function runRuleSpec(
     allSelected.push(...selected);
   }
 
-  // Fire CustomAction side effects once with ALL matched tasks (skipped in dry-run).
-  if (!ctx.dryRun && allSelected.length > 0) {
+  // Fire CustomAction side effects once with ALL matched tasks.
+  if (allSelected.length > 0) {
     for (const action of actions) {
       if (action.type === 'custom') {
-        await action.run({ tasks: allSelected, dryRun: ctx.dryRun });
+        await action.run({ tasks: allSelected, dryRun: ctx.dryRun, readFile: ctx.readFile });
       }
     }
   }
