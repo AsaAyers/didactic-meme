@@ -117,8 +117,8 @@ describe('ruleSpecRunner — predicates', () => {
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0]?.content ?? '';
-    expect(content).toContain(`- [x] Done completionDate:${TODAY_STR}`);
-    expect(content).toContain('- [ ] Todo');
+    expect(content).toContain(`* [x] Done completionDate:${TODAY_STR}`);
+    expect(content).toContain('* [ ] Todo');
     expect(content).not.toContain('Todo completionDate');
   });
 
@@ -136,7 +136,7 @@ describe('ruleSpecRunner — predicates', () => {
     const content = result.changes[0]?.content ?? '';
     expect(content).toContain(`due:${TODAY_STR}`);
     // The checked task had no due field and was not selected.
-    expect(content).toContain('- [x] Done');
+    expect(content).toContain('* [x] Done');
   });
 
   it('fieldExists predicate returns only tasks with that field', async () => {
@@ -153,7 +153,7 @@ describe('ruleSpecRunner — predicates', () => {
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]?.content).toContain(`due:${TODAY_STR}`);
-    expect(result.changes[0]?.content).toContain('- [ ] Without');
+    expect(result.changes[0]?.content).toContain('* [ ] Without');
     expect(result.changes[0]?.content).not.toContain('Without due:');
   });
 
@@ -195,7 +195,7 @@ describe('ruleSpecRunner — predicates', () => {
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0]?.content ?? '';
-    expect(content).toContain('- [ ] B due:');
+    expect(content).toContain('* [ ] B due:');
     // Task A already had due:today — was not selected, stays as the literal "today".
     expect(content).toContain('due:today');
   });

@@ -29,8 +29,8 @@ async function readScenarioFile(name: string): Promise<string> {
 describe('runInitPass', () => {
   it('scans all .md files in the vault (dry-run)', async () => {
     const { scanned } = await runInitPass(INIT_SCENARIO, true);
-    // The scenario dir has 4 .md files and 1 .txt file
-    expect(scanned).toBe(4);
+    // The scenario dir has 5 .md files and 1 .txt file
+    expect(scanned).toBe(5);
   });
 
   it('ignores non-.md files', async () => {
@@ -71,7 +71,7 @@ describe('runInitPass', () => {
 
   it('returns correct scanned/rewritten counts', async () => {
     const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true);
-    expect(scanned).toBe(4);
+    expect(scanned).toBe(5);
     // Only needs-normalization.md requires a change
     expect(rewritten).toBe(1);
   });
@@ -94,6 +94,80 @@ describe('runInitPass', () => {
     // since it doesn't, we verify the content directly would not be escaped
     expect(original).not.toContain('\\[\\[');
     expect(original).toContain('[[');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Templater / asterisk preservation
+  // ---------------------------------------------------------------------------
+
+  it('preserves Templater <%* syntax without escaping (dry-run)', async () => {
+    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    // with-templater.md is already normalized — the <%* must not be changed
+    const templaterChange = changes.find((c) => c.path.includes('with-templater'));
+    expect(templaterChange, 'with-templater.md is already normalized and must not require changes').toBeUndefined();
+  });
+
+  it('normalizeFileContent does not escape * in Templater syntax', async () => {
+    const { normalizeFileContent } = await import('../src/engine/runner.js');
+    const input = '<%* const title = tp.file.title; %>\n\n# Some heading\n';
+    const output = normalizeFileContent(input);
+    expect(output).not.toContain('\\*');
+    expect(output).toContain('<%*');
+  });
+
+  // ---------------------------------------------------------------------------
+  // UTF-16 file handling
+  // ---------------------------------------------------------------------------
+
+  it('skips UTF-16 LE files and does not corrupt them', async () => {
+    const TMP_UTF16 = join(__dirname, '..', 'tmp', 'init-utf16-test');
+    await fs.mkdir(TMP_UTF16, { recursive: true });
+    try {
+      // Write a UTF-16 LE file (with BOM)
+      const text = 'Speaker 1  (00:03)\n';
+      const utf16Buf = Buffer.concat([
+        Buffer.from([0xff, 0xfe]), // UTF-16 LE BOM
+        Buffer.from(text, 'utf16le'),
+      ]);
+      const utf16Path = join(TMP_UTF16, 'transcript.md');
+      await fs.writeFile(utf16Path, utf16Buf);
+
+      const { scanned, rewritten, changes } = await runInitPass(TMP_UTF16, true);
+
+      // File should be scanned but skipped (not in changes)
+      expect(scanned).toBe(1);
+      expect(rewritten).toBe(0);
+      expect(changes).toHaveLength(0);
+
+      // File on disk must be untouched
+      const after = await fs.readFile(utf16Path);
+      expect(after.equals(utf16Buf)).toBe(true);
+    } finally {
+      await fs.rm(TMP_UTF16, { recursive: true, force: true });
+    }
+  });
+
+  it('skips UTF-16 BE files and does not corrupt them', async () => {
+    const TMP_UTF16 = join(__dirname, '..', 'tmp', 'init-utf16be-test');
+    await fs.mkdir(TMP_UTF16, { recursive: true });
+    try {
+      const text = 'Hello world\n';
+      const utf16Buf = Buffer.concat([
+        Buffer.from([0xfe, 0xff]), // UTF-16 BE BOM
+        Buffer.from(text, 'utf16le'), // content (simplified; BOM detection is the key)
+      ]);
+      const utf16Path = join(TMP_UTF16, 'notes.md');
+      await fs.writeFile(utf16Path, utf16Buf);
+
+      const { rewritten } = await runInitPass(TMP_UTF16, true);
+      expect(rewritten).toBe(0);
+
+      // File on disk must be untouched
+      const after = await fs.readFile(utf16Path);
+      expect(after.equals(utf16Buf)).toBe(true);
+    } finally {
+      await fs.rm(TMP_UTF16, { recursive: true, force: true });
+    }
   });
 
   // ---------------------------------------------------------------------------
@@ -129,7 +203,7 @@ describe('runInitPass', () => {
       // second call (stability check) returns yet something else, triggering
       // the "not stable" error.
       let callCount = 0;
-      const unstableNormalizer = (_raw: string): string => {
+      const unstableNormalizer = (): string => {
         callCount++;
         return callCount === 1 ? '# First pass result\n' : '# Second pass result\n';
       };
@@ -167,6 +241,10 @@ describe('runInitPass', () => {
       await fs.copyFile(
         join(INIT_SCENARIO, 'with-frontmatter.md'),
         join(TMP_DIR, 'with-frontmatter.md'),
+      );
+      await fs.copyFile(
+        join(INIT_SCENARIO, 'with-templater.md'),
+        join(TMP_DIR, 'with-templater.md'),
       );
     });
 

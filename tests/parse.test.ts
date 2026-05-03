@@ -35,7 +35,7 @@ describe('wikilink round-trip', () => {
   });
 
   it('preserves wikilink inside a task', () => {
-    const src = '- [ ] Review ![[diagram_v2.png]]\n';
+    const src = '* [ ] Review ![[diagram_v2.png]]\n';
     expect(roundTrip(src)).toBe(src);
   });
 
@@ -46,9 +46,9 @@ describe('wikilink round-trip', () => {
 
   it('preserves nested list with wikilinks at each level', () => {
     const src =
-      '- Top level [[link]]\n' +
-      '  - Nested [[link2]]\n' +
-      '    - Deep [[link3]]\n';
+      '* Top level [[link]]\n' +
+      '  * Nested [[link2]]\n' +
+      '    * Deep [[link3]]\n';
     expect(roundTrip(src)).toBe(src);
   });
 
@@ -69,32 +69,32 @@ describe('wikilink round-trip', () => {
 
 describe('nested list round-trip', () => {
   it('preserves 2-space nested unordered list', () => {
-    const src = '- Item 1\n  - Nested 1\n  - Nested 2\n- Item 2\n';
+    const src = '* Item 1\n  * Nested 1\n  * Nested 2\n* Item 2\n';
     expect(roundTrip(src)).toBe(src);
   });
 
   it('preserves three-level nesting', () => {
-    const src = '- Level 1\n  - Level 2\n    - Level 3\n';
+    const src = '* Level 1\n  * Level 2\n    * Level 3\n';
     expect(roundTrip(src)).toBe(src);
   });
 
   it('preserves nested task lists', () => {
     const src =
-      '- [ ] Parent task\n' +
-      '  - [ ] Child task\n' +
-      '    - [ ] Grandchild\n' +
-      '  - [ ] Another child\n' +
-      '- [ ] Second parent\n';
+      '* [ ] Parent task\n' +
+      '  * [ ] Child task\n' +
+      '    * [ ] Grandchild\n' +
+      '  * [ ] Another child\n' +
+      '* [ ] Second parent\n';
     expect(roundTrip(src)).toBe(src);
   });
 
   it('preserves ordered list nested inside unordered', () => {
-    const src = '- Item\n  1. First\n  2. Second\n- Another item\n';
+    const src = '* Item\n  1. First\n  2. Second\n* Another item\n';
     expect(roundTrip(src)).toBe(src);
   });
 
   it('preserves loose nested list (blank lines between items)', () => {
-    const src = '- Item 1\n\n  - Nested 1\n\n  - Nested 2\n\n- Item 2\n';
+    const src = '* Item 1\n\n  * Nested 1\n\n  * Nested 2\n\n* Item 2\n';
     expect(roundTrip(src)).toBe(src);
   });
 });

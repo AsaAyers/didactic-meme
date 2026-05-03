@@ -233,13 +233,25 @@ export async function runInitPass(
   const changes: Array<{ path: string; original: string; content: string }> = [];
 
   for (const filePath of allFiles) {
-    let original: string;
+    let rawBuffer: Buffer;
     try {
-      original = await fs.readFile(filePath, 'utf-8');
+      rawBuffer = await fs.readFile(filePath);
     } catch {
       continue;
     }
 
+    // Skip UTF-16 encoded files (UTF-16 LE BOM: FF FE, UTF-16 BE BOM: FE FF).
+    // These cannot be round-tripped through the UTF-8 remark pipeline without
+    // corruption, so we leave them untouched.
+    if (
+      (rawBuffer[0] === 0xff && rawBuffer[1] === 0xfe) ||
+      (rawBuffer[0] === 0xfe && rawBuffer[1] === 0xff)
+    ) {
+      log(`Init: skipping UTF-16 file: ${relative(vaultPath, filePath)}`);
+      continue;
+    }
+
+    const original = rawBuffer.toString('utf-8');
     const normalized = normalize(original);
     if (normalized !== original) {
       changes.push({ path: filePath, original, content: normalized });

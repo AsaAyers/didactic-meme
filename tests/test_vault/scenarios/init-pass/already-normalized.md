@@ -1,1 +1,1 @@
-- [ ] Already normalized task due:today
+* [ ] Already normalized task due:today

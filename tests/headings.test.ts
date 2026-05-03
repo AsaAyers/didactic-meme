@@ -10,12 +10,12 @@ describe('appendUnderHeading', () => {
     appendUnderHeading(tree, 'Completed Tasks', ['- [x] Task one', '- [x] Task two']);
 
     const out = stringifyMarkdown(tree);
-    expect(out).toContain('- [x] Task one');
-    expect(out).toContain('- [x] Task two');
+    expect(out).toContain('* [x] Task one');
+    expect(out).toContain('* [x] Task two');
     // Should appear before "Other Section"
     const completedIdx = out.indexOf('## Completed Tasks');
     const otherIdx = out.indexOf('## Other Section');
-    const taskOneIdx = out.indexOf('- [x] Task one');
+    const taskOneIdx = out.indexOf('* [x] Task one');
     expect(taskOneIdx).toBeGreaterThan(completedIdx);
     expect(taskOneIdx).toBeLessThan(otherIdx);
   });
@@ -29,10 +29,10 @@ describe('appendUnderHeading', () => {
     const out = stringifyMarkdown(tree);
     // Should not have multiple consecutive blank lines before the new task
     expect(out).toContain('Existing entry');
-    expect(out).toContain('- [x] New task');
+    expect(out).toContain('* [x] New task');
     // The new task should follow without excessive blanks
     const existingIdx = out.indexOf('Existing entry');
-    const newTaskIdx = out.indexOf('- [x] New task');
+    const newTaskIdx = out.indexOf('* [x] New task');
     expect(newTaskIdx).toBeGreaterThan(existingIdx);
   });
 
@@ -44,7 +44,7 @@ describe('appendUnderHeading', () => {
 
     const out = stringifyMarkdown(tree);
     expect(out).toContain('## Completed Tasks');
-    expect(out).toContain('- [x] Created task');
+    expect(out).toContain('* [x] Created task');
   });
 
   it('appends at end of heading block and not after next heading', () => {
@@ -56,7 +56,7 @@ describe('appendUnderHeading', () => {
     const out = stringifyMarkdown(tree);
     const sectionAIdx = out.indexOf('## Section A');
     const sectionBIdx = out.indexOf('## Section B');
-    const newItemIdx = out.indexOf('- New item in A');
+    const newItemIdx = out.indexOf('* New item in A');
 
     expect(newItemIdx).toBeGreaterThan(sectionAIdx);
     expect(newItemIdx).toBeLessThan(sectionBIdx);
