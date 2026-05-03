@@ -123,7 +123,7 @@ describe('date helpers', () => {
     expect(formatDateStr(addDays(d, -1))).toBe('2026-05-02');
   });
 
-  it('diffDays computes the difference', () => {
+  it('differenceInCalendarDays computes the difference', () => {
     const a = new Date(2026, 4, 3);
     const b = new Date(2026, 4, 17);
     expect(differenceInCalendarDays(b, a)).toBe(14);
