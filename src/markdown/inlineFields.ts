@@ -1,3 +1,5 @@
+import invariant from "tiny-invariant";
+
 /**
  * Get the value of an inline field from task text.
  * Inline fields have the form `key:value` where value is a non-whitespace token.
@@ -7,7 +9,7 @@
  * Throws if the key contains characters that could alter the regex pattern.
  */
 export function getInlineField(text: string, key: string): string | undefined {
-  if (!/^\w+$/.test(key)) throw new Error(`Invalid inline field key: ${key}`);
+  invariant(/^\w+$/.test(key), `Invalid inline field key: ${key}`)
   const regex = new RegExp(`(?:^|\\s)${key}:(\\S+)`);
   const match = text.match(regex);
   return match ? match[1] : undefined;
@@ -22,7 +24,7 @@ export function getInlineField(text: string, key: string): string | undefined {
  * Throws if the key contains characters that could alter the regex pattern.
  */
 export function setInlineField(text: string, key: string, value: string): string {
-  if (!/^\w+$/.test(key)) throw new Error(`Invalid inline field key: ${key}`);
+  invariant( /^\w+$/.test(key), `Invalid inline field key: ${key}`);
   const regex = new RegExp(`((?:^|\\s))${key}:\\S+`);
   if (regex.test(text)) {
     return text.replace(regex, `$1${key}:${value}`);
