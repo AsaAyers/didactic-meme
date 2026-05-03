@@ -132,16 +132,3 @@ export type RuleSpec = {
   query: Query;
   actions: Action[];
 };
-
-// --- CollectSpec ------------------------------------------------------------
-
-/**
- * Collects the text of all tasks matching the optional predicate across all
- * source files and writes them as a GFM task list to a vault-relative path.
- */
-export type CollectSpec = {
-  name: string;
-  sources: Source[];
-  predicate?: TaskPredicate;
-  outputFile: string;
-};

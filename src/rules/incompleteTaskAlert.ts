@@ -1,4 +1,4 @@
-import type { CollectSpec, CustomAction, RuleSpec } from './types.js';
+import type { CustomAction, RuleSpec } from './types.js';
 import type { Task } from '../markdown/tasks.js';
 
 const httpAlert: CustomAction = {
@@ -14,16 +14,9 @@ const httpAlert: CustomAction = {
   },
 };
 
-export const incompleteTaskAlertSpec: CollectSpec = {
+export const incompleteTaskAlertSpec: RuleSpec = {
   name: 'incompleteTaskAlert',
   sources: [{ type: 'glob', pattern: '**/*.md' }],
-  predicate: { type: 'unchecked' },
-  outputFile: 'tmp_alert.md',
-};
-
-export const httpAlertSpec: RuleSpec = {
-  name: 'httpAlert',
-  sources: [{ type: 'path', value: 'tmp_alert.md' }],
-  query: { type: 'tasks' },
+  query: { type: 'tasks', predicate: { type: 'unchecked' } },
   actions: [httpAlert],
 };

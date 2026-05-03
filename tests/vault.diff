@@ -71,24 +71,3 @@ Index: scenarios/repeat-rollover/tasks.md
 @@ -1,1 +1,1 @@
 -- [x] Task start:2026-04-27 snooze:2026-04-29 due:2026-05-02 repeat:a completionDate:2026-05-03
 +- [ ] Task start:2026-05-04 snooze:2026-05-06 due:2026-05-09 repeat:a completionDate:2026-05-03
-Index: tmp_alert.md
-===================================================================
---- tmp_alert.md
-+++ tmp_alert.md
-@@ -0,0 +1,16 @@
-+- [ ] Pay bills due:2026-05-03
-+- [ ] Call dentist start:2026-05-03
-+- [ ] Take meds snooze:2026-05-03
-+- [ ] Todo
-+- [ ] Overdue due:2026-04-01
-+- [ ] Future due:2026-06-01
-+- [ ] With due:2026-05-01
-+- [ ] Without
-+- [ ] A due:2026-05-03
-+- [ ] B
-+- [ ] Task A due:2026-05-02
-+- [ ] Task B start:2026-05-04
-+- [ ] Water plants repeat:s completionDate:2026-05-03 due:2026-05-10
-+- [ ] Task start:2026-05-04 snooze:2026-05-06 due:2026-05-09 repeat:a completionDate:2026-05-03
-+- [ ] Water plants repeat:s completionDate:2026-05-03 due:2026-05-10
-+- [ ] Todo due:2026-05-03

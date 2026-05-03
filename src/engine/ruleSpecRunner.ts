@@ -8,7 +8,6 @@ import { parseDateStr, parseRepeat, computeNextDue } from '../rules/scheduleUtil
 import { walkMarkdownFiles } from './io.js';
 import type {
   Action,
-  CollectSpec,
   FileChange,
   GlobSource,
   PathSource,
@@ -284,51 +283,5 @@ export async function runRuleSpec(
   return {
     changes,
     summary: `Modified ${totalModified} task(s) across ${changes.length} file(s).`,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// CollectSpec runner
-// ---------------------------------------------------------------------------
-
-/**
- * Run a CollectSpec: walk all source files, filter tasks by predicate, and
- * write the results as a GFM task list to the spec's outputFile inside the vault.
- * The optional CustomAction is NOT invoked here — the runner calls it after flush.
- */
-export async function runCollectSpec(
-  spec: CollectSpec,
-  ctx: RuleContext,
-): Promise<{ changes: FileChange[]; summary: string }> {
-  const { vaultPath, today } = ctx;
-  const filePaths = await resolveSources(vaultPath, spec.sources);
-
-  const taskTexts: string[] = [];
-  for (const filePath of filePaths) {
-    let raw: string;
-    try {
-      raw = await ctx.readFile(filePath);
-    } catch {
-      continue;
-    }
-    if (!raw) continue;
-
-    const tree = parseMarkdown(raw);
-    const allTasks = extractTasks(tree);
-    const { predicate } = spec;
-    const selected = predicate
-      ? allTasks.filter((t) => evaluatePredicate(t, predicate, today))
-      : allTasks;
-    for (const task of selected) {
-      taskTexts.push(task.text);
-    }
-  }
-
-  const outputPath = join(vaultPath, spec.outputFile);
-  const content = taskTexts.map((t) => `- [ ] ${t}`).join('\n') + '\n';
-
-  return {
-    changes: [{ path: outputPath, content }],
-    summary: `Found ${taskTexts.length} task(s). Written to ${spec.outputFile}.`,
   };
 }
