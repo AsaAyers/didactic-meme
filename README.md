@@ -123,14 +123,23 @@ VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run --verbose all
 VAULT_PATH=/path/to/your/vault npm run run -- --init
 ```
 
-`--init` performs a formatting-only normalization pass over every `.md` file in
-the vault.  Each file is read, round-tripped through the parse → stringify
-pipeline (remark), and written back **only if the content changed**.  No
-rule-driven transformations are applied (e.g. `due:today` is left as-is).
+`--init` performs a two-step initialization pass over every `.md` file in
+the vault:
+
+1. **Formatting normalization** — each file is round-tripped through the
+   parse → stringify pipeline (remark) and written back only if the content
+   changed.  No rule-driven date transformations are applied (e.g. `due:today`
+   is left as-is).
+
+2. **completionDate stamping** — every checked (`[x]`) task that does **not**
+   already have a `completionDate:` inline field is stamped with
+   `completionDate:YYYY-01-01` where `YYYY` is the current calendar year.
+   This back-fills a consistent, deterministic date for tasks that were
+   completed before `--init` was run.
 
 This is intended to be run once before making rule-driven changes so that
 subsequent diffs reflect only intentional semantic edits rather than incidental
-formatting noise.
+formatting noise or missing completionDate fields.
 
 - Only `.md` files are processed; other file types are ignored.
 - YAML frontmatter (`---\n...\n---`) is preserved verbatim; only the body is normalized.

@@ -26,29 +26,31 @@ async function readScenarioFile(name: string): Promise<string> {
 // Tests
 // ---------------------------------------------------------------------------
 
+const FROZEN_TODAY = new Date(2026, 0, 1); // 2026-01-01 (local) — freeze time for tests
+
 describe('runInitPass', () => {
   it('scans all .md files in the vault (dry-run)', async () => {
-    const { scanned } = await runInitPass(INIT_SCENARIO, true);
-    expect(scanned).toBe(7);
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { scanned } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
+    expect(scanned).toBe(8);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     const paths = changes.map((c) => c.path);
     expect(paths.every((p) => p.endsWith('.md'))).toBe(true);
   });
 
   it('reports a file that needs normalization (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     const needsNorm = changes.find((c) => c.path.includes('needs-normalization'));
     expect(needsNorm, 'needs-normalization.md must appear in changes').toBeDefined();
   });
 
   it('does NOT report a file that is already normalized (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     const alreadyNorm = changes.find((c) => c.path.includes('already-normalized'));
     expect(alreadyNorm, 'already-normalized.md must NOT appear in changes').toBeUndefined();
   });
 
   it('does NOT apply rule-driven transformations — due:today stays as-is (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     const changed = changes.find((c) => c.path.includes('needs-normalization'));
     // The content should still have the literal "due:today" — init never converts it
     expect(changed).toBeDefined();
@@ -59,17 +61,17 @@ describe('runInitPass', () => {
   it('dry-run: does not modify files on disk', async () => {
     const originalContent = await readScenarioFile('needs-normalization.md');
 
-    await runInitPass(INIT_SCENARIO, true);
+    await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
 
     const afterContent = await readScenarioFile('needs-normalization.md');
     expect(afterContent).toBe(originalContent);
   });
 
   it('returns correct scanned/rewritten counts', async () => {
-    const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true);
-    expect(scanned).toBe(7);
-    // Only needs-normalization.md requires a change
-    expect(rewritten).toBe(1);
+    const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
+    expect(scanned).toBe(8);
+    // needs-normalization.md requires a formatting change; with-completed-task.md requires completionDate
+    expect(rewritten).toBe(2);
   });
 
   // ---------------------------------------------------------------------------
@@ -77,7 +79,7 @@ describe('runInitPass', () => {
   // ---------------------------------------------------------------------------
 
   it('preserves Obsidian wikilinks [[...]] without escaping (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     // with-wikilinks.md is already normalized, so it must not appear in changes
     const wikiChange = changes.find((c) => c.path.includes('with-wikilinks'));
     expect(wikiChange, 'with-wikilinks.md is already normalized and must not require changes').toBeUndefined();
@@ -97,7 +99,7 @@ describe('runInitPass', () => {
   // ---------------------------------------------------------------------------
 
   it('preserves Obsidian hashtags without escaping (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     // with-obsidian-tags.md is already normalized — # must not become \#
     const tagChange = changes.find((c) => c.path.includes('with-obsidian-tags'));
     expect(tagChange, 'should not require changes').toBeUndefined();
@@ -118,7 +120,7 @@ describe('runInitPass', () => {
   // ---------------------------------------------------------------------------
 
   it('preserves link query-string ampersands without escaping (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     // with-links.md is already normalized — & must not become \&
     const linkChange = changes.find((c) => c.path.includes('with-links'));
     expect(linkChange, 'should not require changes').toBeUndefined();
@@ -139,7 +141,7 @@ describe('runInitPass', () => {
   // ---------------------------------------------------------------------------
 
   it('preserves Templater <%* syntax without escaping (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     // with-templater.md is already normalized — the <%* must not be changed
     const templaterChange = changes.find((c) => c.path.includes('with-templater'));
     expect(templaterChange, 'with-templater.md is already normalized and must not require changes').toBeUndefined();
@@ -252,7 +254,7 @@ describe('runInitPass', () => {
   // ---------------------------------------------------------------------------
 
   it('preserves YAML frontmatter verbatim (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true);
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     // with-frontmatter.md should NOT appear in changes — the frontmatter
     // should be preserved exactly and the body is already normalized
     const fmChange = changes.find((c) => c.path.includes('with-frontmatter'));
@@ -265,7 +267,7 @@ describe('runInitPass', () => {
 
   it('second pass on already-normalized content produces no changes (stability)', async () => {
     // Run on the scenario dir — should be stable (no unstable files error)
-    await expect(runInitPass(INIT_SCENARIO, true)).resolves.not.toThrow();
+    await expect(runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY)).resolves.not.toThrow();
   });
 
   it('throws when normalization is not stable', async () => {
@@ -291,6 +293,43 @@ describe('runInitPass', () => {
     } finally {
       await fs.rm(TMP_DIR, { recursive: true, force: true });
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // completionDate stamping during --init
+  // ---------------------------------------------------------------------------
+
+  it('stamps completionDate:YYYY-01-01 on checked tasks that lack one (dry-run)', async () => {
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
+    const stamped = changes.find((c) => c.path.includes('with-completed-task'));
+    expect(stamped, 'with-completed-task.md must appear in changes').toBeDefined();
+    expect(stamped!.content).toContain('completionDate:2026-01-01');
+  });
+
+  it('does not overwrite an existing completionDate (dry-run)', async () => {
+    const TMP_DIR = join(__dirname, '..', 'tmp', 'init-stamp-existing-test');
+    await fs.mkdir(TMP_DIR, { recursive: true });
+    try {
+      // File already has a completionDate — init must not overwrite it
+      await fs.writeFile(
+        join(TMP_DIR, 'task.md'),
+        '* [x] Done completionDate:2025-06-15\n',
+        'utf-8',
+      );
+      const { changes } = await runInitPass(TMP_DIR, true, undefined, FROZEN_TODAY);
+      const change = changes.find((c) => c.path.includes('task.md'));
+      // No change expected — completionDate is already present
+      expect(change).toBeUndefined();
+    } finally {
+      await fs.rm(TMP_DIR, { recursive: true, force: true });
+    }
+  });
+
+  it('does not stamp completionDate on unchecked tasks (dry-run)', async () => {
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
+    // already-normalized.md contains only unchecked tasks; it must not be in changes
+    const change = changes.find((c) => c.path.includes('already-normalized'));
+    expect(change).toBeUndefined();
   });
 
   // ---------------------------------------------------------------------------
@@ -332,7 +371,7 @@ describe('runInitPass', () => {
     it('writes normalized content to disk (non-dry-run)', async () => {
       const originalContent = await fs.readFile(join(TMP_DIR, 'needs-normalization.md'), 'utf-8');
 
-      const { rewritten } = await runInitPass(TMP_DIR, false);
+      const { rewritten } = await runInitPass(TMP_DIR, false, undefined, FROZEN_TODAY);
 
       const afterContent = await fs.readFile(join(TMP_DIR, 'needs-normalization.md'), 'utf-8');
       expect(rewritten).toBe(1);
@@ -344,17 +383,17 @@ describe('runInitPass', () => {
     it('does not touch already-normalized files (non-dry-run)', async () => {
       const originalContent = await fs.readFile(join(TMP_DIR, 'already-normalized.md'), 'utf-8');
 
-      await runInitPass(TMP_DIR, false);
+      await runInitPass(TMP_DIR, false, undefined, FROZEN_TODAY);
 
       const afterContent = await fs.readFile(join(TMP_DIR, 'already-normalized.md'), 'utf-8');
       expect(afterContent).toBe(originalContent);
     });
 
     it('running init twice is idempotent', async () => {
-      await runInitPass(TMP_DIR, false);
+      await runInitPass(TMP_DIR, false, undefined, FROZEN_TODAY);
       const afterFirstPass = await fs.readFile(join(TMP_DIR, 'needs-normalization.md'), 'utf-8');
 
-      const { rewritten: secondPassRewrites } = await runInitPass(TMP_DIR, false);
+      const { rewritten: secondPassRewrites } = await runInitPass(TMP_DIR, false, undefined, FROZEN_TODAY);
 
       const afterSecondPass = await fs.readFile(join(TMP_DIR, 'needs-normalization.md'), 'utf-8');
       expect(secondPassRewrites).toBe(0);
@@ -363,8 +402,8 @@ describe('runInitPass', () => {
 
     it('preserves wikilinks without escaping after write', async () => {
       const originalContent = await fs.readFile(join(TMP_DIR, 'with-wikilinks.md'), 'utf-8');
-      // Run init — should not change the file (already normalized)
-      const { rewritten } = await runInitPass(TMP_DIR, false);
+      // Run init — should not change the file (already normalized, no checked tasks)
+      const { rewritten } = await runInitPass(TMP_DIR, false, undefined, FROZEN_TODAY);
       const afterContent = await fs.readFile(join(TMP_DIR, 'with-wikilinks.md'), 'utf-8');
 
       // File should be unchanged (already normalized)
@@ -378,11 +417,23 @@ describe('runInitPass', () => {
 
     it('preserves frontmatter verbatim after write', async () => {
       const originalContent = await fs.readFile(join(TMP_DIR, 'with-frontmatter.md'), 'utf-8');
-      await runInitPass(TMP_DIR, false);
+      await runInitPass(TMP_DIR, false, undefined, FROZEN_TODAY);
       const afterContent = await fs.readFile(join(TMP_DIR, 'with-frontmatter.md'), 'utf-8');
 
       expect(afterContent).toBe(originalContent);
       expect(afterContent.startsWith('---\n')).toBe(true);
+    });
+
+    it('stamps completionDate to disk for checked tasks (non-dry-run)', async () => {
+      await fs.copyFile(
+        join(INIT_SCENARIO, 'with-completed-task.md'),
+        join(TMP_DIR, 'with-completed-task.md'),
+      );
+
+      await runInitPass(TMP_DIR, false, undefined, FROZEN_TODAY);
+
+      const afterContent = await fs.readFile(join(TMP_DIR, 'with-completed-task.md'), 'utf-8');
+      expect(afterContent).toContain('completionDate:2026-01-01');
     });
   });
 });

@@ -21,9 +21,9 @@ Options:
   --dry-run                Print unified diffs to stdout; do not write any files.
   --verbose                Show rule-progress logs and the run summary (normally
                            suppressed in --dry-run mode).
-  --init                   Normalize vault via the parse/rewrite pipeline only
-                           (no rule-driven transforms).  Mutually exclusive with
-                           rule selection.
+  --init                   Normalize vault formatting and stamp completionDate:YYYY-01-01
+                           on checked tasks that lack one (Jan 1 of the current year).
+                           Mutually exclusive with rule selection.
   --help, -h               Show this help message and exit.
 
 Environment variables:
@@ -44,6 +44,6 @@ Examples:
   # because it is a declared dependency of stampCompletionDate)
   VAULT_PATH=/my/vault yarn run run -- --dry-run stampCompletionDate
 
-  # Normalize formatting only (no semantic changes)
+  # Normalize formatting and stamp completionDate on checked tasks
   VAULT_PATH=/my/vault yarn run run -- --init --dry-run
 `;
