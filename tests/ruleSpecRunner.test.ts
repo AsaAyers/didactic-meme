@@ -2,14 +2,19 @@
  * Unit tests for the ruleSpecRunner engine.
  *
  * Only tests that are NOT already exercised by the E2E dry-run in
- * tests/normalizeTodayLiteral.test.ts belong here.  Specifically:
- *   - Date arithmetic for "yesterday" and "tomorrow" literals.
- *   - Engine mechanics (source resolution, predicates, actions) that the
- *     E2E vault does not exercise (no predicates, no path sources, no
- *     setFieldDateIfMissing action).
+ * tests/normalizeTodayLiteral.test.ts belong here.
  *
- * Do NOT add tests that merely re-verify that "today" gets replaced — the
- * E2E snapshot already catches any regression in that path immediately.
+ * The E2E vault (tests/test_vault/) is scanned by normalizeTodayLiteral with
+ * a "**\/*.md" glob, which covers:
+ *   - "today" replacement (main TODO.md)
+ *   - "yesterday" / "tomorrow" date arithmetic (scenarios/relative-dates/)
+ *   - Negative cases: files without matching fields are not modified
+ *     (scenarios/date-before/, scenarios/field-exists/, etc.)
+ *
+ * Tests that remain here cover engine behaviour the E2E vault does NOT exercise:
+ *   - task.setFieldDateIfMissing — not used by normalizeTodayLiteral
+ *   - Predicates (checked, unchecked, fieldExists, fieldDateBefore, not) —
+ *     normalizeTodayLiteral uses no predicate
  *
  * Each test uses a dedicated sub-directory under tests/test_vault/scenarios/
  * as its vaultPath, so no filesystem mocking is needed.  The scenario
@@ -28,8 +33,6 @@ const SCENARIOS = join(__dirname, 'test_vault', 'scenarios');
 
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 const TODAY_STR = '2026-05-03';
-const YESTERDAY_STR = '2026-05-02';
-const TOMORROW_STR = '2026-05-04';
 
 /** Build a context that reads directly from disk (no transform queue). */
 function makeCtx(vaultPath: string): RuleContext {
@@ -41,115 +44,6 @@ function makeCtx(vaultPath: string): RuleContext {
     readFile: (path: string) => fs.readFile(path, 'utf-8').catch(() => ''),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Source resolution
-// ---------------------------------------------------------------------------
-
-describe('ruleSpecRunner — source resolution', () => {
-  it('resolves a path source to an absolute path', async () => {
-    // scenarios/path-source/TODO.md: "- [ ] Task"
-    // The E2E vault only exercises glob sources, not path sources.
-    const ctx = makeCtx(join(SCENARIOS, 'path-source'));
-    const spec: RuleSpec = {
-      name: 'test',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [],
-    };
-    // No actions → file is read but not modified.
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(0);
-  });
-
-  it('glob source excludes non-matching file extensions', async () => {
-    // scenarios/glob-mixed/: a.md, b.md, notes.txt
-    // The E2E vault has no .txt files; this verifies .txt is never matched.
-    const ctx = makeCtx(join(SCENARIOS, 'glob-mixed'));
-    const spec: RuleSpec = {
-      name: 'test',
-      sources: [{ type: 'glob', pattern: '**/*.md' }],
-      query: { type: 'tasks' },
-      actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    // No tasks have due:today in the .md files, and the .txt is never read.
-    expect(result.changes).toHaveLength(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Date arithmetic for relative literals
-// (The E2E vault only uses "today"; yesterday/tomorrow are not in main/TODO.md)
-// ---------------------------------------------------------------------------
-
-describe('ruleSpecRunner — date arithmetic', () => {
-  it('resolves "yesterday" to the day before today', async () => {
-    // scenarios/relative-dates/TODO.md: "- [ ] Task A due:yesterday / - [ ] Task B start:tomorrow"
-    const ctx = makeCtx(join(SCENARIOS, 'relative-dates'));
-    const spec: RuleSpec = {
-      name: 'normalize',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [
-        { type: 'task.replaceFieldDateValue', key: 'due', from: 'yesterday', to: 'yesterday' },
-      ],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]?.content).toContain(`due:${YESTERDAY_STR}`);
-  });
-
-  it('resolves "tomorrow" to the day after today', async () => {
-    // scenarios/relative-dates/TODO.md: "- [ ] Task A due:yesterday / - [ ] Task B start:tomorrow"
-    const ctx = makeCtx(join(SCENARIOS, 'relative-dates'));
-    const spec: RuleSpec = {
-      name: 'normalize',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [
-        { type: 'task.replaceFieldDateValue', key: 'start', from: 'tomorrow', to: 'tomorrow' },
-      ],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]?.content).toContain(`start:${TOMORROW_STR}`);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// task.replaceFieldDateValue — negative / edge cases
-// (The E2E verifies the positive case; these cover behavior not visible there)
-// ---------------------------------------------------------------------------
-
-describe('ruleSpecRunner — replaceFieldDateValue edge cases', () => {
-  it('does not modify a field whose value does not match from', async () => {
-    // scenarios/no-replace/TODO.md: "- [ ] Pay rent due:2026-05-03"
-    // Verifies the "from" guard: only exact matches are replaced.
-    const ctx = makeCtx(join(SCENARIOS, 'no-replace'));
-    const spec: RuleSpec = {
-      name: 'normalize',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(0);
-  });
-
-  it('does not modify tasks that do not have the target field', async () => {
-    // scenarios/no-field/TODO.md: "- [ ] No date fields here"
-    const ctx = makeCtx(join(SCENARIOS, 'no-field'));
-    const spec: RuleSpec = {
-      name: 'normalize',
-      sources: [{ type: 'path', value: 'TODO.md' }],
-      query: { type: 'tasks' },
-      actions: [{ type: 'task.replaceFieldDateValue', key: 'due', from: 'today', to: 'today' }],
-    };
-    const result = await runRuleSpec(spec, ctx);
-    expect(result.changes).toHaveLength(0);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // task.setFieldDateIfMissing

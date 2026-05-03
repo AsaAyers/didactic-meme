@@ -30,6 +30,7 @@ async function walkDirectory(dir: string): Promise<string[]> {
   const results: string[] = [];
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
+    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     for (const entry of entries) {
       const name = entry.name as string;
       const fullPath = join(dir, name);
