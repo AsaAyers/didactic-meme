@@ -55,21 +55,14 @@ export class FileWriteManager {
 
   /**
    * Flush all staged changes.
-   * In dry-run mode, calls `log` for each file instead of writing to disk.
+   * In dry-run mode, files are NOT written to disk; the staged changes are
+   * returned so the caller can generate diffs or other output.
    * Returns the full list of staged changes (path + final content).
-   *
-   * @param log  Line-emitting function; defaults to console.log.  Pass a
-   *             collecting function to capture output for testing.
    */
-  async commit(
-    dryRun: boolean,
-    log: (msg: string) => void = console.log,
-  ): Promise<Array<{ path: string; content: string }>> {
+  async commit(dryRun: boolean): Promise<Array<{ path: string; content: string }>> {
     const changes: Array<{ path: string; content: string }> = [];
     for (const [filePath, content] of this.pending) {
-      if (dryRun) {
-        log(`[dry-run] Would write: ${filePath}`);
-      } else {
+      if (!dryRun) {
         await fs.mkdir(dirname(filePath), { recursive: true });
         await fs.writeFile(filePath, content, 'utf-8');
       }

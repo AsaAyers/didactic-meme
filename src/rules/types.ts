@@ -2,6 +2,11 @@ export type RuleContext = {
   vaultPath: string;
   today: Date;
   dryRun: boolean;
+  /**
+   * When true, emit rule-progress logs and the run summary to the console
+   * even during dry-run mode.  Defaults to false.
+   */
+  verbose?: boolean;
   env: NodeJS.ProcessEnv;
   /**
    * Read a file through the shared transform queue.
