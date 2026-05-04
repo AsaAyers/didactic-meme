@@ -2,7 +2,7 @@ import { join, relative } from 'node:path';
 import { addDays, differenceInCalendarDays, format } from 'date-fns';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
 import { joinFrontmatter, splitFrontmatter } from '../markdown/frontmatter.js';
-import { extractTasks, insertTaskAfter, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
+import { extractTasks, insertTaskAfter, removeTask, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
 import type { Task } from '../markdown/tasks.js';
 import { getInlineField, removeInlineField, setInlineField } from '../markdown/inlineFields.js';
 import { parseDateStr, parseRepeat, computeNextDue } from '../rules/scheduleUtils.js';
@@ -159,7 +159,7 @@ function evaluatePredicate(task: Task, predicate: TaskPredicate, today: Date): b
 // Action application
 // ---------------------------------------------------------------------------
 
-type ActionOutcome = { text: string; uncheck?: boolean; insertDuplicateAfter?: string };
+type ActionOutcome = { text: string; uncheck?: boolean; insertDuplicateAfter?: string; remove?: boolean };
 
 function applyAction(taskText: string, action: Action, today: Date): ActionOutcome {
   switch (action.type) {
@@ -253,6 +253,8 @@ function applyAction(taskText: string, action: Action, today: Date): ActionOutco
     case 'custom':
       // Side-effect action — no text transformation. Fired separately per-file.
       return { text: taskText };
+    case 'task.remove':
+      return { text: taskText, remove: true };
   }
 }
 
@@ -302,11 +304,18 @@ export async function runRuleSpec(
       let newText = task.text;
       let shouldUncheck = false;
       let insertDuplicateText: string | undefined;
+      let shouldRemove = false;
       for (const action of actions) {
         const outcome = applyAction(newText, action, today);
         newText = outcome.text;
         if (outcome.uncheck) shouldUncheck = true;
         if (outcome.insertDuplicateAfter !== undefined) insertDuplicateText = outcome.insertDuplicateAfter;
+        if (outcome.remove) shouldRemove = true;
+      }
+      if (shouldRemove) {
+        removeTask(tree, task.text);
+        modified++;
+        continue;
       }
       const textChanged = newText !== task.text;
       if (textChanged) {

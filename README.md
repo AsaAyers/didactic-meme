@@ -16,6 +16,7 @@ Tasks in any `.md` file in the vault may carry **inline fields** — `key:value`
 | `snooze` | `snooze:2026-05-06` | Suppress surfacing until this date (stronger than `start`). |
 | `repeat` | `repeat:1s` | Recurrence schedule (see grammar below). |
 | `copied` | `copied:1` | Marker set by `completedTaskRollover` to prevent duplicate cloning. |
+| `ephemeral` | `ephemeral:1` | Marks a task as ephemeral — auto-removed if missed (see Rule 5). |
 
 ### `repeat` grammar
 
@@ -288,6 +289,26 @@ Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vau
 
 **Dependencies:** `completedTaskRollover`
 
+### Rule 5 – Remove Ephemeral Overdue Tasks
+
+**Source:** `src/rules/removeEphemeralOverdueTasks.ts`
+
+Removes **unchecked** tasks that carry an `ephemeral` field, have a `due:` date, and whose due date is **strictly before today** (yesterday or earlier).  A task that was not completed by its deadline is considered expired and is deleted from the file.
+
+**Behavior:**
+- Completed (checked) tasks are **never** removed, even if overdue — if you finished it, it stays.
+- An ephemeral task with **no `due:` field** is not removed (safe default; no deadline means no expiry).
+- Idempotent: re-running after removal produces no further changes.
+- `--dry-run` shows the diff of what would be removed without writing.
+
+**Usage:**
+```markdown
+* [ ] Read the article ephemeral:1 due:2026-05-10
+```
+If today is 2026-05-11 and the task is still unchecked, it is silently deleted on the next pipeline run.
+
+**Dependencies:** `normalizeTodayLiteral`
+
 ## Project Structure
 
 ```
@@ -309,6 +330,7 @@ src/
     ├── normalizeTodayLiteral.ts # Rule 1
     ├── stampDone.ts            # Rule 2
     ├── completedTaskRollover.ts # Rule 3
+    ├── removeEphemeralOverdueTasks.ts # Rule 5
     └── incompleteTaskAlert.ts  # Rule 4
 tests/
 ├── cli.test.ts                 # --help text, selectedRuleNames behaviour
