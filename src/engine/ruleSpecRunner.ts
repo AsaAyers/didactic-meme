@@ -198,9 +198,7 @@ function applyAction(taskText: string, action: Action, today: Date): ActionOutco
       return { text: newText, uncheck: true };
     }
     case 'task.rollover': {
-      // Build the text for the cloned incomplete task: strip done: (not needed
-      // on an active task) and do not add copied: to the clone.
-      const doneStr = getInlineField(taskText, 'done');
+      // Create clone text: remove done: (not applicable on an active task).
       let cloneText = removeInlineField(taskText, 'done');
 
       // Apply the repeat schedule to the clone's dates, leaving the original
@@ -209,6 +207,7 @@ function applyAction(taskText: string, action: Action, today: Date): ActionOutco
       if (repeatStr) {
         const schedule = parseRepeat(repeatStr);
         if (schedule) {
+          const doneStr = getInlineField(taskText, 'done');
           const doneDate = doneStr ? (parseDateStr(doneStr) ?? today) : today;
           const newDue = computeNextDue(doneDate, schedule);
           const newDueStr = formatDate(newDue);

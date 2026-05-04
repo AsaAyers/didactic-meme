@@ -29,7 +29,7 @@ export function removeInlineField(text: string, key: string): string {
   // Match an optional preceding space (or start-of-string) plus key:value.
   // Replacing the whole match (including the leading space, if any) with ''
   // ensures no double-spaces are left behind.
-  return text.replace(new RegExp(`(^|\\s)${key}:\\S+`), '').trim();
+  return text.replace(new RegExp(`(^|\\s)${key}:\\S+`), '').replace(/\s{2,}/g, ' ').trim();
 }
 
 /**
