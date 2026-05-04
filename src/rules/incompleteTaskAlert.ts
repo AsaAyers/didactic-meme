@@ -52,7 +52,7 @@ const httpAlert: CustomAction = {
 
 export const incompleteTaskAlertSpec: RuleSpec = {
   name: "incompleteTaskAlert",
-  dependencies: ["completedTaskRollover"],
+  dependencies: ["stampDone"],
   sources: [
     {
       type: "glob",
