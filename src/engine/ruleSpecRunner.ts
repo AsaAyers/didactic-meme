@@ -26,6 +26,7 @@ import type {
  * Minimal glob matcher that supports the patterns the engine needs:
  *   **\/*.ext  — any file with the given extension, anywhere in the tree
  *   *.ext      — files with the given extension in the root dir only
+ *   dir/**    — all files under dir/, at any depth
  *
  * Processes the pattern character-by-character to avoid ordering issues that
  * arise when chained string replacements modify tokens injected by earlier
@@ -44,6 +45,11 @@ function matchesGlob(relPath: string, pattern: string): boolean {
       // **/ → any directory prefix (zero or more path segments)
       regexStr += '(?:.+/)?';
       i += 3;
+    } else if (ch === '*' && pat[i + 1] === '*') {
+      // ** at end of pattern or followed by a non-/ character → match any
+      // sequence of characters, including path separators.
+      regexStr += '.*';
+      i += 2;
     } else if (ch === '*') {
       regexStr += '[^/]*';
       i++;
@@ -68,7 +74,12 @@ async function resolveSource(vaultPath: string, source: GlobSource | PathSource)
   }
   // glob
   const allFiles = await walkMarkdownFiles(vaultPath);
-  return allFiles.filter((f) => matchesGlob(relative(vaultPath, f), source.pattern));
+  const excluded = source.exclude ?? [];
+  return allFiles.filter(
+    (f) =>
+      matchesGlob(relative(vaultPath, f), source.pattern) &&
+      !excluded.some((ex) => matchesGlob(relative(vaultPath, f), ex)),
+  );
 }
 
 async function resolveSources(vaultPath: string, sources: Source[]): Promise<string[]> {

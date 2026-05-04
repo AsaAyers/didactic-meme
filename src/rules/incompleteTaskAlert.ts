@@ -21,7 +21,7 @@ const httpAlert: CustomAction = {
 export const incompleteTaskAlertSpec: RuleSpec = {
   name: 'incompleteTaskAlert',
   dependencies: ['completedTaskRollover'],
-  sources: [{ type: 'glob', pattern: '**/*.md' }],
+  sources: [{ type: 'glob', pattern: '**/*.md', exclude: ['archive/**', 'templates/**'] }],
   query: { type: 'tasks', predicate: { type: 'unchecked' } },
   actions: [httpAlert],
 };

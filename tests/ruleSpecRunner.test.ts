@@ -202,6 +202,74 @@ describe('ruleSpecRunner — predicates', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GlobSource exclude patterns
+// (Verifies that files matching exclude patterns are not processed)
+// ---------------------------------------------------------------------------
+
+describe('ruleSpecRunner — GlobSource exclude patterns', () => {
+  // scenarios/exclude-patterns/:
+  //   active.md        — should be included (has one unchecked task)
+  //   archive/old.md   — must be excluded by 'archive/**'
+  //   templates/weekly.md — must be excluded by 'templates/**'
+
+  it('excludes files matching a single exclude pattern', async () => {
+    const ctx = makeCtx(join(SCENARIOS, 'exclude-patterns'));
+    const spec: RuleSpec = {
+      name: 'test',
+      sources: [{ type: 'glob', pattern: '**/*.md', exclude: ['archive/**'] }],
+      query: { type: 'tasks', predicate: { type: 'unchecked' } },
+      actions: [{ type: 'task.setFieldDateIfMissing', key: 'due', value: 'today' }],
+    };
+    const result = await runRuleSpec(spec, ctx);
+
+    // active.md and templates/weekly.md are included → 2 files changed.
+    // archive/old.md is excluded → its task must not appear.
+    const paths = result.changes.map((c) => c.path);
+    expect(paths.some((p) => p.includes('archive'))).toBe(false);
+    // active.md was processed.
+    expect(paths.some((p) => p.includes('active'))).toBe(true);
+  });
+
+  it('excludes files matching multiple exclude patterns', async () => {
+    const ctx = makeCtx(join(SCENARIOS, 'exclude-patterns'));
+    const spec: RuleSpec = {
+      name: 'test',
+      sources: [{ type: 'glob', pattern: '**/*.md', exclude: ['archive/**', 'templates/**'] }],
+      query: { type: 'tasks', predicate: { type: 'unchecked' } },
+      actions: [{ type: 'task.setFieldDateIfMissing', key: 'due', value: 'today' }],
+    };
+    const result = await runRuleSpec(spec, ctx);
+
+    // Only active.md remains after both exclusions.
+    expect(result.changes).toHaveLength(1);
+    expect(result.changes[0]?.path).toContain('active');
+    // Neither archived nor template tasks appear in the output.
+    const allContent = result.changes.map((c) => c.content).join('');
+    expect(allContent).toContain('Active task');
+    expect(allContent).not.toContain('archived');
+    expect(allContent).not.toContain('Template');
+  });
+
+  it('without exclude patterns all files are included', async () => {
+    const ctx = makeCtx(join(SCENARIOS, 'exclude-patterns'));
+    const spec: RuleSpec = {
+      name: 'test',
+      sources: [{ type: 'glob', pattern: '**/*.md' }],
+      query: { type: 'tasks', predicate: { type: 'unchecked' } },
+      actions: [{ type: 'task.setFieldDateIfMissing', key: 'due', value: 'today' }],
+    };
+    const result = await runRuleSpec(spec, ctx);
+
+    // All three files are included.
+    expect(result.changes).toHaveLength(3);
+    const allContent = result.changes.map((c) => c.content).join('');
+    expect(allContent).toContain('Active task');
+    expect(allContent).toContain('archived');
+    expect(allContent).toContain('Template');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // sortRuleSpecs — dependency-based topological ordering
 // ---------------------------------------------------------------------------
 
