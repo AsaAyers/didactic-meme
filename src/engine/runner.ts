@@ -358,7 +358,7 @@ export async function runInitPass(
 
   const stampResult = await runRuleSpec(stampCompletionDateSpec, {
     vaultPath,
-    today: new Date(),
+    today: new Date(), // required by RuleContext; not read because stampCompletionDateSpec uses value:'unknown'
     dryRun: false, // dry-run is handled for the whole init pass below
     env: {},
     readFile: stampReadFile,
