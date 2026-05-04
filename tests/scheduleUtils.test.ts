@@ -15,6 +15,27 @@ describe('parseRepeat', () => {
     expect(s!.days).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]));
   });
 
+  it('parses daily shorthand "d" (alias for smtwhfa)', () => {
+    const s = parseRepeat('d');
+    expect(s).not.toBeNull();
+    expect(s!.skipWeeks).toBe(0);
+    expect(s!.days).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]));
+  });
+
+  it('parses "1d" — daily shorthand with skipWeeks=1', () => {
+    const s = parseRepeat('1d');
+    expect(s).not.toBeNull();
+    expect(s!.skipWeeks).toBe(1);
+    expect(s!.days).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]));
+  });
+
+  it('parses "2d" — daily shorthand with skipWeeks=2', () => {
+    const s = parseRepeat('2d');
+    expect(s).not.toBeNull();
+    expect(s!.skipWeeks).toBe(2);
+    expect(s!.days).toEqual(new Set([0, 1, 2, 3, 4, 5, 6]));
+  });
+
   it('parses a single-day repeat without skip weeks', () => {
     const s = parseRepeat('s');
     expect(s).not.toBeNull();
@@ -48,6 +69,9 @@ describe('parseRepeat', () => {
     expect(parseRepeat('2')).toBeNull();
     expect(parseRepeat('xyz')).toBeNull();
     expect(parseRepeat('2x')).toBeNull();
+    // "d" mixed with explicit weekday letters is not a valid form
+    expect(parseRepeat('ds')).toBeNull();
+    expect(parseRepeat('sd')).toBeNull();
   });
 });
 
@@ -61,23 +85,49 @@ describe('computeNextDue', () => {
     expect(formatDateStr(next)).toBe('2026-05-04'); // Monday
   });
 
+  it('"d" shorthand: same result as smtwhfa — next day after completion', () => {
+    const schedule = parseRepeat('d')!;
+    const next = computeNextDue(sunday, schedule);
+    expect(formatDateStr(next)).toBe('2026-05-04'); // Monday
+  });
+
+  it('"1d" shorthand on Tuesday: next due is Monday (1 week - 1 day out)', () => {
+    // Tuesday May 5 2026
+    const tuesday = new Date(2026, 4, 5);
+    const schedule = parseRepeat('1d')!;
+    const next = computeNextDue(tuesday, schedule);
+    // offset = 1*7-1 = 6; minDate = Tue May 5 + 6 = Mon May 11; first valid day = Mon May 11
+    expect(formatDateStr(next)).toBe('2026-05-11');
+  });
+
+  it('"1d" shorthand on Monday: next due is Sunday (6 days out)', () => {
+    // Monday May 4 2026
+    const monday = new Date(2026, 4, 4);
+    const schedule = parseRepeat('1d')!;
+    const next = computeNextDue(monday, schedule);
+    // offset = 6; minDate = Mon May 4 + 6 = Sun May 10; first valid day = Sun May 10
+    expect(formatDateStr(next)).toBe('2026-05-10');
+  });
+
   it('weekly on Sunday (skipWeeks=0): next Sunday is 7 days away', () => {
     const schedule = parseRepeat('s')!;
     const next = computeNextDue(sunday, schedule);
     expect(formatDateStr(next)).toBe('2026-05-10'); // +7 days, next Sunday
   });
 
-  it('skipWeeks=1 on Sunday: minDate is +8 days (Monday), next Sunday is +14', () => {
+  it('skipWeeks=1 on Sunday: minDate is +6 days (Saturday), next Sunday is +7', () => {
     const schedule = parseRepeat('1s')!;
     const next = computeNextDue(sunday, schedule);
-    expect(formatDateStr(next)).toBe('2026-05-17'); // +14 days
+    // offset = 6; minDate = Sun May 3 + 6 = Sat May 9; next Sunday >= Sat = May 10
+    expect(formatDateStr(next)).toBe('2026-05-10'); // +7 days
   });
 
-  it('skipWeeks=1 on Saturday: minDate is +8 days (Sunday), next Sunday is +8', () => {
+  it('skipWeeks=1 on Saturday: minDate is +6 days (Friday), next Sunday is +8', () => {
     // Saturday May 2 2026
     const saturday = new Date(2026, 4, 2);
     const schedule = parseRepeat('1s')!;
     const next = computeNextDue(saturday, schedule);
+    // offset = 6; minDate = Sat May 2 + 6 = Fri May 8; next Sunday >= Fri = May 10
     expect(formatDateStr(next)).toBe('2026-05-10'); // Sunday +8 days
   });
 

@@ -20,12 +20,30 @@ export type RepeatSchedule = {
 };
 
 /**
- * Parse a `repeat:` value (e.g. "smtwhfa", "1s", "2mwf") into a schedule.
- * Grammar: `<skipWeeks?>` (integer, defaults to 0) followed by one or more
- * weekday characters from the alphabet `smtwhfa`.
+ * Parse a `repeat:` value into a schedule.
+ *
+ * Two forms are accepted:
+ *
+ * 1. Daily shorthand: `<skipWeeks?>d`
+ *    `d` is an alias for all seven days (`smtwhfa`).
+ *    Examples: "d" → every day; "1d" → skip 1 week then next day.
+ *
+ * 2. Explicit weekday form: `<skipWeeks?>` followed by one or more characters
+ *    from the alphabet `smtwhfa` (s=Sun, m=Mon, t=Tue, w=Wed, h=Thu, f=Fri,
+ *    a=Sat).
+ *    Examples: "smtwhfa", "1s", "2mwf".
+ *
  * Returns null if the string is not a valid repeat value.
  */
 export function parseRepeat(value: string): RepeatSchedule | null {
+  // Daily shorthand: optional skip-weeks prefix followed by exactly "d".
+  const dailyMatch = value.match(/^(\d+)?d$/);
+  if (dailyMatch) {
+    const skipWeeks = dailyMatch[1] !== undefined ? parseInt(dailyMatch[1], 10) : 0;
+    return { skipWeeks, days: new Set([0, 1, 2, 3, 4, 5, 6]) };
+  }
+
+  // Explicit weekday form.
   const match = value.match(/^(\d+)?([smtwhfa]+)$/);
   if (!match) return null;
   const skipWeeks = match[1] !== undefined ? parseInt(match[1], 10) : 0;
@@ -56,12 +74,19 @@ export function parseDateStr(dateStr: string): Date | null {
  * Compute the next due date for a repeating task.
  *
  * Algorithm:
- *   minDate = completionDate + skipWeeks*7 + 1  (strictly after completion)
+ *   offset  = skipWeeks === 0 ? 1 : skipWeeks × 7 − 1
+ *   minDate = completionDate + offset
  *   newDue  = first date >= minDate whose weekday is in schedule.days
+ *
+ * The (n×7 − 1) offset for n > 0 keeps the schedule anchored to the same
+ * weekday each cycle instead of drifting forward by one day per completion.
+ * Example: repeat:1mwf completed on Monday → minDate is Sunday → next
+ * Mon/Wed/Fri ≥ Sunday = Monday (same weekday, ~1 week later).
  */
 export function computeNextDue(completionDate: Date, schedule: RepeatSchedule): Date {
   const { skipWeeks, days } = schedule;
-  const minDate = addDays(completionDate, skipWeeks * 7 + 1);
+  const offset = skipWeeks === 0 ? 1 : skipWeeks * 7 - 1;
+  const minDate = addDays(completionDate, offset);
   let candidate = new Date(minDate);
   // 400 iterations is a safe upper bound: even with a single allowed weekday
   // the gap between occurrences is at most 6 days (< 7), so we will always
