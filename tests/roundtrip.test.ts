@@ -141,6 +141,19 @@ describe('round-trip: nested lists', () => {
     const src = '* Item 1\n\n  * Nested 1\n\n  * Nested 2\n\n* Item 2\n';
     expect(roundTrip(src)).toBe(src);
   });
+
+  // Regression: remark-stringify with listItemIndent:'one' lost indentation
+  // and inserted a blank line when a numbered list was nested inside a bullet.
+  it('preserves nested numbered list in bullet — exact repro', () => {
+    const src = '* bulleted list\n  1. Nested numbered list\n  2. Next item\n';
+    expect(roundTrip(src)).toBe(src);
+  });
+
+  it('is idempotent for nested numbered list inside bullet list', () => {
+    const src = '* bulleted list\n  1. Nested numbered list\n  2. Next item\n';
+    const once = roundTrip(src);
+    expect(roundTrip(once)).toBe(once);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -163,6 +176,15 @@ describe('round-trip: YAML front-matter', () => {
     // stripping frontmatter before passing the body to remark.
     const { normalizeFileContent } = await import('../src/engine/runner.js');
     const src = '---\npublish: false\n---\n';
+    expect(normalizeFileContent(src)).toBe(src);
+  });
+
+  it('normalizeFileContent preserves nested numbered list in bullet list', async () => {
+    // Regression: bullet → ordered nesting must survive the full normalise
+    // pipeline (parseFrontmatter → parseMarkdown → stringifyMarkdown) without
+    // losing indentation or gaining a blank line between the two lists.
+    const { normalizeFileContent } = await import('../src/engine/runner.js');
+    const src = '* bulleted list\n  1. Nested numbered list\n  2. Next item\n';
     expect(normalizeFileContent(src)).toBe(src);
   });
 });
