@@ -101,7 +101,7 @@ When a new rule is added in a future release, its default entry is merged into y
 
 The file is validated with [zod](https://zod.dev/) on every run.  If the file is malformed or contains an invalid source type the run aborts with a clear error message.  Fix or delete the file and re-run.
 
-
+## Environment Variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|

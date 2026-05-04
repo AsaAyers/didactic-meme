@@ -19,7 +19,7 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
-import type { RuleSpec, Source } from './rules/types.js';
+import type { RuleSpec } from './rules/types.js';
 
 // ---------------------------------------------------------------------------
 // Zod schemas
@@ -145,6 +145,6 @@ export function applyConfig(specs: RuleSpec[], config: Config): RuleSpec[] {
   return specs.map((spec) => {
     const entry = config[spec.name];
     if (!entry) return spec;
-    return { ...spec, sources: entry.sources as Source[] };
+    return { ...spec, sources: entry.sources };
   });
 }
