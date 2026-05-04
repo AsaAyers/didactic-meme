@@ -121,8 +121,10 @@ describe('runAllRules — selectedRuleNames', () => {
     // with no done: field in the source must not appear in the staged changes
     // (normalizeTodayLiteral has nothing to change in them, and stampDone
     // was not selected so it can't add done: either).
-    const unstampedScenarios = ['set-missing', 'repeat-today-fallback'];
-    for (const name of unstampedScenarios) {
+    // These scenarios contain checked tasks with no done: field, so only
+    // stampDone would change them — normalizeTodayLiteral has nothing to do.
+    const scenariosChangedOnlyByStampDone = ['set-missing', 'repeat-today-fallback'];
+    for (const name of scenariosChangedOnlyByStampDone) {
       const change = changes.find((c) => c.path.includes(name));
       expect(
         change,
