@@ -89,14 +89,11 @@ export type Query = TaskQuery;
 /**
  * Set a date field on the task only when the field is absent.
  * value: ISO date string or "today" (resolved to ctx.today at run time).
- * legacyAliases: if any of these fields are present the action is also a no-op
- *   (backward compatibility — e.g. treat existing `completionDate` as `done`).
  */
 export type SetFieldDateIfMissingAction = {
   type: 'task.setFieldDateIfMissing';
   key: string;
   value: string;
-  legacyAliases?: string[];
 };
 
 /**
@@ -116,8 +113,7 @@ export type ReplaceFieldDateValueAction = {
  * the completion date and the repeat schedule, shift `start:` and `snooze:`
  * by the same delta, then uncheck the task to reschedule it.
  *
- * Falls back to `ctx.today` when the `done:` field is absent (also reads the
- * legacy `completionDate:` field as an alias).
+ * Falls back to `ctx.today` when the `done:` field is absent.
  * No-op when the task has no valid `repeat:` field.
  */
 export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };

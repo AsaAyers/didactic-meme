@@ -5,12 +5,5 @@ export const stampDoneSpec: RuleSpec = {
   dependencies: ['normalizeTodayLiteral'],
   sources: [{ type: 'glob', pattern: '**/*.md' }],
   query: { type: 'tasks', predicate: { type: 'checked' } },
-  actions: [
-    {
-      type: 'task.setFieldDateIfMissing',
-      key: 'done',
-      value: 'unknown',
-      legacyAliases: ['completionDate'],
-    },
-  ],
+  actions: [{ type: 'task.setFieldDateIfMissing', key: 'done', value: 'unknown' }],
 };

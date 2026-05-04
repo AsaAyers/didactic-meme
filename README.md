@@ -136,8 +136,6 @@ the vault:
    `done:unknown`.
    This back-fills a placeholder date for tasks that were
    completed before `--init` was run.
-   Tasks that still use the legacy `completionDate:` field are left unchanged
-   (backward-compatible: `completionDate:` is treated as an alias for `done:`).
 
 This is intended to be run once before making rule-driven changes so that
 subsequent diffs reflect only intentional semantic edits rather than incidental
@@ -211,8 +209,6 @@ real dates rather than relative keywords.
 
 Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps each one that does **not** already carry a `done:YYYY-MM-DD` inline field with `done:<today>`. This ensures every completed task has an explicit, traceable completion timestamp before later rules run.
 
-Tasks that carry the legacy `completionDate:` field are treated as already stamped (backward-compatible).
-
 **Dependencies:** `normalizeTodayLiteral`
 
 ### Rule 3 – Completed Task Rollover
@@ -221,7 +217,7 @@ Tasks that carry the legacy `completionDate:` field are treated as already stamp
 
 Processes every completed task across all `**/*.md` files in the vault:
 
-- **With `repeat:`**: Computes the next due date using the repeat grammar and the `done` inline field (also reads the legacy `completionDate:` field as an alias; falls back to today if neither is present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = done`). Unchecks the task so it stays in its source file for the next cycle.
+- **With `repeat:`**: Computes the next due date using the repeat grammar and the `done` inline field (falls back to today if the field is not yet present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = done`). Unchecks the task so it stays in its source file for the next cycle.
 - **Without `repeat:`**: Removes the task from its source file in place.
 
 **Dependencies:** `stampDone`

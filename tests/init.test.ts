@@ -362,25 +362,6 @@ describe('runInitPass', () => {
     expect(change).toBeUndefined();
   });
 
-  it('does not stamp done when legacy completionDate is already present (backward compat, dry-run)', async () => {
-    const TMP_DIR = join(__dirname, '..', 'tmp', 'init-stamp-legacy-test');
-    await fs.mkdir(TMP_DIR, { recursive: true });
-    try {
-      // File has the old completionDate: field — init must treat it as already stamped
-      await fs.writeFile(
-        join(TMP_DIR, 'task.md'),
-        '* [x] Done completionDate:2025-06-15\n',
-        'utf-8',
-      );
-      const { changes } = await runInitPass(TMP_DIR, true, undefined);
-      const change = changes.find((c) => c.path.includes('task.md'));
-      // No change expected — completionDate is present and treated as alias for done
-      expect(change).toBeUndefined();
-    } finally {
-      await fs.rm(TMP_DIR, { recursive: true, force: true });
-    }
-  });
-
   // ---------------------------------------------------------------------------
   // Write mode
   // ---------------------------------------------------------------------------

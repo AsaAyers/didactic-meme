@@ -154,10 +154,6 @@ function applyAction(taskText: string, action: Action, today: Date): ActionOutco
   switch (action.type) {
     case 'task.setFieldDateIfMissing': {
       if (getInlineField(taskText, action.key) !== undefined) return { text: taskText };
-      // Backward-compat: treat any legacy alias field as equivalent to the key being present.
-      for (const alias of action.legacyAliases ?? []) {
-        if (getInlineField(taskText, alias) !== undefined) return { text: taskText };
-      }
       return { text: setInlineField(taskText, action.key, resolveToValue(action.value, today)) };
     }
     case 'task.replaceFieldDateValue': {
@@ -171,7 +167,7 @@ function applyAction(taskText: string, action: Action, today: Date): ActionOutco
       const schedule = repeatStr ? parseRepeat(repeatStr) : null;
       if (!schedule) return { text: taskText };
 
-      const completionDateStr = getInlineField(taskText, 'done') ?? getInlineField(taskText, 'completionDate');
+      const completionDateStr = getInlineField(taskText, 'done');
       const completionDate = completionDateStr ? (parseDateStr(completionDateStr) ?? today) : today;
 
       const newDue = computeNextDue(completionDate, schedule);

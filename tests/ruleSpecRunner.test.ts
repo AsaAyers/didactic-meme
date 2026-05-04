@@ -97,32 +97,6 @@ describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(0);
   });
-
-  it('does not stamp done when a legacyAlias field is present (backward compat)', async () => {
-    // A task with legacy completionDate: should not get done: stamped on it.
-    const ctx = makeCtx(join(SCENARIOS, 'set-missing'));
-    const spec: RuleSpec = {
-      name: 'stamp',
-      sources: [{ type: 'path', value: 'tasks.md' }],
-      query: { type: 'tasks' },
-      actions: [
-        {
-          type: 'task.setFieldDateIfMissing',
-          key: 'done',
-          value: 'today',
-          legacyAliases: ['completionDate'],
-        },
-      ],
-    };
-    // Patch readFile to return a task with completionDate: already set
-    const ctxWithAlias: RuleContext = {
-      ...ctx,
-      readFile: async () => '* [x] Done completionDate:2025-06-15\n',
-    };
-    const result = await runRuleSpec(spec, ctxWithAlias);
-    // completionDate is present via legacyAliases → no stamp
-    expect(result.changes).toHaveLength(0);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -224,39 +198,6 @@ describe('ruleSpecRunner — predicates', () => {
     expect(content).toContain('* [ ] B due:');
     // Task A already had due:today — was not selected, stays as the literal "today".
     expect(content).toContain('due:today');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Backward compatibility: legacy completionDate field
-// (completionDate used as fallback in advanceRepeat when done is absent)
-// ---------------------------------------------------------------------------
-
-describe('ruleSpecRunner — backward-compat completionDate alias', () => {
-  it('advanceRepeat uses legacy completionDate when done is absent', async () => {
-    // Simulate a vault file with the old completionDate: field (pre-rename).
-    // The repeat:s schedule means next Sunday after 2026-05-03 = 2026-05-10.
-    const ctx = makeCtx(join(SCENARIOS, 'repeat-basic'));
-    const legacyCtx: RuleContext = {
-      ...ctx,
-      readFile: async () => '* [x] Water plants repeat:s completionDate:2026-05-03\n',
-    };
-    const spec: RuleSpec = {
-      name: 'rollover',
-      sources: [{ type: 'path', value: 'tasks.md' }],
-      query: {
-        type: 'tasks',
-        predicate: { type: 'and', predicates: [{ type: 'checked' }, { type: 'fieldExists', key: 'repeat' }] },
-      },
-      actions: [{ type: 'task.advanceRepeat' }],
-    };
-    const result = await runRuleSpec(spec, legacyCtx);
-    expect(result.changes).toHaveLength(1);
-    const content = result.changes[0]?.content ?? '';
-    // due: computed from completionDate 2026-05-03 (Saturday), next Sunday = 2026-05-10
-    expect(content).toContain('due:2026-05-10');
-    // Task is unchecked for the next cycle
-    expect(content).toContain('* [ ] Water plants');
   });
 });
 
