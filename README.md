@@ -22,16 +22,22 @@ Tasks in any `.md` file in the vault may carry **inline fields** — `key:value`
 ```
 repeat := <skipWeeks>? <days>
 skipWeeks := one or more decimal digits   (number of weeks to skip; default 0)
-days      := one or more characters from the alphabet  s m t w h f a
+days      := "d" | [smtwhfa]+
+             ("d" is a daily shorthand for all seven days)
 ```
 
 Weekday alphabet: `s`=Sunday · `m`=Monday · `t`=Tuesday · `w`=Wednesday · `h`=Thursday · `f`=Friday · `a`=Saturday
+
+**Daily shorthand `d`** is an alias for `smtwhfa` (all seven days).  The two
+forms are completely interchangeable; prefer `d` for brevity.
 
 **Examples:**
 
 | Value | Meaning |
 |---|---|
-| `repeat:smtwhfa` | Daily (every day, skipWeeks=0) |
+| `repeat:d` | Daily (every day, skipWeeks=0) — shorthand for `smtwhfa` |
+| `repeat:smtwhfa` | Daily (every day, skipWeeks=0) — explicit form |
+| `repeat:1d` | Daily with 1-week skip — completing on Tue schedules Wed next week |
 | `repeat:s` | Weekly on Sunday (skipWeeks=0) |
 | `repeat:1s` | Every other Sunday — skip 1 week, then next Sunday |
 | `repeat:2mwf` | Skip 2 weeks then schedule on the next Mon, Wed, or Fri |
@@ -44,6 +50,8 @@ newDue  = first date ≥ minDate whose weekday is in <days>
 ```
 
 When a repeating task is completed, `due:` is always set to `newDue`. If `start:` or `snooze:` are present they are shifted forward by the same number of days as `due` moved (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = done`).
+
+**Migration from `repeat:smtwhfa`:** replace with `repeat:d`.  No other changes required.
 
 ## Environment Variables
 
