@@ -69,7 +69,7 @@ describe('runInitPass', () => {
     const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true, undefined);
     expect(scanned).toBe(10);
     // needs-normalization.md requires formatting; with-completed-task.md and
-    // with-publish-frontmatter.md require completionDate stamping.
+    // with-publish-frontmatter.md require done stamping.
     expect(rewritten).toBe(3);
   });
 
@@ -262,12 +262,12 @@ describe('runInitPass', () => {
 
   it('does not corrupt publish:false frontmatter into a Markdown heading (dry-run)', async () => {
     // This file now intentionally contains a checked task that needs stamping.
-    // We should get a change that adds completionDate while preserving the
+    // We should get a change that adds done while preserving the
     // frontmatter block byte-for-byte.
     const { changes } = await runInitPass(INIT_SCENARIO, true, undefined);
     const fmChange = changes.find((c) => c.path.includes('with-publish-frontmatter'));
-    expect(fmChange, 'with-publish-frontmatter.md should require completionDate stamping').toBeDefined();
-    expect(fmChange!.content).toContain('completionDate:unknown');
+    expect(fmChange, 'with-publish-frontmatter.md should require done stamping').toBeDefined();
+    expect(fmChange!.content).toContain('done:unknown');
 
     const original = await readScenarioFile('with-publish-frontmatter.md');
     const frontmatterRe = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
@@ -326,21 +326,47 @@ describe('runInitPass', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // completionDate stamping during --init
+  // done stamping during --init
   // ---------------------------------------------------------------------------
 
-  it('stamps completionDate:unknown on checked tasks that lack one (dry-run)', async () => {
+  it('stamps done:unknown on checked tasks that lack one (dry-run)', async () => {
     const { changes } = await runInitPass(INIT_SCENARIO, true, undefined);
     const stamped = changes.find((c) => c.path.includes('with-completed-task'));
     expect(stamped, 'with-completed-task.md must appear in changes').toBeDefined();
-    expect(stamped!.content).toContain('completionDate:unknown');
+    expect(stamped!.content).toContain('done:unknown');
   });
 
-  it('does not overwrite an existing completionDate (dry-run)', async () => {
+  it('does not overwrite an existing done (dry-run)', async () => {
     const TMP_DIR = join(__dirname, '..', 'tmp', 'init-stamp-existing-test');
     await fs.mkdir(TMP_DIR, { recursive: true });
     try {
-      // File already has a completionDate — init must not overwrite it
+      // File already has a done — init must not overwrite it
+      await fs.writeFile(
+        join(TMP_DIR, 'task.md'),
+        '* [x] Done done:2025-06-15\n',
+        'utf-8',
+      );
+      const { changes } = await runInitPass(TMP_DIR, true, undefined);
+      const change = changes.find((c) => c.path.includes('task.md'));
+      // No change expected — done is already present
+      expect(change).toBeUndefined();
+    } finally {
+      await fs.rm(TMP_DIR, { recursive: true, force: true });
+    }
+  });
+
+  it('does not stamp done on unchecked tasks (dry-run)', async () => {
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined);
+    // with-unchecked-task.md contains only an unchecked task — it must not be stamped
+    const change = changes.find((c) => c.path.includes('with-unchecked-task'));
+    expect(change).toBeUndefined();
+  });
+
+  it('does not stamp done when legacy completionDate is already present (backward compat, dry-run)', async () => {
+    const TMP_DIR = join(__dirname, '..', 'tmp', 'init-stamp-legacy-test');
+    await fs.mkdir(TMP_DIR, { recursive: true });
+    try {
+      // File has the old completionDate: field — init must treat it as already stamped
       await fs.writeFile(
         join(TMP_DIR, 'task.md'),
         '* [x] Done completionDate:2025-06-15\n',
@@ -348,18 +374,11 @@ describe('runInitPass', () => {
       );
       const { changes } = await runInitPass(TMP_DIR, true, undefined);
       const change = changes.find((c) => c.path.includes('task.md'));
-      // No change expected — completionDate is already present
+      // No change expected — completionDate is present and treated as alias for done
       expect(change).toBeUndefined();
     } finally {
       await fs.rm(TMP_DIR, { recursive: true, force: true });
     }
-  });
-
-  it('does not stamp completionDate on unchecked tasks (dry-run)', async () => {
-    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined);
-    // with-unchecked-task.md contains only an unchecked task — it must not be stamped
-    const change = changes.find((c) => c.path.includes('with-unchecked-task'));
-    expect(change).toBeUndefined();
   });
 
   // ---------------------------------------------------------------------------
@@ -454,7 +473,7 @@ describe('runInitPass', () => {
       expect(afterContent.startsWith('---\n')).toBe(true);
     });
 
-    it('stamps completionDate to disk for checked tasks (non-dry-run)', async () => {
+    it('stamps done to disk for checked tasks (non-dry-run)', async () => {
       await fs.copyFile(
         join(INIT_SCENARIO, 'with-completed-task.md'),
         join(TMP_DIR, 'with-completed-task.md'),
@@ -463,7 +482,7 @@ describe('runInitPass', () => {
       await runInitPass(TMP_DIR, false, undefined);
 
       const afterContent = await fs.readFile(join(TMP_DIR, 'with-completed-task.md'), 'utf-8');
-      expect(afterContent).toContain('completionDate:unknown');
+      expect(afterContent).toContain('done:unknown');
     });
   });
 });

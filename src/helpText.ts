@@ -10,7 +10,7 @@ Rules:
 Available rules:
   normalizeTodayLiteral    Replace relative date literals (today/yesterday/tomorrow)
                            with resolved ISO dates in inline date fields.
-  stampCompletionDate      Stamp completionDate:<date> on checked tasks that lack one.
+  stampDone                Stamp done:<date> on checked tasks that lack one.
                            Depends on: normalizeTodayLiteral.
   completedTaskRollover    Advance due/start/snooze on repeating completed tasks and
                            uncheck them for the next cycle.
@@ -21,7 +21,7 @@ Options:
   --dry-run                Print unified diffs to stdout; do not write any files.
   --verbose                Show rule-progress logs and the run summary (normally
                            suppressed in --dry-run mode).
-  --init                   Normalize vault formatting and stamp completionDate:unknown
+  --init                   Normalize vault formatting and stamp done:unknown
                            on checked tasks that lack one.
                            Mutually exclusive with rule selection.
   --help, -h               Show this help message and exit.
@@ -40,10 +40,10 @@ Examples:
   # Dry-run every rule (shows diffs, writes nothing)
   VAULT_PATH=/my/vault yarn run run -- --dry-run all
 
-  # Run only stampCompletionDate (normalizeTodayLiteral runs first automatically
-  # because it is a declared dependency of stampCompletionDate)
-  VAULT_PATH=/my/vault yarn run run -- --dry-run stampCompletionDate
+  # Run only stampDone (normalizeTodayLiteral runs first automatically
+  # because it is a declared dependency of stampDone)
+  VAULT_PATH=/my/vault yarn run run -- --dry-run stampDone
 
-  # Normalize formatting and stamp completionDate on checked tasks
+  # Normalize formatting and stamp done on checked tasks
   VAULT_PATH=/my/vault yarn run run -- --init --dry-run
 `;

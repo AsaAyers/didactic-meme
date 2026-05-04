@@ -44,7 +44,7 @@ describe('HELP_TEXT', () => {
 
   it('lists known rule names', () => {
     expect(HELP_TEXT).toContain('normalizeTodayLiteral');
-    expect(HELP_TEXT).toContain('stampCompletionDate');
+    expect(HELP_TEXT).toContain('stampDone');
     expect(HELP_TEXT).toContain('completedTaskRollover');
     expect(HELP_TEXT).toContain('incompleteTaskAlert');
   });
@@ -54,7 +54,7 @@ describe('HELP_TEXT', () => {
   });
 
   it('shows a usage example with a single rule name', () => {
-    expect(HELP_TEXT).toContain('stampCompletionDate');
+    expect(HELP_TEXT).toContain('stampDone');
   });
 });
 
@@ -89,15 +89,15 @@ describe('runAllRules — selectedRuleNames', () => {
     expect(todoChange).toBeDefined();
   });
 
-  it('selecting stampCompletionDate also runs normalizeTodayLiteral (its dependency)', async () => {
+  it('selecting stampDone also runs normalizeTodayLiteral (its dependency)', async () => {
     // The vault has tasks with due:today in TODO.md.
-    // normalizeTodayLiteral should run because stampCompletionDate depends on it.
+    // normalizeTodayLiteral should run because stampDone depends on it.
     const { changes } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
       dryRun: true,
       env: {},
-      selectedRuleNames: ['stampCompletionDate'],
+      selectedRuleNames: ['stampDone'],
     });
     const todoChange = changes.find((c) => c.path.endsWith('TODO.md'));
     expect(todoChange).toBeDefined();
@@ -108,7 +108,7 @@ describe('runAllRules — selectedRuleNames', () => {
   it('selecting normalizeTodayLiteral alone does not run unrelated rules', async () => {
     // rollover and alert are unrelated to normalizeTodayLiteral.
     // When only normalizeTodayLiteral is selected, the vault's completed tasks
-    // should not have their completionDate stamped by stampCompletionDate.
+    // should not have their done stamped by stampDone.
     const { changes } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
@@ -117,10 +117,10 @@ describe('runAllRules — selectedRuleNames', () => {
       selectedRuleNames: ['normalizeTodayLiteral'],
     });
     // Every change should be attributable to normalizeTodayLiteral:
-    // no file should have had completionDate stamped on a checked task (that
-    // would be stampCompletionDate's doing).
+    // no file should have had done stamped on a checked task (that
+    // would be stampDone's doing).
     for (const change of changes) {
-      expect(change.content).not.toMatch(/\[x\].*completionDate:/);
+      expect(change.content).not.toMatch(/\[x\].*done:/);
     }
   });
 

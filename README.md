@@ -10,7 +10,7 @@ Tasks in any `.md` file in the vault may carry **inline fields** — `key:value`
 
 | Field | Example | Description |
 |---|---|---|
-| `completionDate` | `completionDate:2026-05-03` | Date the task was checked off. Stamped automatically by Rule 1. |
+| `done` | `done:2026-05-03` | Date the task was checked off. Stamped automatically by Rule 2. |
 | `due` | `due:2026-05-10` | Target/deadline date. Set automatically on repeat. |
 | `start` | `start:2026-05-04` | Task should not be surfaced before this date. |
 | `snooze` | `snooze:2026-05-06` | Suppress surfacing until this date (stronger than `start`). |
@@ -38,11 +38,11 @@ Weekday alphabet: `s`=Sunday · `m`=Monday · `t`=Tuesday · `w`=Wednesday · `h
 **Next-due algorithm:**
 
 ```
-minDate = completionDate + skipWeeks × 7 + 1 day
+minDate = done + skipWeeks × 7 + 1 day
 newDue  = first date ≥ minDate whose weekday is in <days>
 ```
 
-When a repeating task is completed, `due:` is always set to `newDue`. If `start:` or `snooze:` are present they are shifted forward by the same number of days as `due` moved (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = completionDate`).
+When a repeating task is completed, `due:` is always set to `newDue`. If `start:` or `snooze:` are present they are shifted forward by the same number of days as `due` moved (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = done`).
 
 ## Environment Variables
 
@@ -86,14 +86,14 @@ automatically includes each rule's transitive dependencies and executes
 them in the correct order.
 
 ```bash
-# Stamp completion dates only (normalizeTodayLiteral runs first automatically
-# because it is a declared dependency of stampCompletionDate)
-VAULT_PATH=/path/to/your/vault yarn run run -- stampCompletionDate
+# Stamp done dates only (normalizeTodayLiteral runs first automatically
+# because it is a declared dependency of stampDone)
+VAULT_PATH=/path/to/your/vault yarn run run -- stampDone
 ```
 
 ```bash
 # Run multiple rules explicitly
-VAULT_PATH=/path/to/your/vault yarn run run -- normalizeTodayLiteral stampCompletionDate
+VAULT_PATH=/path/to/your/vault yarn run run -- normalizeTodayLiteral stampDone
 ```
 
 ### Run with dry-run (prints a unified diff, no files written)
@@ -104,7 +104,7 @@ VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run all
 
 ```bash
 # Dry-run for a single rule (dependencies included automatically)
-VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run stampCompletionDate
+VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run stampDone
 ```
 
 `--dry-run` outputs a unified diff (one patch per changed file, sorted by path) to
@@ -131,15 +131,17 @@ the vault:
    changed.  No rule-driven date transformations are applied (e.g. `due:today`
    is left as-is).
 
-2. **completionDate stamping** — every checked (`[x]`) task that does **not**
-   already have a `completionDate:` inline field is stamped with
-   `completionDate:unknown`.
+2. **done stamping** — every checked (`[x]`) task that does **not**
+   already have a `done:` inline field is stamped with
+   `done:unknown`.
    This back-fills a placeholder date for tasks that were
    completed before `--init` was run.
+   Tasks that still use the legacy `completionDate:` field are left unchanged
+   (backward-compatible: `completionDate:` is treated as an alias for `done:`).
 
 This is intended to be run once before making rule-driven changes so that
 subsequent diffs reflect only intentional semantic edits rather than incidental
-formatting noise or missing completionDate fields.
+formatting noise or missing done fields.
 
 - Only `.md` files are processed; other file types are ignored.
 - YAML frontmatter (`---\n...\n---`) is preserved verbatim; only the body is normalized.
@@ -203,11 +205,13 @@ real dates rather than relative keywords.
 
 **Dependencies:** none
 
-### Rule 2 – Stamp Completion Date
+### Rule 2 – Stamp Done
 
-**Source:** `src/rules/stampCompletionDate.ts`
+**Source:** `src/rules/stampDone.ts`
 
-Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps each one that does **not** already carry a `completionDate:YYYY-MM-DD` inline field with `completionDate:<today>`. This ensures every completed task has an explicit, traceable completion timestamp before later rules run.
+Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps each one that does **not** already carry a `done:YYYY-MM-DD` inline field with `done:<today>`. This ensures every completed task has an explicit, traceable completion timestamp before later rules run.
+
+Tasks that carry the legacy `completionDate:` field are treated as already stamped (backward-compatible).
 
 **Dependencies:** `normalizeTodayLiteral`
 
@@ -217,10 +221,10 @@ Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps 
 
 Processes every completed task across all `**/*.md` files in the vault:
 
-- **With `repeat:`**: Computes the next due date using the repeat grammar and the `completionDate` inline field (falls back to today if the field is not yet present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = completionDate`). Unchecks the task so it stays in its source file for the next cycle.
+- **With `repeat:`**: Computes the next due date using the repeat grammar and the `done` inline field (also reads the legacy `completionDate:` field as an alias; falls back to today if neither is present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = done`). Unchecks the task so it stays in its source file for the next cycle.
 - **Without `repeat:`**: Removes the task from its source file in place.
 
-**Dependencies:** `stampCompletionDate`
+**Dependencies:** `stampDone`
 
 ### Rule 4 – Incomplete Task Alert
 
@@ -252,7 +256,7 @@ src/
     ├── types.ts                # Rule / RuleContext / FileChange / RuleResult types
     ├── scheduleUtils.ts        # parseRepeat, computeNextDue, date helpers
     ├── normalizeTodayLiteral.ts # Rule 1
-    ├── stampCompletionDate.ts  # Rule 2
+    ├── stampDone.ts            # Rule 2
     ├── completedTaskRollover.ts # Rule 3
     └── incompleteTaskAlert.ts  # Rule 4
 tests/
