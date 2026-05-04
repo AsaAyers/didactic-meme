@@ -3,13 +3,12 @@
  *
  * The E2E vault (tests/test_vault/) exercises the "happy path" — tasks that
  * are stamped today and get a clone inserted — via multiple fixture files
- * (checked-unchecked, set-missing, repeat-basic, repeat-rollover,
- * repeat-today-fallback, init-pass scenarios, etc.).
+ * (repeat-basic, repeat-rollover, repeat-today-fallback scenarios, etc.).
  *
  * Tests here cover the cases the E2E vault does NOT exercise:
  *   - A task with a done date that is NOT today is skipped (not processed).
  *   - A task that already has `copied:1` is NOT re-processed (idempotency).
- *   - Re-running after rollover produces no further changes.
+ *   - A task with done:today but NO repeat: field is NOT copied.
  */
 import { describe, it, expect } from 'vitest';
 import { dirname, join } from 'node:path';
@@ -47,6 +46,14 @@ describe('completedTaskRollover — tasks NOT processed', () => {
     //   "* [x] Already rolled task done:2026-05-03 copied:1"
     //   "* [ ] Already rolled task"
     const ctx = makeCtx(join(SCENARIOS, 'rollover-already-copied'));
+    const result = await runRuleSpec(completedTaskRolloverSpec, ctx);
+    expect(result.changes).toHaveLength(0);
+  });
+
+  it('does not roll over a task with done:today but no repeat: field', async () => {
+    // rollover-no-recurrence/tasks.md:
+    //   "* [x] Non-recurring task done:2026-05-03"
+    const ctx = makeCtx(join(SCENARIOS, 'rollover-no-recurrence'));
     const result = await runRuleSpec(completedTaskRolloverSpec, ctx);
     expect(result.changes).toHaveLength(0);
   });

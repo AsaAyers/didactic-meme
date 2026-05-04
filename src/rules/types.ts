@@ -154,13 +154,13 @@ export type CustomAction = {
 };
 
 /**
- * For a checked task whose `done:` field equals today's date and that does not
- * yet carry a `copied:1` marker:
+ * For a checked task that has a `repeat:` field, whose `done:` field equals
+ * today's date, and that does not yet carry a `copied:1` marker:
  *   1. Append `copied:1` to the original (completed) task.
  *   2. Insert a new incomplete task directly after it whose dates are advanced
- *      according to the task's `repeat:` schedule (if present), or left
- *      unchanged when no `repeat:` field exists.
+ *      according to the task's `repeat:` schedule.
  *
+ * Tasks without a `repeat:` field are never duplicated.
  * No-op when `copied` field already exists (idempotent).
  */
 export type RolloverAction = { type: 'task.rollover' };
