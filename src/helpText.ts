@@ -28,8 +28,6 @@ Options:
 
 Environment variables:
   VAULT_PATH               (required) Absolute path to the vault root.
-  ALERT_FILE               (optional) Path for the incomplete-task alert file.
-                           Default: \$VAULT_PATH/tmp_alert.md
   ALERT_URL                (optional) HTTP endpoint to POST alert content to.
   ALERT_TOKEN              (optional) Bearer token for ALERT_URL.
 

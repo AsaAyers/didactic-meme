@@ -1,6 +1,16 @@
+import { getInlineField } from "../markdown/inlineFields.js";
 import type { Task } from "../markdown/tasks.js";
 import type { CustomAction, RuleSpec } from "./types.js";
 
+function taskSorter(a: Task, b: Task): number {
+  const dueA = getInlineField(a.text, "due");
+  const dueB = getInlineField(b.text, "due");
+  if (!dueA && !dueB) return 0;
+  if (!dueA) return 1;
+  if (!dueB) return -1;
+
+  return dueA.localeCompare(dueB);
+}
 const httpAlert: CustomAction = {
   type: "custom",
   run: async ({ tasks, dryRun, log }) => {
@@ -8,7 +18,7 @@ const httpAlert: CustomAction = {
 
     // Group tasks by sourcePath (vault-relative), preserving per-file order.
     const byFile = new Map<string, Task[]>();
-    for (const task of tasks) {
+    for (const task of [...tasks].sort(taskSorter)) {
       const fileTasks = byFile.get(task.sourcePath) ?? [];
       fileTasks.push(task);
       byFile.set(task.sourcePath, fileTasks);

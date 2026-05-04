@@ -107,12 +107,11 @@ The file is validated with [zod](https://zod.dev/) on every run. If the file is 
 
 ## Environment Variables
 
-| Variable      | Required | Default                    | Description                                           |
-| ------------- | -------- | -------------------------- | ----------------------------------------------------- |
-| `VAULT_PATH`  | **Yes**  | —                          | Absolute path to the Obsidian vault root              |
-| `ALERT_FILE`  | No       | `$VAULT_PATH/tmp_alert.md` | Path for the incomplete-task alert file               |
-| `ALERT_URL`   | No       | —                          | HTTP endpoint to POST `tmp_alert.md` content to       |
-| `ALERT_TOKEN` | No       | —                          | Bearer token sent as `Authorization: Bearer …` header |
+| Variable      | Required | Default | Description                                           |
+| ------------- | -------- | ------- | ----------------------------------------------------- |
+| `VAULT_PATH`  | **Yes**  | —       | Absolute path to the Obsidian vault root              |
+| `ALERT_URL`   | No       | —       | HTTP endpoint to POST `tmp_alert.md` content to       |
+| `ALERT_TOKEN` | No       | —       | Bearer token sent as `Authorization: Bearer …` header |
 
 ## Global Installation
 
@@ -332,10 +331,10 @@ Tasks without a `repeat:` field are **never** duplicated and never receive `copi
 
 Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vault and:
 
-1. Writes them as a Markdown list to `ALERT_FILE` (default: `$VAULT_PATH/tmp_alert.md`).
-2. If `ALERT_URL` is set, performs an HTTP POST of the file contents to that URL with `Content-Type: text/markdown` and, if `ALERT_TOKEN` is set, `Authorization: Bearer <token>`.
+1. Groups them by file and sortes them by due date.
+2. If `ALERT_URL` is set, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `ALERT_TOKEN` is set, `Authorization: Bearer <token>`.
 
-**Dependencies:** `completedTaskRollover`
+**Dependencies:** `stampDone`
 
 ### Rule 5 – Remove Ephemeral Overdue Tasks
 

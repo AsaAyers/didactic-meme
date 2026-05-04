@@ -1,5 +1,5 @@
-<%\* const title = tp.file.title; %>
+<%* const title = tp.file.title; %>
 
-# <%\* tR += title %>
+# <%* tR += title %>
 
 Some content here.

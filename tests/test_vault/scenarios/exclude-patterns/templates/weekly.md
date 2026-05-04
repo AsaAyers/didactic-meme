@@ -1,1 +1,1 @@
-- [ ] Template task placeholder
+* [ ] Template task placeholder

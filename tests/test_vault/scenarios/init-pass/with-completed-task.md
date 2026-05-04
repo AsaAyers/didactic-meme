@@ -1,1 +1,1 @@
-- [x] Completed task without completion date
+* [x] Completed task without completion date

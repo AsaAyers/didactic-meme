@@ -36,7 +36,10 @@
       {
         "type": "glob",
         "pattern": "**/*.md",
-        "exclude": ["archive/**", "templates/**"]
+        "exclude": [
+          "archive/**",
+          "templates/**"
+        ]
       }
     ]
   }

@@ -1,1 +1,1 @@
-- [ ] Old archived task
+* [ ] Old archived task
