@@ -1,6 +1,7 @@
 import { join, relative } from 'node:path';
 import { addDays, differenceInCalendarDays, format } from 'date-fns';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
+import { joinFrontmatter, splitFrontmatter } from '../markdown/frontmatter.js';
 import { extractTasks, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
 import type { Task } from '../markdown/tasks.js';
 import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
@@ -234,7 +235,8 @@ export async function runRuleSpec(
     }
     if (!raw) continue;
 
-    const tree = parseMarkdown(raw);
+    const frontmatterParts = splitFrontmatter(raw);
+    const tree = parseMarkdown(frontmatterParts.body);
     const allTasks = extractTasks(tree);
 
     const selected =
@@ -264,7 +266,10 @@ export async function runRuleSpec(
     }
 
     if (modified > 0) {
-      changes.push({ path: filePath, content: stringifyMarkdown(tree) });
+      changes.push({
+        path: filePath,
+        content: joinFrontmatter(frontmatterParts, stringifyMarkdown(tree)),
+      });
       totalModified += modified;
     }
 

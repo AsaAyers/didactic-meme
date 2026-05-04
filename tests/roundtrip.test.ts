@@ -155,6 +155,16 @@ describe('round-trip: YAML front-matter', () => {
     const src = '---\ntitle: My Note\ntags:\n  - project\n---\n\n# Heading\n\nBody text.\n';
     expect(normalizeFileContent(src)).toBe(src);
   });
+
+  it('does not convert publish:false frontmatter into a Markdown heading', async () => {
+    // Regression: the closing `---` of a frontmatter block was mis-parsed
+    // by remark as a setext heading underline, turning `publish: false\n---`
+    // into `## publish: false`.  normalizeFileContent must prevent this by
+    // stripping frontmatter before passing the body to remark.
+    const { normalizeFileContent } = await import('../src/engine/runner.js');
+    const src = '---\npublish: false\n---\n';
+    expect(normalizeFileContent(src)).toBe(src);
+  });
 });
 
 // ---------------------------------------------------------------------------

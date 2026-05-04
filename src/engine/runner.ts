@@ -2,6 +2,7 @@ import { createPatch } from 'diff';
 import { promises as fs } from 'node:fs';
 import { relative } from 'node:path';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
+import { joinFrontmatter, splitFrontmatter } from '../markdown/frontmatter.js';
 import { ruleSpecs } from '../rules/index.js';
 import { stampCompletionDateSpec } from '../rules/stampCompletionDate.js';
 import { walkMarkdownFiles } from './io.js';
@@ -236,24 +237,14 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
  *          `report` — everything printed to console during the pass.
  */
 
-/** Matches a YAML frontmatter block at the start of a file. */
-const FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
-
 /**
  * Normalize a single file's raw content through the parse → stringify
  * pipeline, preserving any YAML frontmatter verbatim.
  */
 export function normalizeFileContent(raw: string): string {
-  const fmMatch = FRONTMATTER_RE.exec(raw);
-  if (fmMatch) {
-    const header = fmMatch[0];
-    const rest = raw.slice(header.length);
-    // Preserve one blank line between frontmatter and body if present.
-    const leadingNewline = rest.startsWith('\n') ? '\n' : '';
-    const bodyContent = leadingNewline ? rest.slice(1) : rest;
-    return header + leadingNewline + stringifyMarkdown(parseMarkdown(bodyContent));
-  }
-  return stringifyMarkdown(parseMarkdown(raw));
+  const parts = splitFrontmatter(raw);
+  const normalizedBody = stringifyMarkdown(parseMarkdown(parts.body));
+  return joinFrontmatter(parts, normalizedBody);
 }
 
 export async function runInitPass(

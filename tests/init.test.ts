@@ -29,7 +29,7 @@ async function readScenarioFile(name: string): Promise<string> {
 describe('runInitPass', () => {
   it('scans all .md files in the vault (dry-run)', async () => {
     const { scanned } = await runInitPass(INIT_SCENARIO, true, undefined);
-    expect(scanned).toBe(9);
+    expect(scanned).toBe(10);
     const { changes } = await runInitPass(INIT_SCENARIO, true, undefined);
     const paths = changes.map((c) => c.path);
     expect(paths.every((p) => p.endsWith('.md'))).toBe(true);
@@ -67,9 +67,10 @@ describe('runInitPass', () => {
 
   it('returns correct scanned/rewritten counts', async () => {
     const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true, undefined);
-    expect(scanned).toBe(9);
-    // needs-normalization.md requires a formatting change; with-completed-task.md requires completionDate
-    expect(rewritten).toBe(2);
+    expect(scanned).toBe(10);
+    // needs-normalization.md requires formatting; with-completed-task.md and
+    // with-publish-frontmatter.md require completionDate stamping.
+    expect(rewritten).toBe(3);
   });
 
   // ---------------------------------------------------------------------------
@@ -257,6 +258,37 @@ describe('runInitPass', () => {
     // should be preserved exactly and the body is already normalized
     const fmChange = changes.find((c) => c.path.includes('with-frontmatter'));
     expect(fmChange, 'with-frontmatter.md is already normalized and must not require changes').toBeUndefined();
+  });
+
+  it('does not corrupt publish:false frontmatter into a Markdown heading (dry-run)', async () => {
+    // This file now intentionally contains a checked task that needs stamping.
+    // We should get a change that adds completionDate while preserving the
+    // frontmatter block byte-for-byte.
+    const { changes } = await runInitPass(INIT_SCENARIO, true, undefined);
+    const fmChange = changes.find((c) => c.path.includes('with-publish-frontmatter'));
+    expect(fmChange, 'with-publish-frontmatter.md should require completionDate stamping').toBeDefined();
+    expect(fmChange!.content).toContain('completionDate:unknown');
+
+    const original = await readScenarioFile('with-publish-frontmatter.md');
+    const frontmatterRe = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+    const originalFrontmatter = frontmatterRe.exec(original)?.[0];
+    const changedFrontmatter = frontmatterRe.exec(fmChange!.content)?.[0];
+
+    expect(originalFrontmatter).toBeDefined();
+    expect(changedFrontmatter).toBeDefined();
+    expect(changedFrontmatter).toBe(originalFrontmatter);
+    // Regression assertion: no setext-heading artifact from mis-parsed `---`.
+    expect(fmChange!.content).not.toContain('## publish: false');
+  });
+
+  it('normalizeFileContent preserves publish:false frontmatter without body', async () => {
+    const { normalizeFileContent } = await import('../src/engine/runner.js');
+    // The exact content from the bug report — frontmatter only, no body.
+    const src = '---\npublish: false\n---\n';
+    const result = normalizeFileContent(src);
+    expect(result).toBe(src);
+    // Must not contain a setext heading artefact
+    expect(result).not.toContain('## publish: false');
   });
 
   // ---------------------------------------------------------------------------
