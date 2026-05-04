@@ -255,13 +255,12 @@ Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps 
 
 **Source:** `src/rules/completedTaskRollover.ts`
 
-Finds every checked task whose `done:` date equals **today** and that does not already carry a `copied:1` marker, then:
+Finds every **recurring** checked task (one that has a `repeat:` field) whose `done:` date equals **today** and that does not already carry a `copied:1` marker, then:
 
 1. Appends `copied:1` to the completed task so it is not re-processed on subsequent runs (idempotency guard).
-2. Inserts a fresh **incomplete** copy of the task immediately after the completed one.
-   - If the task has a `repeat:` schedule, the clone's date fields (`due`, `start`, `snooze`) are advanced according to that schedule (same algorithm as the `computeNextDue` helper), leaving the original task's dates untouched.
-   - If no `repeat:` field is present, the clone inherits the original date fields unchanged.
-   - The `done:` field is **not** included on the clone.
+2. Inserts a fresh **incomplete** copy of the task immediately after the completed one, with the clone's date fields (`due`, `start`, `snooze`) advanced according to the `repeat:` schedule.  The `done:` field is **not** included on the clone.
+
+Tasks without a `repeat:` field are **never** duplicated and never receive `copied:1`, even if they are checked and have a `done:` date.
 
 **Meaning of `copied:1`:** A task marked `copied:1` has already been rolled over in a previous pipeline run.  The rollover rule skips it on all subsequent runs.  Tasks completed before today (i.e. `done:` is an older date) are also skipped.
 

@@ -2,11 +2,10 @@ Index: scenarios/checked-unchecked/tasks.md
 ===================================================================
 --- scenarios/checked-unchecked/tasks.md
 +++ scenarios/checked-unchecked/tasks.md
-@@ -1,2 +1,3 @@
+@@ -1,2 +1,2 @@
 -- [x] Done
 -- [ ] Todo
-+* [x] Done done:2026-05-03 copied:1
-+* [ ] Done
++* [x] Done done:2026-05-03
 +* [ ] Todo
 Index: scenarios/init-pass/already-normalized.md
 ===================================================================
@@ -27,21 +26,19 @@ Index: scenarios/init-pass/with-completed-task.md
 ===================================================================
 --- scenarios/init-pass/with-completed-task.md
 +++ scenarios/init-pass/with-completed-task.md
-@@ -1,1 +1,2 @@
+@@ -1,1 +1,1 @@
 -* [x] Completed task without completion date
-+* [x] Completed task without completion date done:2026-05-03 copied:1
-+* [ ] Completed task without completion date
++* [x] Completed task without completion date done:2026-05-03
 Index: scenarios/init-pass/with-publish-frontmatter.md
 ===================================================================
 --- scenarios/init-pass/with-publish-frontmatter.md
 +++ scenarios/init-pass/with-publish-frontmatter.md
-@@ -1,4 +1,5 @@
+@@ -1,4 +1,4 @@
  ---
  publish: false
  ---
 -* [x] Make sure frontmatter is preserved on init
-+* [x] Make sure frontmatter is preserved on init done:2026-05-03 copied:1
-+* [ ] Make sure frontmatter is preserved on init
++* [x] Make sure frontmatter is preserved on init done:2026-05-03
 Index: scenarios/not-predicate/tasks.md
 ===================================================================
 --- scenarios/not-predicate/tasks.md
@@ -88,19 +85,17 @@ Index: scenarios/set-missing/tasks.md
 ===================================================================
 --- scenarios/set-missing/tasks.md
 +++ scenarios/set-missing/tasks.md
-@@ -1,1 +1,2 @@
+@@ -1,1 +1,1 @@
 -- [x] Finished task
-+* [x] Finished task done:2026-05-03 copied:1
-+* [ ] Finished task
++* [x] Finished task done:2026-05-03
 Index: scenarios/unchecked-today/tasks.md
 ===================================================================
 --- scenarios/unchecked-today/tasks.md
 +++ scenarios/unchecked-today/tasks.md
-@@ -1,2 +1,3 @@
+@@ -1,2 +1,2 @@
 -- [x] Done
 -- [ ] Todo due:today
-+* [x] Done done:2026-05-03 copied:1
-+* [ ] Done
++* [x] Done done:2026-05-03
 +* [ ] Todo due:2026-05-03
 Index: TODO.md
 ===================================================================
