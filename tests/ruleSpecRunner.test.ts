@@ -415,3 +415,42 @@ describe('selectRuleSpecs', () => {
     expect(() => selectRuleSpecs([a, b], ['x'])).toThrow('a, b');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Nested list preservation during task modification
+// Regression: when stampDone adds done: to a task in a file that also
+// contains a bullet item with a nested ordered list, the nested list must
+// not lose its indentation or gain a blank line.
+// (The bug does NOT manifest in the init/normalizeFileContent path — only
+//  when the rule pipeline modifies a task in the same file.)
+// ---------------------------------------------------------------------------
+
+describe('ruleSpecRunner — nested list preservation on task modification', () => {
+  it('stampDone preserves nested numbered list in a nearby bullet item', async () => {
+    // scenarios/stamp-done-nested-list/tasks.md:
+    //   "* [x] completed task"
+    //   "* bulleted list"
+    //   "  1. Nested numbered list"
+    //   "  2. Next item"
+    const ctx = makeCtx(join(SCENARIOS, 'stamp-done-nested-list'));
+    const spec: RuleSpec = {
+      name: 'stamp',
+      sources: [{ type: 'path', value: 'tasks.md' }],
+      query: { type: 'tasks', predicate: { type: 'checked' } },
+      actions: [{ type: 'task.setFieldDateIfMissing', key: 'done', value: 'today' }],
+    };
+    const result = await runRuleSpec(spec, ctx);
+    expect(result.changes).toHaveLength(1);
+    const content = result.changes[0]?.content ?? '';
+
+    // The done: stamp was applied to the completed task.
+    expect(content).toContain(`done:${TODAY_STR}`);
+
+    // The nested ordered list must remain indented (no indentation loss).
+    expect(content).toContain('  1. Nested numbered list');
+    expect(content).toContain('  2. Next item');
+
+    // No extra blank line must be inserted before the nested list.
+    expect(content).not.toMatch(/\n\n\s*1\. Nested/);
+  });
+});

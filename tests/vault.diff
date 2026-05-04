@@ -88,6 +88,16 @@ Index: scenarios/set-missing/tasks.md
 @@ -1,1 +1,1 @@
 -- [x] Finished task
 +* [x] Finished task done:2026-05-03
+Index: scenarios/stamp-done-nested-list/tasks.md
+===================================================================
+--- scenarios/stamp-done-nested-list/tasks.md
++++ scenarios/stamp-done-nested-list/tasks.md
+@@ -1,4 +1,4 @@
+-* [x] completed task
++* [x] completed task done:2026-05-03
+ * bulleted list
+   1. Nested numbered list
+   2. Next item
 Index: scenarios/unchecked-today/tasks.md
 ===================================================================
 --- scenarios/unchecked-today/tasks.md
