@@ -326,9 +326,10 @@ export async function runRuleSpec(
 
   // Fire CustomAction side effects once with ALL matched tasks.
   if (allSelected.length > 0) {
+    const logFn = ctx.log ?? console.log;
     for (const action of actions) {
       if (action.type === 'custom') {
-        await action.run({ tasks: allSelected, dryRun: ctx.dryRun, readFile: ctx.readFile });
+        await action.run({ tasks: allSelected, dryRun: ctx.dryRun, readFile: ctx.readFile, log: logFn });
       }
     }
   }

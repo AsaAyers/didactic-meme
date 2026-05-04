@@ -124,9 +124,8 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
   report: string;
 }> {
   const queue = new FileWriteManager();
-  const ctx: RuleContext = { ...baseCtx, readFile: (p: string) => queue.read(p) };
 
-  const verbose = ctx.verbose ?? false;
+  const verbose = baseCtx.verbose ?? false;
 
   const lines: string[] = [];
 
@@ -135,6 +134,8 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
     console.log(msg);
     lines.push(msg);
   };
+
+  const ctx: RuleContext = { ...baseCtx, readFile: (p: string) => queue.read(p), log };
 
   /**
    * Detail log: emitted only when verbose=true OR when not in dry-run mode.

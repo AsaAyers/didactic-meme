@@ -17,6 +17,13 @@ export type RuleContext = {
    */
   readFile: (path: string) => Promise<string>;
   /**
+   * Emit a line of output that is captured in the run report.
+   * Rules should use this (via CustomAction's `log` arg) instead of
+   * console.log so that dry-run previews appear in the returned report.
+   * Defaults to console.log when not provided.
+   */
+  log?: (msg: string) => void;
+  /**
    * Which rule specs to run.  `'all'` (default when omitted) runs every
    * registered spec in dependency order.  An array of rule names runs only
    * those rules plus their transitive dependencies.
@@ -124,6 +131,8 @@ export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };
  * files. No-op (and not called) when no tasks were matched.
  * `readFile` reads from the in-memory transform queue so staged-but-not-yet-
  * flushed content is visible. `dryRun` lets implementations skip side effects.
+ * `log` routes output through the runner's report mechanism; prefer it over
+ * console.log so previews appear in the returned report string.
  */
 export type CustomAction = {
   type: 'custom';
@@ -131,6 +140,7 @@ export type CustomAction = {
     tasks: Task[];
     dryRun: boolean;
     readFile: (path: string) => Promise<string>;
+    log: (msg: string) => void;
   }) => Promise<void>;
 };
 
