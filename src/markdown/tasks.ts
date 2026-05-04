@@ -72,6 +72,44 @@ export function setTaskChecked(tree: Root, taskText: string, checked: boolean): 
 }
 
 /**
+ * Insert a new task list item immediately after the item whose text equals
+ * `afterText`.  The new item's checked state is set to `checked` and its text
+ * content to `newTaskText`.
+ * Returns true if the anchor item was found and the new item was inserted.
+ */
+export function insertTaskAfter(
+  tree: Root,
+  afterText: string,
+  newTaskText: string,
+  checked: boolean,
+): boolean {
+  let inserted = false;
+  visit(tree, 'list', (listNode) => {
+    const list = listNode as import('mdast').List;
+    const idx = list.children.findIndex((item) => {
+      if (item.checked === null || item.checked === undefined) return false;
+      return getListItemText(item) === afterText;
+    });
+    if (idx !== -1 && !inserted) {
+      const newItem: ListItem = {
+        type: 'listItem',
+        checked,
+        spread: false,
+        children: [
+          {
+            type: 'paragraph',
+            children: [{ type: 'text', value: newTaskText } as Text],
+          } as Paragraph,
+        ],
+      };
+      list.children.splice(idx + 1, 0, newItem);
+      inserted = true;
+    }
+  });
+  return inserted;
+}
+
+/**
  * Replace the text content of a task list item in the AST.
  * Finds the item whose displayed text equals `oldText` and rewrites the
  * paragraph's inline children to a single Text node with `newText`.

@@ -2,9 +2,9 @@ import { join, relative } from 'node:path';
 import { addDays, differenceInCalendarDays, format } from 'date-fns';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
 import { joinFrontmatter, splitFrontmatter } from '../markdown/frontmatter.js';
-import { extractTasks, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
+import { extractTasks, insertTaskAfter, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
 import type { Task } from '../markdown/tasks.js';
-import { getInlineField, setInlineField } from '../markdown/inlineFields.js';
+import { getInlineField, removeInlineField, setInlineField } from '../markdown/inlineFields.js';
 import { parseDateStr, parseRepeat, computeNextDue } from '../rules/scheduleUtils.js';
 import { walkMarkdownFiles } from './io.js';
 import type {
@@ -148,7 +148,7 @@ function evaluatePredicate(task: Task, predicate: TaskPredicate, today: Date): b
 // Action application
 // ---------------------------------------------------------------------------
 
-type ActionOutcome = { text: string; uncheck?: boolean };
+type ActionOutcome = { text: string; uncheck?: boolean; insertDuplicateAfter?: string };
 
 function applyAction(taskText: string, action: Action, today: Date): ActionOutcome {
   switch (action.type) {
@@ -196,6 +196,49 @@ function applyAction(taskText: string, action: Action, today: Date): ActionOutco
       }
 
       return { text: newText, uncheck: true };
+    }
+    case 'task.rollover': {
+      // Build the text for the cloned incomplete task: strip done: (not needed
+      // on an active task) and do not add copied: to the clone.
+      const doneStr = getInlineField(taskText, 'done');
+      let cloneText = removeInlineField(taskText, 'done');
+
+      // Apply the repeat schedule to the clone's dates, leaving the original
+      // task's dates untouched.
+      const repeatStr = getInlineField(cloneText, 'repeat');
+      if (repeatStr) {
+        const schedule = parseRepeat(repeatStr);
+        if (schedule) {
+          const doneDate = doneStr ? (parseDateStr(doneStr) ?? today) : today;
+          const newDue = computeNextDue(doneDate, schedule);
+          const newDueStr = formatDate(newDue);
+
+          const existingDueStr = getInlineField(cloneText, 'due');
+          const oldDue = existingDueStr ? (parseDateStr(existingDueStr) ?? doneDate) : doneDate;
+          const delta = differenceInCalendarDays(newDue, oldDue);
+
+          cloneText = setInlineField(cloneText, 'due', newDueStr);
+
+          const startStr = getInlineField(cloneText, 'start');
+          if (startStr) {
+            const startDate = parseDateStr(startStr);
+            if (startDate) {
+              cloneText = setInlineField(cloneText, 'start', formatDate(addDays(startDate, delta)));
+            }
+          }
+
+          const snoozeStr = getInlineField(cloneText, 'snooze');
+          if (snoozeStr) {
+            const snoozeDate = parseDateStr(snoozeStr);
+            if (snoozeDate) {
+              cloneText = setInlineField(cloneText, 'snooze', formatDate(addDays(snoozeDate, delta)));
+            }
+          }
+        }
+      }
+
+      // Mark the original task as copied and return the clone text for insertion.
+      return { text: setInlineField(taskText, 'copied', '1'), insertDuplicateAfter: cloneText };
     }
     case 'custom':
       // Side-effect action — no text transformation. Fired separately per-file.
@@ -248,10 +291,12 @@ export async function runRuleSpec(
     for (const task of selected) {
       let newText = task.text;
       let shouldUncheck = false;
+      let insertDuplicateText: string | undefined;
       for (const action of actions) {
         const outcome = applyAction(newText, action, today);
         newText = outcome.text;
         if (outcome.uncheck) shouldUncheck = true;
+        if (outcome.insertDuplicateAfter !== undefined) insertDuplicateText = outcome.insertDuplicateAfter;
       }
       const textChanged = newText !== task.text;
       if (textChanged) {
@@ -260,7 +305,11 @@ export async function runRuleSpec(
       if (shouldUncheck) {
         setTaskChecked(tree, newText, false);
       }
-      if (textChanged || shouldUncheck) {
+      // Insert the clone immediately after the (possibly updated) original task.
+      if (insertDuplicateText !== undefined) {
+        insertTaskAfter(tree, newText, insertDuplicateText, false);
+      }
+      if (textChanged || shouldUncheck || insertDuplicateText !== undefined) {
         modified++;
       }
     }

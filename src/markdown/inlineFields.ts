@@ -16,6 +16,23 @@ export function getInlineField(text: string, key: string): string | undefined {
 }
 
 /**
+ * Remove an inline field from task text.
+ * If the field does not exist, returns the original text unchanged.
+ * Removes the `key:value` token along with any preceding whitespace so that
+ * the result does not contain stray leading/trailing spaces.
+ *
+ * `key` must consist solely of word characters (letters, digits, underscore).
+ * Throws if the key contains characters that could alter the regex pattern.
+ */
+export function removeInlineField(text: string, key: string): string {
+  invariant(/^\w+$/.test(key), `Invalid inline field key: ${key}`);
+  // Match an optional preceding space (or start-of-string) plus key:value.
+  // Replacing the whole match (including the leading space, if any) with ''
+  // ensures no double-spaces are left behind.
+  return text.replace(new RegExp(`(^|\\s)${key}:\\S+`), '').trim();
+}
+
+/**
  * Set or replace an inline field in task text.
  * If the field already exists, its value is replaced in-place.
  * If not, `key:value` is appended at the end of the text.

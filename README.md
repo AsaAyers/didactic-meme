@@ -15,6 +15,7 @@ Tasks in any `.md` file in the vault may carry **inline fields** — `key:value`
 | `start` | `start:2026-05-04` | Task should not be surfaced before this date. |
 | `snooze` | `snooze:2026-05-06` | Suppress surfacing until this date (stronger than `start`). |
 | `repeat` | `repeat:1s` | Recurrence schedule (see grammar below). |
+| `copied` | `copied:1` | Marker set by `completedTaskRollover` to prevent duplicate cloning. |
 
 ### `repeat` grammar
 
@@ -135,7 +136,10 @@ the vault:
    already have a `done:` inline field is stamped with
    `done:unknown`.
    This back-fills a placeholder date for tasks that were
-   completed before `--init` was run.
+   completed before `--init` was run.  The `unknown` value is
+   intentionally not a real date, so it is never matched by the
+   date-based predicates in the normal rule pipeline (in particular,
+   `completedTaskRollover` will not clone tasks stamped by `--init`).
 
 This is intended to be run once before making rule-driven changes so that
 subsequent diffs reflect only intentional semantic edits rather than incidental
@@ -207,7 +211,7 @@ real dates rather than relative keywords.
 
 **Source:** `src/rules/stampDone.ts`
 
-Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps each one that does **not** already carry a `done:YYYY-MM-DD` inline field with `done:<today>`. This ensures every completed task has an explicit, traceable completion timestamp before later rules run.
+Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps each one that does **not** already carry a `done:` inline field with `done:YYYY-MM-DD` (today's date). This ensures every freshly completed task has an explicit completion date before later rules run.
 
 **Dependencies:** `normalizeTodayLiteral`
 
@@ -215,10 +219,15 @@ Scans all `**/*.md` files in the vault for completed (checked) tasks and stamps 
 
 **Source:** `src/rules/completedTaskRollover.ts`
 
-Processes every completed task across all `**/*.md` files in the vault:
+Finds every checked task whose `done:` date equals **today** and that does not already carry a `copied:1` marker, then:
 
-- **With `repeat:`**: Computes the next due date using the repeat grammar and the `done` inline field (falls back to today if the field is not yet present). Sets/overwrites `due:` to the new date. Shifts `start:` and `snooze:` forward by the same number of days (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = done`). Unchecks the task so it stays in its source file for the next cycle.
-- **Without `repeat:`**: Removes the task from its source file in place.
+1. Appends `copied:1` to the completed task so it is not re-processed on subsequent runs (idempotency guard).
+2. Inserts a fresh **incomplete** copy of the task immediately after the completed one.
+   - If the task has a `repeat:` schedule, the clone's date fields (`due`, `start`, `snooze`) are advanced according to that schedule (same algorithm as the `computeNextDue` helper), leaving the original task's dates untouched.
+   - If no `repeat:` field is present, the clone inherits the original date fields unchanged.
+   - The `done:` field is **not** included on the clone.
+
+**Meaning of `copied:1`:** A task marked `copied:1` has already been rolled over in a previous pipeline run.  The rollover rule skips it on all subsequent runs.  Tasks completed before today (i.e. `done:` is an older date) are also skipped.
 
 **Dependencies:** `stampDone`
 
