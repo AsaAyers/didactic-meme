@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { runAllRules, runInitPass } from './engine/runner.js';
 import { HELP_TEXT } from './helpText.js';
 import { ruleSpecs } from './rules/index.js';
@@ -39,8 +40,8 @@ if (init) {
     console.error('Error: specify "all" or a list of rule names to run.');
     console.error('');
     console.error('Examples:');
-    console.error('  yarn run run -- all');
-    console.error('  yarn run run -- --dry-run stampDone');
+    console.error('  didactic-meme all');
+    console.error('  didactic-meme --dry-run stampDone');
     console.error('');
     console.error('Run with --help for full usage information.');
     process.exit(1);

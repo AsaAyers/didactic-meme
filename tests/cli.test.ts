@@ -7,12 +7,14 @@
  * runner and the registered rule registry.
  */
 import { describe, it, expect } from 'vitest';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { runAllRules } from '../src/engine/runner.js';
 import { HELP_TEXT } from '../src/helpText.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, '..');
 const TEST_VAULT = join(__dirname, 'test_vault');
 
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
@@ -134,5 +136,33 @@ describe('runAllRules — selectedRuleNames', () => {
         selectedRuleNames: ['nonExistentRule'],
       }),
     ).rejects.toThrow('Unknown rule: "nonExistentRule"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CLI process smoke test — validates the entrypoint is runnable via tsx
+// ---------------------------------------------------------------------------
+
+describe('CLI entrypoint smoke test', () => {
+  const tsxBin = join(ROOT, 'node_modules', '.bin', 'tsx');
+  const entrypoint = join(ROOT, 'src', 'index.ts');
+
+  it('exits 0 and prints help text when --help is passed', () => {
+    const result = spawnSync(tsxBin, [entrypoint, '--help'], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('--dry-run');
+    expect(result.stdout).toContain('--init');
+    expect(result.stdout).toContain('VAULT_PATH');
+  });
+
+  it('exits non-zero when VAULT_PATH is missing and no --help flag', () => {
+    const result = spawnSync(tsxBin, [entrypoint, 'all'], {
+      encoding: 'utf-8',
+      env: { ...process.env, VAULT_PATH: '' },
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('VAULT_PATH');
   });
 });
