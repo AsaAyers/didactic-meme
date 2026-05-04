@@ -5,6 +5,8 @@ export type Task = {
   text: string;
   checked: boolean;
   tags: string[];
+  /** Vault-relative path of the file this task was extracted from. */
+  sourcePath: string;
 };
 
 function getListItemText(item: ListItem): string {
@@ -27,7 +29,7 @@ function extractTags(text: string): string[] {
   return matches.map((t) => t.slice(1));
 }
 
-export function extractTasks(tree: Root): Task[] {
+export function extractTasks(tree: Root, sourcePath: string): Task[] {
   const tasks: Task[] = [];
   visit(tree, 'listItem', (node: ListItem) => {
     if (node.checked !== null && node.checked !== undefined) {
@@ -36,6 +38,7 @@ export function extractTasks(tree: Root): Task[] {
         text,
         checked: node.checked,
         tags: extractTags(text),
+        sourcePath,
       });
     }
   });

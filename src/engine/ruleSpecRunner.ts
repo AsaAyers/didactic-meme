@@ -290,7 +290,7 @@ export async function runRuleSpec(
 
     const frontmatterParts = splitFrontmatter(raw);
     const tree = parseMarkdown(frontmatterParts.body);
-    const allTasks = extractTasks(tree);
+    const allTasks = extractTasks(tree, relative(vaultPath, filePath));
 
     const selected =
       query.predicate

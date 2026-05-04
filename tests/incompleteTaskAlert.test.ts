@@ -18,9 +18,9 @@ const TODAY = new Date(2026, 4, 3); // 2026-05-03
 
 describe('incompleteTaskAlert — dry-run preview', () => {
   it('prints the alert preview in the report even when no files change', async () => {
-    // scenarios/incomplete-alert/tasks.md contains two unchecked tasks with no
-    // relative-date literals, so normalizeTodayLiteral / stampDone /
-    // completedTaskRollover are all no-ops and no file changes are staged.
+    // scenarios/incomplete-alert/ contains two markdown files with unchecked
+    // tasks and no relative-date literals, so normalizeTodayLiteral / stampDone
+    // / completedTaskRollover are all no-ops and no file changes are staged.
     const { changes, report } = await runAllRules({
       vaultPath: join(SCENARIOS, 'incomplete-alert'),
       today: TODAY,
@@ -36,6 +36,7 @@ describe('incompleteTaskAlert — dry-run preview', () => {
     // The alert preview must still appear in the report.
     expect(report).toContain('[dry-run]');
     expect(report).toContain('incompleteTaskAlert');
+    expect(report).toContain('Title: Incomplete Tasks');
     expect(report).toContain('Buy groceries');
     expect(report).toContain('Do laundry');
   });
@@ -80,6 +81,66 @@ describe('incompleteTaskAlert — dry-run preview', () => {
       } else {
         delete process.env['ALERT_URL'];
       }
+    }
+  });
+
+  it('groups tasks by source file with one section heading per file', async () => {
+    const { report } = await runAllRules({
+      vaultPath: join(SCENARIOS, 'incomplete-alert'),
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      selectedRuleNames: ['incompleteTaskAlert'],
+    });
+
+    // Both source files must appear as headings (vault-relative paths).
+    expect(report).toContain('## chores.md');
+    expect(report).toContain('## tasks.md');
+
+    // Each file's tasks must appear under its heading.
+    expect(report).toContain('Clean the house');
+    expect(report).toContain('Take out trash');
+    expect(report).toContain('Buy groceries');
+    expect(report).toContain('Do laundry');
+  });
+
+  it('sorts files alphabetically for deterministic output', async () => {
+    const { report } = await runAllRules({
+      vaultPath: join(SCENARIOS, 'incomplete-alert'),
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      selectedRuleNames: ['incompleteTaskAlert'],
+    });
+
+    // chores.md sorts before tasks.md, so its heading appears first.
+    const choresPos = report.indexOf('## chores.md');
+    const tasksPos = report.indexOf('## tasks.md');
+    expect(choresPos).toBeGreaterThanOrEqual(0);
+    expect(tasksPos).toBeGreaterThanOrEqual(0);
+    expect(choresPos).toBeLessThan(tasksPos);
+  });
+
+  it('attaches correct vault-relative sourcePath to extracted tasks', async () => {
+    // Run with a vault that has a subdirectory to confirm the relative path
+    // includes the subdirectory component, not just the filename.
+    const { report } = await runAllRules({
+      vaultPath: join(SCENARIOS, 'incomplete-alert'),
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      selectedRuleNames: ['incompleteTaskAlert'],
+    });
+
+    // The heading must be a vault-relative path, not an absolute path.
+    // Absolute paths start with '/' (Unix) or a drive letter (Windows).
+    const lines = report.split('\n');
+    const headings = lines.filter((l) => l.startsWith('## '));
+    expect(headings.length).toBeGreaterThan(0);
+    for (const heading of headings) {
+      const path = heading.slice(3);
+      expect(path).not.toMatch(/^[/\\]/); // must not start with / or \
+      expect(path).not.toMatch(/^[A-Za-z]:\\/); // must not be an absolute Windows path
     }
   });
 });
