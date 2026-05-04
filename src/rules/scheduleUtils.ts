@@ -74,12 +74,19 @@ export function parseDateStr(dateStr: string): Date | null {
  * Compute the next due date for a repeating task.
  *
  * Algorithm:
- *   minDate = completionDate + skipWeeks*7 + 1  (strictly after completion)
+ *   offset  = skipWeeks === 0 ? 1 : skipWeeks × 7 − 1
+ *   minDate = completionDate + offset
  *   newDue  = first date >= minDate whose weekday is in schedule.days
+ *
+ * The (n×7 − 1) offset for n > 0 keeps the schedule anchored to the same
+ * weekday each cycle instead of drifting forward by one day per completion.
+ * Example: repeat:1mwf completed on Monday → minDate is Sunday → next
+ * Mon/Wed/Fri ≥ Sunday = Monday (same weekday, ~1 week later).
  */
 export function computeNextDue(completionDate: Date, schedule: RepeatSchedule): Date {
   const { skipWeeks, days } = schedule;
-  const minDate = addDays(completionDate, skipWeeks * 7 + 1);
+  const offset = skipWeeks === 0 ? 1 : skipWeeks * 7 - 1;
+  const minDate = addDays(completionDate, offset);
   let candidate = new Date(minDate);
   // 400 iterations is a safe upper bound: even with a single allowed weekday
   // the gap between occurrences is at most 6 days (< 7), so we will always

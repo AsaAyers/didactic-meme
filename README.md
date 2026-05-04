@@ -45,9 +45,12 @@ forms are completely interchangeable; prefer `d` for brevity.
 **Next-due algorithm:**
 
 ```
-minDate = done + skipWeeks × 7 + 1 day
+offset  = skipWeeks === 0 ? 1 : skipWeeks × 7 − 1
+minDate = done + offset
 newDue  = first date ≥ minDate whose weekday is in <days>
 ```
+
+The `(n × 7 − 1)` offset for n > 0 keeps the task anchored to roughly the same weekday each cycle — completing a `repeat:1mwf` task on Monday produces a next due of Monday (~1 week later), not Tuesday.
 
 When a repeating task is completed, `due:` is always set to `newDue`. If `start:` or `snooze:` are present they are shifted forward by the same number of days as `due` moved (`delta = newDue − oldDue`; if no `due:` existed, `oldDue = done`).
 
