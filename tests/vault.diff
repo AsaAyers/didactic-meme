@@ -5,7 +5,7 @@ Index: scenarios/checked-unchecked/tasks.md
 @@ -1,2 +1,2 @@
 -- [x] Done
 -- [ ] Todo
-+* [x] Done completionDate:2026-05-03
++* [x] Done completionDate:unknown
 +* [ ] Todo
 Index: scenarios/init-pass/already-normalized.md
 ===================================================================
@@ -22,6 +22,13 @@ Index: scenarios/init-pass/needs-normalization.md
 -- [ ] Task without trailing newline due:today
 \ No newline at end of file
 +* [ ] Task without trailing newline due:2026-05-03
+Index: scenarios/init-pass/with-completed-task.md
+===================================================================
+--- scenarios/init-pass/with-completed-task.md
++++ scenarios/init-pass/with-completed-task.md
+@@ -1,1 +1,1 @@
+-* [x] Completed task without completion date
++* [x] Completed task without completion date completionDate:unknown
 Index: scenarios/not-predicate/tasks.md
 ===================================================================
 --- scenarios/not-predicate/tasks.md
@@ -60,14 +67,14 @@ Index: scenarios/repeat-today-fallback/tasks.md
 +++ scenarios/repeat-today-fallback/tasks.md
 @@ -1,1 +1,1 @@
 -- [x] Water plants repeat:s
-+* [ ] Water plants repeat:s completionDate:2026-05-03 due:2026-05-10
++* [ ] Water plants repeat:s completionDate:unknown due:2026-05-10
 Index: scenarios/set-missing/tasks.md
 ===================================================================
 --- scenarios/set-missing/tasks.md
 +++ scenarios/set-missing/tasks.md
 @@ -1,1 +1,1 @@
 -- [x] Finished task
-+* [x] Finished task completionDate:2026-05-03
++* [x] Finished task completionDate:unknown
 Index: scenarios/unchecked-today/tasks.md
 ===================================================================
 --- scenarios/unchecked-today/tasks.md
@@ -75,7 +82,7 @@ Index: scenarios/unchecked-today/tasks.md
 @@ -1,2 +1,2 @@
 -- [x] Done
 -- [ ] Todo due:today
-+* [x] Done completionDate:2026-05-03
++* [x] Done completionDate:unknown
 +* [ ] Todo due:2026-05-03
 Index: TODO.md
 ===================================================================

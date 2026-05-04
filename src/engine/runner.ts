@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import { relative } from 'node:path';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
 import { ruleSpecs } from '../rules/index.js';
+import { stampCompletionDateSpec } from '../rules/stampCompletionDate.js';
 import { walkMarkdownFiles } from './io.js';
 import { FileWriteManager } from './io.js';
 import { runRuleSpec } from './ruleSpecRunner.js';
@@ -339,6 +340,49 @@ export async function runInitPass(
   }
 
   // Sort by path for deterministic output.
+  changes.sort((a, b) => a.path.localeCompare(b.path));
+
+  // Step 2: Stamp completionDate on checked tasks that lack one.
+  // A custom readFile serves in-memory normalised content for files that were
+  // already changed in the normalization pass above, so both normalisation
+  // and stamping are applied to the same content.
+  const normContentMap = new Map(changes.map((c) => [c.path, c.content]));
+  const stampReadFile = async (p: string): Promise<string> => {
+    if (normContentMap.has(p)) return normContentMap.get(p)!;
+    try {
+      return await fs.readFile(p, 'utf-8');
+    } catch {
+      return '';
+    }
+  };
+
+  const stampResult = await runRuleSpec(stampCompletionDateSpec, {
+    vaultPath,
+    today: new Date(), // required by RuleContext; not read because stampCompletionDateSpec uses value:'unknown'
+    dryRun: false, // dry-run is handled for the whole init pass below
+    env: {},
+    readFile: stampReadFile,
+  });
+
+  // Merge stamp changes into the normalisation changes.
+  for (const stampChange of stampResult.changes) {
+    const existingIdx = changes.findIndex((c) => c.path === stampChange.path);
+    if (existingIdx >= 0) {
+      // File was already normalised — stamp was applied on top of that.
+      changes[existingIdx].content = stampChange.content;
+    } else {
+      // File is already well-formatted but needs completionDate stamped.
+      let rawOriginal: string;
+      try {
+        rawOriginal = await fs.readFile(stampChange.path, 'utf-8');
+      } catch {
+        rawOriginal = '';
+      }
+      changes.push({ path: stampChange.path, original: rawOriginal, content: stampChange.content });
+    }
+  }
+
+  // Re-sort after merging.
   changes.sort((a, b) => a.path.localeCompare(b.path));
 
   // Second pass: verify stability — the normalized content must itself be a
