@@ -299,11 +299,11 @@ describe('runInitPass', () => {
   // completionDate stamping during --init
   // ---------------------------------------------------------------------------
 
-  it('stamps completionDate:YYYY-01-01 on checked tasks that lack one (dry-run)', async () => {
+  it('stamps completionDate:unknown on checked tasks that lack one (dry-run)', async () => {
     const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     const stamped = changes.find((c) => c.path.includes('with-completed-task'));
     expect(stamped, 'with-completed-task.md must appear in changes').toBeDefined();
-    expect(stamped!.content).toContain('completionDate:2026-01-01');
+    expect(stamped!.content).toContain('completionDate:unknown');
   });
 
   it('does not overwrite an existing completionDate (dry-run)', async () => {
@@ -433,7 +433,7 @@ describe('runInitPass', () => {
       await runInitPass(TMP_DIR, false, undefined, FROZEN_TODAY);
 
       const afterContent = await fs.readFile(join(TMP_DIR, 'with-completed-task.md'), 'utf-8');
-      expect(afterContent).toContain('completionDate:2026-01-01');
+      expect(afterContent).toContain('completionDate:unknown');
     });
   });
 });

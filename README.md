@@ -133,8 +133,8 @@ the vault:
 
 2. **completionDate stamping** — every checked (`[x]`) task that does **not**
    already have a `completionDate:` inline field is stamped with
-   `completionDate:YYYY-01-01` where `YYYY` is the current calendar year.
-   This back-fills a consistent, deterministic date for tasks that were
+   `completionDate:unknown`.
+   This back-fills a placeholder date for tasks that were
    completed before `--init` was run.
 
 This is intended to be run once before making rule-driven changes so that

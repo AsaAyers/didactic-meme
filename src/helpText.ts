@@ -21,8 +21,8 @@ Options:
   --dry-run                Print unified diffs to stdout; do not write any files.
   --verbose                Show rule-progress logs and the run summary (normally
                            suppressed in --dry-run mode).
-  --init                   Normalize vault formatting and stamp completionDate:YYYY-01-01
-                           on checked tasks that lack one (Jan 1 of the current year).
+  --init                   Normalize vault formatting and stamp completionDate:unknown
+                           on checked tasks that lack one.
                            Mutually exclusive with rule selection.
   --help, -h               Show this help message and exit.
 
