@@ -40,7 +40,7 @@ if (init) {
     console.error('');
     console.error('Examples:');
     console.error('  yarn run run -- all');
-    console.error('  yarn run run -- --dry-run stampCompletionDate');
+    console.error('  yarn run run -- --dry-run stampDone');
     console.error('');
     console.error('Run with --help for full usage information.');
     process.exit(1);

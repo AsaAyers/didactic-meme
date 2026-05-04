@@ -1,7 +1,7 @@
 import type { RuleSpec } from './types.js';
 
 /** Inline date fields that may contain relative date literals. */
-const DATE_KEYS = ['due', 'start', 'snooze', 'completionDate'] as const;
+const DATE_KEYS = ['due', 'start', 'snooze', 'done'] as const;
 
 /**
  * Relative date literals that the engine knows how to resolve.

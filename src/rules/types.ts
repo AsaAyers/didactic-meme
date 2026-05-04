@@ -113,7 +113,7 @@ export type ReplaceFieldDateValueAction = {
  * the completion date and the repeat schedule, shift `start:` and `snooze:`
  * by the same delta, then uncheck the task to reschedule it.
  *
- * Falls back to `ctx.today` when the `completionDate:` field is absent.
+ * Falls back to `ctx.today` when the `done:` field is absent.
  * No-op when the task has no valid `repeat:` field.
  */
 export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };

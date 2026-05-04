@@ -78,21 +78,21 @@ describe('ruleSpecRunner — task.setFieldDateIfMissing', () => {
       name: 'stamp',
       sources: [{ type: 'path', value: 'tasks.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
-      actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
+      actions: [{ type: 'task.setFieldDateIfMissing', key: 'done', value: 'today' }],
     };
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]?.content).toContain(`completionDate:${TODAY_STR}`);
+    expect(result.changes[0]?.content).toContain(`done:${TODAY_STR}`);
   });
 
   it('does not overwrite an existing field', async () => {
-    // scenarios/set-existing/tasks.md: "- [x] Finished task completionDate:2026-01-01"
+    // scenarios/set-existing/tasks.md: "- [x] Finished task done:2026-01-01"
     const ctx = makeCtx(join(SCENARIOS, 'set-existing'));
     const spec: RuleSpec = {
       name: 'stamp',
       sources: [{ type: 'path', value: 'tasks.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
-      actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
+      actions: [{ type: 'task.setFieldDateIfMissing', key: 'done', value: 'today' }],
     };
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(0);
@@ -112,14 +112,14 @@ describe('ruleSpecRunner — predicates', () => {
       name: 'test',
       sources: [{ type: 'path', value: 'tasks.md' }],
       query: { type: 'tasks', predicate: { type: 'checked' } },
-      actions: [{ type: 'task.setFieldDateIfMissing', key: 'completionDate', value: 'today' }],
+      actions: [{ type: 'task.setFieldDateIfMissing', key: 'done', value: 'today' }],
     };
     const result = await runRuleSpec(spec, ctx);
     expect(result.changes).toHaveLength(1);
     const content = result.changes[0]?.content ?? '';
-    expect(content).toContain(`* [x] Done completionDate:${TODAY_STR}`);
+    expect(content).toContain(`* [x] Done done:${TODAY_STR}`);
     expect(content).toContain('* [ ] Todo');
-    expect(content).not.toContain('Todo completionDate');
+    expect(content).not.toContain('Todo done:');
   });
 
   it('unchecked predicate selects only unchecked tasks', async () => {

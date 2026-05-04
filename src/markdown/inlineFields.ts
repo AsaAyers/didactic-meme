@@ -3,7 +3,7 @@ import invariant from "tiny-invariant";
 /**
  * Get the value of an inline field from task text.
  * Inline fields have the form `key:value` where value is a non-whitespace token.
- * Examples: `due:2026-05-03`, `repeat:2s`, `completionDate:2026-05-03`
+ * Examples: `due:2026-05-03`, `repeat:2s`, `done:2026-05-03`
  *
  * `key` must consist solely of word characters (letters, digits, underscore).
  * Throws if the key contains characters that could alter the regex pattern.

@@ -2,7 +2,7 @@ import type { RuleSpec } from './types.js';
 
 export const completedTaskRolloverSpec: RuleSpec = {
   name: 'completedTaskRollover',
-  dependencies: ['stampCompletionDate'],
+  dependencies: ['stampDone'],
   sources: [{ type: 'glob', pattern: '**/*.md' }],
   query: {
     type: 'tasks',

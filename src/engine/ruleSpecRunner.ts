@@ -167,7 +167,7 @@ function applyAction(taskText: string, action: Action, today: Date): ActionOutco
       const schedule = repeatStr ? parseRepeat(repeatStr) : null;
       if (!schedule) return { text: taskText };
 
-      const completionDateStr = getInlineField(taskText, 'completionDate');
+      const completionDateStr = getInlineField(taskText, 'done');
       const completionDate = completionDateStr ? (parseDateStr(completionDateStr) ?? today) : today;
 
       const newDue = computeNextDue(completionDate, schedule);

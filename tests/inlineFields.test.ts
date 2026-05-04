@@ -18,8 +18,8 @@ describe('getInlineField', () => {
     expect(getInlineField('duedate:2026-05-03', 'due')).toBeUndefined();
   });
 
-  it('extracts completionDate field', () => {
-    expect(getInlineField('Task completionDate:2026-05-01', 'completionDate')).toBe('2026-05-01');
+  it('extracts done field', () => {
+    expect(getInlineField('Task done:2026-05-01', 'done')).toBe('2026-05-01');
   });
 
   it('extracts repeat field', () => {
@@ -51,9 +51,9 @@ describe('setInlineField', () => {
     );
   });
 
-  it('appends completionDate when absent', () => {
-    expect(setInlineField('Buy milk', 'completionDate', '2026-05-03')).toBe(
-      'Buy milk completionDate:2026-05-03',
+  it('appends done when absent', () => {
+    expect(setInlineField('Buy milk', 'done', '2026-05-03')).toBe(
+      'Buy milk done:2026-05-03',
     );
   });
 });
