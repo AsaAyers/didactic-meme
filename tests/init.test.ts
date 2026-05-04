@@ -31,7 +31,7 @@ const FROZEN_TODAY = new Date(2026, 0, 1); // 2026-01-01 (local) — freeze time
 describe('runInitPass', () => {
   it('scans all .md files in the vault (dry-run)', async () => {
     const { scanned } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
-    expect(scanned).toBe(8);
+    expect(scanned).toBe(9);
     const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
     const paths = changes.map((c) => c.path);
     expect(paths.every((p) => p.endsWith('.md'))).toBe(true);
@@ -69,7 +69,7 @@ describe('runInitPass', () => {
 
   it('returns correct scanned/rewritten counts', async () => {
     const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
-    expect(scanned).toBe(8);
+    expect(scanned).toBe(9);
     // needs-normalization.md requires a formatting change; with-completed-task.md requires completionDate
     expect(rewritten).toBe(2);
   });
@@ -327,8 +327,8 @@ describe('runInitPass', () => {
 
   it('does not stamp completionDate on unchecked tasks (dry-run)', async () => {
     const { changes } = await runInitPass(INIT_SCENARIO, true, undefined, FROZEN_TODAY);
-    // already-normalized.md contains only unchecked tasks; it must not be in changes
-    const change = changes.find((c) => c.path.includes('already-normalized'));
+    // with-unchecked-task.md contains only an unchecked task — it must not be stamped
+    const change = changes.find((c) => c.path.includes('with-unchecked-task'));
     expect(change).toBeUndefined();
   });
 
