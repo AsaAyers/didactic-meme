@@ -260,7 +260,6 @@ export async function runInitPass(
   vaultPath: string,
   dryRun: boolean,
   normalize: (raw: string) => string = normalizeFileContent,
-  today: Date = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)),
 ): Promise<{
   scanned: number;
   rewritten: number;
@@ -344,8 +343,6 @@ export async function runInitPass(
   changes.sort((a, b) => a.path.localeCompare(b.path));
 
   // Step 2: Stamp completionDate on checked tasks that lack one.
-  // Use Jan 1 of the current year as the effective "today" so that every
-  // task completed before the init run gets a consistent, deterministic date.
   // A custom readFile serves in-memory normalised content for files that were
   // already changed in the normalization pass above, so both normalisation
   // and stamping are applied to the same content.
@@ -361,7 +358,7 @@ export async function runInitPass(
 
   const stampResult = await runRuleSpec(stampCompletionDateSpec, {
     vaultPath,
-    today,
+    today: new Date(),
     dryRun: false, // dry-run is handled for the whole init pass below
     env: {},
     readFile: stampReadFile,
