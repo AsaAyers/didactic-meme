@@ -68,7 +68,7 @@ export const incompleteTaskAlertSpec: RuleSpec = {
         { type: "unchecked" },
         {
           type: "not",
-          predicate: { type: "fieldDateAfter", key: "sleep", date: "tomorrow" },
+          predicate: { type: "fieldDateAfter", key: "snooze", date: "today" },
         },
       ],
     },
