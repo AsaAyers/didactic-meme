@@ -165,7 +165,14 @@ export type CustomAction = {
  */
 export type RolloverAction = { type: 'task.rollover' };
 
-export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction | RolloverAction;
+/**
+ * Remove the task from the document entirely.
+ * Used by removeEphemeralOverdueTasks to delete ephemeral tasks that have
+ * passed their due date without being completed.
+ */
+export type RemoveTaskAction = { type: 'task.remove' };
+
+export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction | RolloverAction | RemoveTaskAction;
 
 // --- RuleSpec ---------------------------------------------------------------
 
