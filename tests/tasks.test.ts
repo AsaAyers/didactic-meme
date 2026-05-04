@@ -14,13 +14,22 @@ const SAMPLE_MARKDOWN = `
 describe('extractTasks', () => {
   it('extracts checked and unchecked tasks with tags', () => {
     const tree = parseMarkdown(SAMPLE_MARKDOWN);
-    const tasks = extractTasks(tree);
+    const tasks = extractTasks(tree, "test.md");
     expect(tasks).toHaveLength(4);
 
     expect(tasks[0]).toMatchObject({ text: 'Buy milk #recurring', checked: true, tags: ['recurring'] });
     expect(tasks[1]).toMatchObject({ text: 'Write tests', checked: false, tags: [] });
     expect(tasks[2]).toMatchObject({ text: 'Deploy to production', checked: true, tags: [] });
     expect(tasks[3]).toMatchObject({ text: 'Review PR #urgent', checked: false, tags: ['urgent'] });
+  });
+
+  it('attaches the vault-relative sourcePath to every extracted task', () => {
+    const tree = parseMarkdown(SAMPLE_MARKDOWN);
+    const tasks = extractTasks(tree, 'notes/work.md');
+    expect(tasks.length).toBeGreaterThan(0);
+    for (const task of tasks) {
+      expect(task.sourcePath).toBe('notes/work.md');
+    }
   });
 });
 
@@ -30,7 +39,7 @@ describe('removeTask', () => {
     const result = removeTask(tree, 'Deploy to production');
     expect(result).toBe(true);
 
-    const tasks = extractTasks(tree);
+    const tasks = extractTasks(tree, "test.md");
     expect(tasks.map((t) => t.text)).not.toContain('Deploy to production');
     expect(tasks).toHaveLength(3);
   });
@@ -48,7 +57,7 @@ describe('setTaskChecked', () => {
     const result = setTaskChecked(tree, 'Write tests', true);
     expect(result).toBe(true);
 
-    const tasks = extractTasks(tree);
+    const tasks = extractTasks(tree, "test.md");
     const task = tasks.find((t) => t.text === 'Write tests');
     expect(task?.checked).toBe(true);
   });
@@ -58,7 +67,7 @@ describe('setTaskChecked', () => {
     const result = setTaskChecked(tree, 'Buy milk #recurring', false);
     expect(result).toBe(true);
 
-    const tasks = extractTasks(tree);
+    const tasks = extractTasks(tree, "test.md");
     const task = tasks.find((t) => t.text === 'Buy milk #recurring');
     expect(task?.checked).toBe(false);
   });
@@ -76,7 +85,7 @@ describe('updateTaskText', () => {
     const result = updateTaskText(tree, 'Deploy to production', 'Deploy to production due:2026-05-10');
     expect(result).toBe(true);
 
-    const tasks = extractTasks(tree);
+    const tasks = extractTasks(tree, "test.md");
     expect(tasks.map((t) => t.text)).toContain('Deploy to production due:2026-05-10');
     expect(tasks.map((t) => t.text)).not.toContain('Deploy to production');
   });
@@ -85,7 +94,7 @@ describe('updateTaskText', () => {
     const tree = parseMarkdown(SAMPLE_MARKDOWN);
     updateTaskText(tree, 'Deploy to production', 'Deploy to production due:2026-05-10');
 
-    const tasks = extractTasks(tree);
+    const tasks = extractTasks(tree, "test.md");
     const updated = tasks.find((t) => t.text === 'Deploy to production due:2026-05-10');
     expect(updated?.checked).toBe(true);
   });
@@ -102,7 +111,7 @@ describe('updateTaskText', () => {
     const unchecked = setTaskChecked(tree, 'Deploy to production due:2026-05-10', false);
     expect(unchecked).toBe(true);
 
-    const tasks = extractTasks(tree);
+    const tasks = extractTasks(tree, "test.md");
     const task = tasks.find((t) => t.text === 'Deploy to production due:2026-05-10');
     expect(task?.checked).toBe(false);
   });
