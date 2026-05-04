@@ -1,26 +1,26 @@
 // @ts-check
-import tseslint from 'typescript-eslint';
+import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   // Base TypeScript rules
   ...tseslint.configs.recommended,
 
   {
-    files: ['src/**/*.ts', 'tests/**/*.ts'],
+    files: ["src/**/*.ts", "tests/**/*.ts"],
     rules: {
       // Block barrel re-exports: developers must import directly from the
       // source file rather than going through an index.ts re-export layer.
-      'no-restricted-syntax': [
-        'error',
+      "no-restricted-syntax": [
+        "error",
         {
-          selector: 'ExportAllDeclaration',
+          selector: "ExportAllDeclaration",
           message:
-            'Barrel re-exports (export * from) are not allowed. Import directly from the source file.',
+            "Barrel re-exports (export * from) are not allowed. Import directly from the source file.",
         },
         {
-          selector: 'ExportNamedDeclaration[source!=null]',
+          selector: "ExportNamedDeclaration[source!=null]",
           message:
-            'Barrel re-exports (export { X } from) are not allowed. Import directly from the source file.',
+            "Barrel re-exports (export { X } from) are not allowed. Import directly from the source file.",
         },
       ],
     },
@@ -28,6 +28,6 @@ export default tseslint.config(
 
   {
     // Exclude compiled output and dependencies
-    ignores: ['dist/**', 'node_modules/**'],
+    ignores: ["dist/**", "node_modules/**"],
   },
 );

@@ -1,1 +1,1 @@
-* [ ] Unchecked task without completion date
+- [ ] Unchecked task without completion date

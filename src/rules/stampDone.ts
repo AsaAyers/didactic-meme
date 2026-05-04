@@ -1,4 +1,4 @@
-import type { RuleSpec } from './types.js';
+import type { RuleSpec } from "./types.js";
 
 /**
  * Normal-run stamp: every checked task that lacks a `done:` field gets
@@ -11,11 +11,13 @@ import type { RuleSpec } from './types.js';
  * by `completedTaskRollover` to identify tasks that need a clone.
  */
 export const stampDoneSpec: RuleSpec = {
-  name: 'stampDone',
-  dependencies: ['normalizeTodayLiteral'],
-  sources: [{ type: 'glob', pattern: '**/*.md' }],
-  query: { type: 'tasks', predicate: { type: 'checked' } },
-  actions: [{ type: 'task.setFieldDateIfMissing', key: 'done', value: 'today' }],
+  name: "stampDone",
+  dependencies: ["normalizeTodayLiteral"],
+  sources: [{ type: "glob", pattern: "**/*.md" }],
+  query: { type: "tasks", predicate: { type: "checked" } },
+  actions: [
+    { type: "task.setFieldDateIfMissing", key: "done", value: "today" },
+  ],
 };
 
 /**
@@ -26,8 +28,10 @@ export const stampDoneSpec: RuleSpec = {
  * predicates in the normal rule pipeline.
  */
 export const stampDoneUnknownSpec: RuleSpec = {
-  name: 'stampDoneUnknown',
-  sources: [{ type: 'glob', pattern: '**/*.md' }],
-  query: { type: 'tasks', predicate: { type: 'checked' } },
-  actions: [{ type: 'task.setFieldDateIfMissing', key: 'done', value: 'unknown' }],
+  name: "stampDoneUnknown",
+  sources: [{ type: "glob", pattern: "**/*.md" }],
+  query: { type: "tasks", predicate: { type: "checked" } },
+  actions: [
+    { type: "task.setFieldDateIfMissing", key: "done", value: "unknown" },
+  ],
 };

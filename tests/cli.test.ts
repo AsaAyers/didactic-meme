@@ -6,16 +6,16 @@
  * ruleSpecRunner.test.ts.  These tests exercise the integration between the
  * runner and the registered rule registry.
  */
-import { describe, it, expect } from 'vitest';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
-import { runAllRules } from '../src/engine/runner.js';
-import { HELP_TEXT } from '../src/helpText.js';
+import { describe, it, expect } from "vitest";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { runAllRules } from "../src/engine/runner.js";
+import { HELP_TEXT } from "../src/helpText.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, '..');
-const TEST_VAULT = join(__dirname, 'test_vault');
+const ROOT = resolve(__dirname, "..");
+const TEST_VAULT = join(__dirname, "test_vault");
 
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 
@@ -23,40 +23,40 @@ const TODAY = new Date(2026, 4, 3); // 2026-05-03
 // --help text
 // ---------------------------------------------------------------------------
 
-describe('HELP_TEXT', () => {
-  it('mentions --dry-run', () => {
-    expect(HELP_TEXT).toContain('--dry-run');
+describe("HELP_TEXT", () => {
+  it("mentions --dry-run", () => {
+    expect(HELP_TEXT).toContain("--dry-run");
   });
 
-  it('mentions --verbose', () => {
-    expect(HELP_TEXT).toContain('--verbose');
+  it("mentions --verbose", () => {
+    expect(HELP_TEXT).toContain("--verbose");
   });
 
-  it('mentions --init', () => {
-    expect(HELP_TEXT).toContain('--init');
+  it("mentions --init", () => {
+    expect(HELP_TEXT).toContain("--init");
   });
 
-  it('mentions --help', () => {
-    expect(HELP_TEXT).toContain('--help');
+  it("mentions --help", () => {
+    expect(HELP_TEXT).toContain("--help");
   });
 
   it('mentions the "all" keyword', () => {
-    expect(HELP_TEXT).toContain('all');
+    expect(HELP_TEXT).toContain("all");
   });
 
-  it('lists known rule names', () => {
-    expect(HELP_TEXT).toContain('normalizeTodayLiteral');
-    expect(HELP_TEXT).toContain('stampDone');
-    expect(HELP_TEXT).toContain('completedTaskRollover');
-    expect(HELP_TEXT).toContain('incompleteTaskAlert');
+  it("lists known rule names", () => {
+    expect(HELP_TEXT).toContain("normalizeTodayLiteral");
+    expect(HELP_TEXT).toContain("stampDone");
+    expect(HELP_TEXT).toContain("completedTaskRollover");
+    expect(HELP_TEXT).toContain("incompleteTaskAlert");
   });
 
-  it('mentions VAULT_PATH environment variable', () => {
-    expect(HELP_TEXT).toContain('VAULT_PATH');
+  it("mentions VAULT_PATH environment variable", () => {
+    expect(HELP_TEXT).toContain("VAULT_PATH");
   });
 
-  it('shows a usage example with a single rule name', () => {
-    expect(HELP_TEXT).toContain('stampDone');
+  it("shows a usage example with a single rule name", () => {
+    expect(HELP_TEXT).toContain("stampDone");
   });
 });
 
@@ -64,7 +64,7 @@ describe('HELP_TEXT', () => {
 // runAllRules — selectedRuleNames
 // ---------------------------------------------------------------------------
 
-describe('runAllRules — selectedRuleNames', () => {
+describe("runAllRules — selectedRuleNames", () => {
   it('runs all rules when selectedRuleNames is "all"', async () => {
     // Expect changes from the vault including normalizeTodayLiteral transforms.
     const { changes } = await runAllRules({
@@ -72,26 +72,26 @@ describe('runAllRules — selectedRuleNames', () => {
       today: TODAY,
       dryRun: true,
       env: {},
-      selectedRuleNames: 'all',
+      selectedRuleNames: "all",
     });
     // The vault TODO.md has due:today which normalizeTodayLiteral replaces.
-    const todoChange = changes.find((c) => c.path.endsWith('TODO.md'));
+    const todoChange = changes.find((c) => c.path.endsWith("TODO.md"));
     expect(todoChange).toBeDefined();
-    expect(todoChange!.content).toContain('due:2026-05-03');
+    expect(todoChange!.content).toContain("due:2026-05-03");
   });
 
-  it('runs all rules when selectedRuleNames is omitted (backward compat)', async () => {
+  it("runs all rules when selectedRuleNames is omitted (backward compat)", async () => {
     const { changes } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
       dryRun: true,
       env: {},
     });
-    const todoChange = changes.find((c) => c.path.endsWith('TODO.md'));
+    const todoChange = changes.find((c) => c.path.endsWith("TODO.md"));
     expect(todoChange).toBeDefined();
   });
 
-  it('selecting stampDone also runs normalizeTodayLiteral (its dependency)', async () => {
+  it("selecting stampDone also runs normalizeTodayLiteral (its dependency)", async () => {
     // The vault has tasks with due:today in TODO.md.
     // normalizeTodayLiteral should run because stampDone depends on it.
     const { changes } = await runAllRules({
@@ -99,15 +99,15 @@ describe('runAllRules — selectedRuleNames', () => {
       today: TODAY,
       dryRun: true,
       env: {},
-      selectedRuleNames: ['stampDone'],
+      selectedRuleNames: ["stampDone"],
     });
-    const todoChange = changes.find((c) => c.path.endsWith('TODO.md'));
+    const todoChange = changes.find((c) => c.path.endsWith("TODO.md"));
     expect(todoChange).toBeDefined();
     // normalizeTodayLiteral ran → "today" replaced with ISO date.
-    expect(todoChange!.content).toContain('due:2026-05-03');
+    expect(todoChange!.content).toContain("due:2026-05-03");
   });
 
-  it('selecting normalizeTodayLiteral alone does not run unrelated rules', async () => {
+  it("selecting normalizeTodayLiteral alone does not run unrelated rules", async () => {
     // rollover and alert are unrelated to normalizeTodayLiteral.
     // When only normalizeTodayLiteral is selected, stampDone must NOT run.
     const { changes } = await runAllRules({
@@ -115,7 +115,7 @@ describe('runAllRules — selectedRuleNames', () => {
       today: TODAY,
       dryRun: true,
       env: {},
-      selectedRuleNames: ['normalizeTodayLiteral'],
+      selectedRuleNames: ["normalizeTodayLiteral"],
     });
     // Verify stampDone did not run: scenario files that contain checked tasks
     // with no done: field in the source must not appear in the staged changes
@@ -123,7 +123,10 @@ describe('runAllRules — selectedRuleNames', () => {
     // was not selected so it can't add done: either).
     // These scenarios contain checked tasks with no done: field, so only
     // stampDone would change them — normalizeTodayLiteral has nothing to do.
-    const scenariosChangedOnlyByStampDone = ['set-missing', 'repeat-today-fallback'];
+    const scenariosChangedOnlyByStampDone = [
+      "set-missing",
+      "repeat-today-fallback",
+    ];
     for (const name of scenariosChangedOnlyByStampDone) {
       const change = changes.find((c) => c.path.includes(name));
       expect(
@@ -133,14 +136,14 @@ describe('runAllRules — selectedRuleNames', () => {
     }
   });
 
-  it('throws when an unknown rule name is passed to runAllRules', async () => {
+  it("throws when an unknown rule name is passed to runAllRules", async () => {
     await expect(
       runAllRules({
         vaultPath: TEST_VAULT,
         today: TODAY,
         dryRun: true,
         env: {},
-        selectedRuleNames: ['nonExistentRule'],
+        selectedRuleNames: ["nonExistentRule"],
       }),
     ).rejects.toThrow('Unknown rule: "nonExistentRule"');
   });
@@ -150,26 +153,26 @@ describe('runAllRules — selectedRuleNames', () => {
 // CLI process smoke test — validates the entrypoint is runnable via tsx
 // ---------------------------------------------------------------------------
 
-describe('CLI entrypoint smoke test', () => {
-  const tsxBin = join(ROOT, 'node_modules', '.bin', 'tsx');
-  const entrypoint = join(ROOT, 'src', 'index.ts');
+describe("CLI entrypoint smoke test", () => {
+  const tsxBin = join(ROOT, "node_modules", ".bin", "tsx");
+  const entrypoint = join(ROOT, "src", "index.ts");
 
-  it('exits 0 and prints help text when --help is passed', () => {
-    const result = spawnSync(tsxBin, [entrypoint, '--help'], {
-      encoding: 'utf-8',
+  it("exits 0 and prints help text when --help is passed", () => {
+    const result = spawnSync(tsxBin, [entrypoint, "--help"], {
+      encoding: "utf-8",
     });
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain('--dry-run');
-    expect(result.stdout).toContain('--init');
-    expect(result.stdout).toContain('VAULT_PATH');
+    expect(result.stdout).toContain("--dry-run");
+    expect(result.stdout).toContain("--init");
+    expect(result.stdout).toContain("VAULT_PATH");
   });
 
-  it('exits non-zero when VAULT_PATH is missing and no --help flag', () => {
-    const result = spawnSync(tsxBin, [entrypoint, 'all'], {
-      encoding: 'utf-8',
-      env: { ...process.env, VAULT_PATH: '' },
+  it("exits non-zero when VAULT_PATH is missing and no --help flag", () => {
+    const result = spawnSync(tsxBin, [entrypoint, "all"], {
+      encoding: "utf-8",
+      env: { ...process.env, VAULT_PATH: "" },
     });
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('VAULT_PATH');
+    expect(result.stderr).toContain("VAULT_PATH");
   });
 });

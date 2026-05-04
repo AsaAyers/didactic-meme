@@ -1,5 +1,5 @@
-import { visit } from 'unist-util-visit';
-import type { Root, ListItem, Paragraph, Text } from 'mdast';
+import { visit } from "unist-util-visit";
+import type { Root, ListItem, Paragraph, Text } from "mdast";
 
 export type Task = {
   text: string;
@@ -12,15 +12,15 @@ export type Task = {
 function getListItemText(item: ListItem): string {
   const parts: string[] = [];
   for (const child of item.children) {
-    if (child.type === 'paragraph') {
+    if (child.type === "paragraph") {
       for (const inline of (child as Paragraph).children) {
-        if (inline.type === 'text') {
+        if (inline.type === "text") {
           parts.push((inline as Text).value);
         }
       }
     }
   }
-  return parts.join('').trim();
+  return parts.join("").trim();
 }
 
 function extractTags(text: string): string[] {
@@ -31,7 +31,7 @@ function extractTags(text: string): string[] {
 
 export function extractTasks(tree: Root, sourcePath: string): Task[] {
   const tasks: Task[] = [];
-  visit(tree, 'listItem', (node: ListItem) => {
+  visit(tree, "listItem", (node: ListItem) => {
     if (node.checked !== null && node.checked !== undefined) {
       const text = getListItemText(node);
       tasks.push({
@@ -47,8 +47,8 @@ export function extractTasks(tree: Root, sourcePath: string): Task[] {
 
 export function removeTask(tree: Root, taskText: string): boolean {
   let found = false;
-  visit(tree, 'list', (listNode) => {
-    const list = listNode as import('mdast').List;
+  visit(tree, "list", (listNode) => {
+    const list = listNode as import("mdast").List;
     const idx = list.children.findIndex((item) => {
       if (item.checked === null || item.checked === undefined) return false;
       return getListItemText(item) === taskText;
@@ -61,9 +61,13 @@ export function removeTask(tree: Root, taskText: string): boolean {
   return found;
 }
 
-export function setTaskChecked(tree: Root, taskText: string, checked: boolean): boolean {
+export function setTaskChecked(
+  tree: Root,
+  taskText: string,
+  checked: boolean,
+): boolean {
   let found = false;
-  visit(tree, 'listItem', (node: ListItem) => {
+  visit(tree, "listItem", (node: ListItem) => {
     if (node.checked !== null && node.checked !== undefined) {
       if (getListItemText(node) === taskText) {
         node.checked = checked;
@@ -87,21 +91,21 @@ export function insertTaskAfter(
   checked: boolean,
 ): boolean {
   let inserted = false;
-  visit(tree, 'list', (listNode) => {
-    const list = listNode as import('mdast').List;
+  visit(tree, "list", (listNode) => {
+    const list = listNode as import("mdast").List;
     const idx = list.children.findIndex((item) => {
       if (item.checked === null || item.checked === undefined) return false;
       return getListItemText(item) === afterText;
     });
     if (idx !== -1 && !inserted) {
       const newItem: ListItem = {
-        type: 'listItem',
+        type: "listItem",
         checked,
         spread: false,
         children: [
           {
-            type: 'paragraph',
-            children: [{ type: 'text', value: newTaskText } as Text],
+            type: "paragraph",
+            children: [{ type: "text", value: newTaskText } as Text],
           } as Paragraph,
         ],
       };
@@ -118,14 +122,20 @@ export function insertTaskAfter(
  * paragraph's inline children to a single Text node with `newText`.
  * Returns true if the item was found and updated.
  */
-export function updateTaskText(tree: Root, oldText: string, newText: string): boolean {
+export function updateTaskText(
+  tree: Root,
+  oldText: string,
+  newText: string,
+): boolean {
   let found = false;
-  visit(tree, 'listItem', (node: ListItem) => {
+  visit(tree, "listItem", (node: ListItem) => {
     if (node.checked !== null && node.checked !== undefined) {
       if (getListItemText(node) === oldText) {
         for (const child of node.children) {
-          if (child.type === 'paragraph') {
-            (child as Paragraph).children = [{ type: 'text', value: newText } as Text];
+          if (child.type === "paragraph") {
+            (child as Paragraph).children = [
+              { type: "text", value: newText } as Text,
+            ];
             found = true;
           }
         }

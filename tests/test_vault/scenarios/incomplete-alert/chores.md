@@ -1,2 +1,2 @@
-* [ ] Clean the house
-* [ ] Take out trash
+- [ ] Clean the house
+- [ ] Take out trash

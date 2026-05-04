@@ -1,12 +1,26 @@
-import { join, relative } from 'node:path';
-import { addDays, differenceInCalendarDays, format } from 'date-fns';
-import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
-import { joinFrontmatter, splitFrontmatter } from '../markdown/frontmatter.js';
-import { extractTasks, insertTaskAfter, removeTask, setTaskChecked, updateTaskText } from '../markdown/tasks.js';
-import type { Task } from '../markdown/tasks.js';
-import { getInlineField, removeInlineField, setInlineField } from '../markdown/inlineFields.js';
-import { parseDateStr, parseRepeat, computeNextDue } from '../rules/scheduleUtils.js';
-import { walkMarkdownFiles } from './io.js';
+import { join, relative } from "node:path";
+import { addDays, differenceInCalendarDays, format } from "date-fns";
+import { parseMarkdown, stringifyMarkdown } from "../markdown/parse.js";
+import { joinFrontmatter, splitFrontmatter } from "../markdown/frontmatter.js";
+import {
+  extractTasks,
+  insertTaskAfter,
+  removeTask,
+  setTaskChecked,
+  updateTaskText,
+} from "../markdown/tasks.js";
+import type { Task } from "../markdown/tasks.js";
+import {
+  getInlineField,
+  removeInlineField,
+  setInlineField,
+} from "../markdown/inlineFields.js";
+import {
+  parseDateStr,
+  parseRepeat,
+  computeNextDue,
+} from "../rules/scheduleUtils.js";
+import { walkMarkdownFiles } from "./io.js";
 import type {
   Action,
   FileChange,
@@ -16,7 +30,7 @@ import type {
   RuleSpec,
   Source,
   TaskPredicate,
-} from '../rules/types.js';
+} from "../rules/types.js";
 
 // ---------------------------------------------------------------------------
 // Source resolution
@@ -34,27 +48,27 @@ import type {
  */
 function matchesGlob(relPath: string, pattern: string): boolean {
   // Normalize path separators so the function works on Windows too.
-  const p = relPath.replace(/\\/g, '/');
-  const pat = pattern.replace(/\\/g, '/');
+  const p = relPath.replace(/\\/g, "/");
+  const pat = pattern.replace(/\\/g, "/");
 
-  let regexStr = '';
+  let regexStr = "";
   let i = 0;
   while (i < pat.length) {
     const ch = pat[i];
-    if (ch === '*' && pat[i + 1] === '*' && pat[i + 2] === '/') {
+    if (ch === "*" && pat[i + 1] === "*" && pat[i + 2] === "/") {
       // **/ → any directory prefix (zero or more path segments)
-      regexStr += '(?:.+/)?';
+      regexStr += "(?:.+/)?";
       i += 3;
-    } else if (ch === '*' && pat[i + 1] === '*') {
+    } else if (ch === "*" && pat[i + 1] === "*") {
       // ** at end of pattern or followed by a non-/ character → match any
       // sequence of characters, including path separators.
-      regexStr += '.*';
+      regexStr += ".*";
       i += 2;
-    } else if (ch === '*') {
-      regexStr += '[^/]*';
+    } else if (ch === "*") {
+      regexStr += "[^/]*";
       i++;
-    } else if (ch === '?') {
-      regexStr += '[^/]';
+    } else if (ch === "?") {
+      regexStr += "[^/]";
       i++;
     } else if (/[.+^${}()|[\]\\]/.test(ch)) {
       // Escape regex metacharacters that are literal in globs.
@@ -68,8 +82,11 @@ function matchesGlob(relPath: string, pattern: string): boolean {
   return new RegExp(`^${regexStr}$`).test(p);
 }
 
-async function resolveSource(vaultPath: string, source: GlobSource | PathSource): Promise<string[]> {
-  if (source.type === 'path') {
+async function resolveSource(
+  vaultPath: string,
+  source: GlobSource | PathSource,
+): Promise<string[]> {
+  if (source.type === "path") {
     return [join(vaultPath, source.value)];
   }
   // glob
@@ -82,8 +99,13 @@ async function resolveSource(vaultPath: string, source: GlobSource | PathSource)
   );
 }
 
-async function resolveSources(vaultPath: string, sources: Source[]): Promise<string[]> {
-  const pathSets = await Promise.all(sources.map((s) => resolveSource(vaultPath, s)));
+async function resolveSources(
+  vaultPath: string,
+  sources: Source[],
+): Promise<string[]> {
+  const pathSets = await Promise.all(
+    sources.map((s) => resolveSource(vaultPath, s)),
+  );
   // Deduplicate while preserving order.
   const seen = new Set<string>();
   const result: string[] = [];
@@ -101,7 +123,7 @@ async function resolveSources(vaultPath: string, sources: Source[]): Promise<str
 // ---------------------------------------------------------------------------
 
 function formatDate(date: Date): string {
-  return format(date, 'yyyy-MM-dd');
+  return format(date, "yyyy-MM-dd");
 }
 
 /**
@@ -110,9 +132,9 @@ function formatDate(date: Date): string {
  * Other values are passed through unchanged.
  */
 function resolveToValue(value: string, today: Date): string {
-  if (value === 'today') return formatDate(today);
-  if (value === 'yesterday') return formatDate(addDays(today, -1));
-  if (value === 'tomorrow') return formatDate(addDays(today, 1));
+  if (value === "today") return formatDate(today);
+  if (value === "yesterday") return formatDate(addDays(today, -1));
+  if (value === "tomorrow") return formatDate(addDays(today, 1));
   return value;
 }
 
@@ -120,17 +142,21 @@ function resolveToValue(value: string, today: Date): string {
 // Predicate evaluation
 // ---------------------------------------------------------------------------
 
-function evaluatePredicate(task: Task, predicate: TaskPredicate, today: Date): boolean {
+function evaluatePredicate(
+  task: Task,
+  predicate: TaskPredicate,
+  today: Date,
+): boolean {
   switch (predicate.type) {
-    case 'checked':
+    case "checked":
       return task.checked;
-    case 'unchecked':
+    case "unchecked":
       return !task.checked;
-    case 'fieldExists':
+    case "fieldExists":
       return getInlineField(task.text, predicate.key) !== undefined;
-    case 'fieldEquals':
+    case "fieldEquals":
       return getInlineField(task.text, predicate.key) === predicate.value;
-    case 'fieldDateBefore': {
+    case "fieldDateBefore": {
       const raw = getInlineField(task.text, predicate.key);
       if (!raw) return false;
       const fieldDate = parseDateStr(raw);
@@ -138,7 +164,7 @@ function evaluatePredicate(task: Task, predicate: TaskPredicate, today: Date): b
       if (!fieldDate || !targetDate) return false;
       return fieldDate < targetDate;
     }
-    case 'fieldDateAfter': {
+    case "fieldDateAfter": {
       const raw = getInlineField(task.text, predicate.key);
       if (!raw) return false;
       const fieldDate = parseDateStr(raw);
@@ -146,11 +172,15 @@ function evaluatePredicate(task: Task, predicate: TaskPredicate, today: Date): b
       if (!fieldDate || !targetDate) return false;
       return fieldDate > targetDate;
     }
-    case 'and':
-      return predicate.predicates.every((p) => evaluatePredicate(task, p, today));
-    case 'or':
-      return predicate.predicates.some((p) => evaluatePredicate(task, p, today));
-    case 'not':
+    case "and":
+      return predicate.predicates.every((p) =>
+        evaluatePredicate(task, p, today),
+      );
+    case "or":
+      return predicate.predicates.some((p) =>
+        evaluatePredicate(task, p, today),
+      );
+    case "not":
       return !evaluatePredicate(task, predicate.predicate, today);
   }
 }
@@ -159,101 +189,149 @@ function evaluatePredicate(task: Task, predicate: TaskPredicate, today: Date): b
 // Action application
 // ---------------------------------------------------------------------------
 
-type ActionOutcome = { text: string; uncheck?: boolean; insertDuplicateAfter?: string; remove?: boolean };
+type ActionOutcome = {
+  text: string;
+  uncheck?: boolean;
+  insertDuplicateAfter?: string;
+  remove?: boolean;
+};
 
-function applyAction(taskText: string, action: Action, today: Date): ActionOutcome {
+function applyAction(
+  taskText: string,
+  action: Action,
+  today: Date,
+): ActionOutcome {
   switch (action.type) {
-    case 'task.setFieldDateIfMissing': {
-      if (getInlineField(taskText, action.key) !== undefined) return { text: taskText };
-      return { text: setInlineField(taskText, action.key, resolveToValue(action.value, today)) };
+    case "task.setFieldDateIfMissing": {
+      if (getInlineField(taskText, action.key) !== undefined)
+        return { text: taskText };
+      return {
+        text: setInlineField(
+          taskText,
+          action.key,
+          resolveToValue(action.value, today),
+        ),
+      };
     }
-    case 'task.replaceFieldDateValue': {
+    case "task.replaceFieldDateValue": {
       const existing = getInlineField(taskText, action.key);
       // `from` is compared as a raw literal (not resolved).
-      if (existing === undefined || existing !== action.from) return { text: taskText };
-      return { text: setInlineField(taskText, action.key, resolveToValue(action.to, today)) };
+      if (existing === undefined || existing !== action.from)
+        return { text: taskText };
+      return {
+        text: setInlineField(
+          taskText,
+          action.key,
+          resolveToValue(action.to, today),
+        ),
+      };
     }
-    case 'task.advanceRepeat': {
-      const repeatStr = getInlineField(taskText, 'repeat');
+    case "task.advanceRepeat": {
+      const repeatStr = getInlineField(taskText, "repeat");
       const schedule = repeatStr ? parseRepeat(repeatStr) : null;
       if (!schedule) return { text: taskText };
 
-      const completionDateStr = getInlineField(taskText, 'done');
-      const completionDate = completionDateStr ? (parseDateStr(completionDateStr) ?? today) : today;
+      const completionDateStr = getInlineField(taskText, "done");
+      const completionDate = completionDateStr
+        ? (parseDateStr(completionDateStr) ?? today)
+        : today;
 
       const newDue = computeNextDue(completionDate, schedule);
       const newDueStr = formatDate(newDue);
 
-      const existingDueStr = getInlineField(taskText, 'due');
-      const oldDue = existingDueStr ? (parseDateStr(existingDueStr) ?? completionDate) : completionDate;
+      const existingDueStr = getInlineField(taskText, "due");
+      const oldDue = existingDueStr
+        ? (parseDateStr(existingDueStr) ?? completionDate)
+        : completionDate;
       const delta = differenceInCalendarDays(newDue, oldDue);
 
-      let newText = setInlineField(taskText, 'due', newDueStr);
+      let newText = setInlineField(taskText, "due", newDueStr);
 
-      const startStr = getInlineField(taskText, 'start');
+      const startStr = getInlineField(taskText, "start");
       if (startStr) {
         const startDate = parseDateStr(startStr);
         if (startDate) {
-          newText = setInlineField(newText, 'start', formatDate(addDays(startDate, delta)));
+          newText = setInlineField(
+            newText,
+            "start",
+            formatDate(addDays(startDate, delta)),
+          );
         }
       }
 
-      const snoozeStr = getInlineField(taskText, 'snooze');
+      const snoozeStr = getInlineField(taskText, "snooze");
       if (snoozeStr) {
         const snoozeDate = parseDateStr(snoozeStr);
         if (snoozeDate) {
-          newText = setInlineField(newText, 'snooze', formatDate(addDays(snoozeDate, delta)));
+          newText = setInlineField(
+            newText,
+            "snooze",
+            formatDate(addDays(snoozeDate, delta)),
+          );
         }
       }
 
       return { text: newText, uncheck: true };
     }
-    case 'task.rollover': {
+    case "task.rollover": {
       // Create clone text: remove done: (not applicable on an active task).
-      let cloneText = removeInlineField(taskText, 'done');
+      let cloneText = removeInlineField(taskText, "done");
 
       // Apply the repeat schedule to the clone's dates, leaving the original
       // task's dates untouched.
-      const repeatStr = getInlineField(cloneText, 'repeat');
+      const repeatStr = getInlineField(cloneText, "repeat");
       if (repeatStr) {
         const schedule = parseRepeat(repeatStr);
         if (schedule) {
-          const doneStr = getInlineField(taskText, 'done');
+          const doneStr = getInlineField(taskText, "done");
           const doneDate = doneStr ? (parseDateStr(doneStr) ?? today) : today;
           const newDue = computeNextDue(doneDate, schedule);
           const newDueStr = formatDate(newDue);
 
-          const existingDueStr = getInlineField(cloneText, 'due');
-          const oldDue = existingDueStr ? (parseDateStr(existingDueStr) ?? doneDate) : doneDate;
+          const existingDueStr = getInlineField(cloneText, "due");
+          const oldDue = existingDueStr
+            ? (parseDateStr(existingDueStr) ?? doneDate)
+            : doneDate;
           const delta = differenceInCalendarDays(newDue, oldDue);
 
-          cloneText = setInlineField(cloneText, 'due', newDueStr);
+          cloneText = setInlineField(cloneText, "due", newDueStr);
 
-          const startStr = getInlineField(cloneText, 'start');
+          const startStr = getInlineField(cloneText, "start");
           if (startStr) {
             const startDate = parseDateStr(startStr);
             if (startDate) {
-              cloneText = setInlineField(cloneText, 'start', formatDate(addDays(startDate, delta)));
+              cloneText = setInlineField(
+                cloneText,
+                "start",
+                formatDate(addDays(startDate, delta)),
+              );
             }
           }
 
-          const snoozeStr = getInlineField(cloneText, 'snooze');
+          const snoozeStr = getInlineField(cloneText, "snooze");
           if (snoozeStr) {
             const snoozeDate = parseDateStr(snoozeStr);
             if (snoozeDate) {
-              cloneText = setInlineField(cloneText, 'snooze', formatDate(addDays(snoozeDate, delta)));
+              cloneText = setInlineField(
+                cloneText,
+                "snooze",
+                formatDate(addDays(snoozeDate, delta)),
+              );
             }
           }
         }
       }
 
       // Mark the original task as copied and return the clone text for insertion.
-      return { text: setInlineField(taskText, 'copied', '1'), insertDuplicateAfter: cloneText };
+      return {
+        text: setInlineField(taskText, "copied", "1"),
+        insertDuplicateAfter: cloneText,
+      };
     }
-    case 'custom':
+    case "custom":
       // Side-effect action — no text transformation. Fired separately per-file.
       return { text: taskText };
-    case 'task.remove':
+    case "task.remove":
       return { text: taskText, remove: true };
   }
 }
@@ -272,8 +350,10 @@ export async function runRuleSpec(
   const filePaths = await resolveSources(vaultPath, spec.sources);
 
   for (const p of filePaths) {
-    if (!p.endsWith('.md')) {
-      throw new Error(`Engine only processes .md files; refusing to process: ${p}`);
+    if (!p.endsWith(".md")) {
+      throw new Error(
+        `Engine only processes .md files; refusing to process: ${p}`,
+      );
     }
   }
 
@@ -294,10 +374,9 @@ export async function runRuleSpec(
     const tree = parseMarkdown(frontmatterParts.body);
     const allTasks = extractTasks(tree, relative(vaultPath, filePath));
 
-    const selected =
-      query.predicate
-        ? allTasks.filter((t) => evaluatePredicate(t, query.predicate!, today))
-        : allTasks;
+    const selected = query.predicate
+      ? allTasks.filter((t) => evaluatePredicate(t, query.predicate!, today))
+      : allTasks;
 
     let modified = 0;
     for (const task of selected) {
@@ -309,7 +388,8 @@ export async function runRuleSpec(
         const outcome = applyAction(newText, action, today);
         newText = outcome.text;
         if (outcome.uncheck) shouldUncheck = true;
-        if (outcome.insertDuplicateAfter !== undefined) insertDuplicateText = outcome.insertDuplicateAfter;
+        if (outcome.insertDuplicateAfter !== undefined)
+          insertDuplicateText = outcome.insertDuplicateAfter;
         if (outcome.remove) shouldRemove = true;
       }
       if (shouldRemove) {
@@ -348,8 +428,13 @@ export async function runRuleSpec(
   if (allSelected.length > 0) {
     const logFn = ctx.log ?? console.log;
     for (const action of actions) {
-      if (action.type === 'custom') {
-        await action.run({ tasks: allSelected, dryRun: ctx.dryRun, readFile: ctx.readFile, log: logFn });
+      if (action.type === "custom") {
+        await action.run({
+          tasks: allSelected,
+          dryRun: ctx.dryRun,
+          readFile: ctx.readFile,
+          log: logFn,
+        });
       }
     }
   }

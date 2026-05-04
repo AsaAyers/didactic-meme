@@ -16,27 +16,27 @@
  * ships a new rule) its defaults are merged in and the file is persisted.
  */
 
-import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
-import { z } from 'zod';
-import type { RuleSpec } from './rules/types.js';
+import { promises as fs } from "node:fs";
+import { join } from "node:path";
+import { z } from "zod";
+import type { RuleSpec } from "./rules/types.js";
 
 // ---------------------------------------------------------------------------
 // Zod schemas
 // ---------------------------------------------------------------------------
 
 const zGlobSource = z.object({
-  type: z.literal('glob'),
+  type: z.literal("glob"),
   pattern: z.string(),
   exclude: z.array(z.string()).optional(),
 });
 
 const zPathSource = z.object({
-  type: z.literal('path'),
+  type: z.literal("path"),
   value: z.string(),
 });
 
-export const zSource = z.discriminatedUnion('type', [zGlobSource, zPathSource]);
+export const zSource = z.discriminatedUnion("type", [zGlobSource, zPathSource]);
 
 const zRuleConfig = z.object({
   sources: z.array(zSource),
@@ -59,7 +59,7 @@ export type Config = z.infer<typeof zConfig>;
 // ---------------------------------------------------------------------------
 
 /** The file name of the vault-level config, relative to the vault root. */
-export const CONFIG_FILENAME = '.didatic-meme.json';
+export const CONFIG_FILENAME = ".didatic-meme.json";
 
 /**
  * Build the default config from an array of RuleSpecs.
@@ -83,17 +83,24 @@ export function getDefaultConfig(specs: RuleSpec[]): Config {
  * @param specs      All registered RuleSpecs (used to derive defaults).
  * @returns          The validated (and possibly augmented) config.
  */
-export async function loadConfig(vaultPath: string, specs: RuleSpec[]): Promise<Config> {
+export async function loadConfig(
+  vaultPath: string,
+  specs: RuleSpec[],
+): Promise<Config> {
   const configPath = join(vaultPath, CONFIG_FILENAME);
   const defaults = getDefaultConfig(specs);
 
   let raw: string;
   try {
-    raw = await fs.readFile(configPath, 'utf-8');
+    raw = await fs.readFile(configPath, "utf-8");
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
     // File does not exist — create it with all defaults.
-    await fs.writeFile(configPath, JSON.stringify(defaults, null, 2) + '\n', 'utf-8');
+    await fs.writeFile(
+      configPath,
+      JSON.stringify(defaults, null, 2) + "\n",
+      "utf-8",
+    );
     return defaults;
   }
 
@@ -112,9 +119,11 @@ export async function loadConfig(vaultPath: string, specs: RuleSpec[]): Promise<
   const result = zConfig.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues
-      .map((i) => `  ${i.path.join('.')}: ${i.message}`)
-      .join('\n');
-    throw new Error(`Invalid ${CONFIG_FILENAME}:\n${issues}\nPlease fix or delete the file and re-run.`);
+      .map((i) => `  ${i.path.join(".")}: ${i.message}`)
+      .join("\n");
+    throw new Error(
+      `Invalid ${CONFIG_FILENAME}:\n${issues}\nPlease fix or delete the file and re-run.`,
+    );
   }
 
   const stored = result.data;
@@ -130,7 +139,11 @@ export async function loadConfig(vaultPath: string, specs: RuleSpec[]): Promise<
   }
 
   if (needsWrite) {
-    await fs.writeFile(configPath, JSON.stringify(merged, null, 2) + '\n', 'utf-8');
+    await fs.writeFile(
+      configPath,
+      JSON.stringify(merged, null, 2) + "\n",
+      "utf-8",
+    );
   }
 
   return merged;

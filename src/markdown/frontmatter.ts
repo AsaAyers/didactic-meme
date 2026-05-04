@@ -19,23 +19,26 @@ export type SplitFrontmatterResult = {
 export function splitFrontmatter(raw: string): SplitFrontmatterResult {
   const fmMatch = FRONTMATTER_RE.exec(raw);
   if (!fmMatch) {
-    return { frontmatter: '', bodyPrefix: '', body: raw };
+    return { frontmatter: "", bodyPrefix: "", body: raw };
   }
 
   const frontmatter = fmMatch[0];
   const rest = raw.slice(frontmatter.length);
 
-  if (rest.startsWith('\r\n')) {
-    return { frontmatter, bodyPrefix: '\r\n', body: rest.slice(2) };
+  if (rest.startsWith("\r\n")) {
+    return { frontmatter, bodyPrefix: "\r\n", body: rest.slice(2) };
   }
-  if (rest.startsWith('\n')) {
-    return { frontmatter, bodyPrefix: '\n', body: rest.slice(1) };
+  if (rest.startsWith("\n")) {
+    return { frontmatter, bodyPrefix: "\n", body: rest.slice(1) };
   }
 
-  return { frontmatter, bodyPrefix: '', body: rest };
+  return { frontmatter, bodyPrefix: "", body: rest };
 }
 
-export function joinFrontmatter(parts: SplitFrontmatterResult, body: string): string {
+export function joinFrontmatter(
+  parts: SplitFrontmatterResult,
+  body: string,
+): string {
   if (!parts.frontmatter) return body;
   return `${parts.frontmatter}${parts.bodyPrefix}${body}`;
 }

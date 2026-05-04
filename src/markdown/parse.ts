@@ -1,11 +1,11 @@
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkGfm from 'remark-gfm';
-import remarkStringify from 'remark-stringify';
-import matter from 'gray-matter';
-import { visit, SKIP } from 'unist-util-visit';
-import type { Root, Parent, Text } from 'mdast';
-import type { Handlers } from 'mdast-util-to-markdown';
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkGfm from "remark-gfm";
+import remarkStringify from "remark-stringify";
+import matter from "gray-matter";
+import { visit, SKIP } from "unist-util-visit";
+import type { Root, Parent, Text } from "mdast";
+import type { Handlers } from "mdast-util-to-markdown";
 
 // ---------------------------------------------------------------------------
 // Wikilink support
@@ -19,7 +19,7 @@ import type { Handlers } from 'mdast-util-to-markdown';
  * nodes before stringification so the raw value is emitted verbatim.
  */
 interface WikilinkNode {
-  type: 'wikilink';
+  type: "wikilink";
   value: string;
 }
 
@@ -32,13 +32,16 @@ function splitWikilinkText(value: string): Array<Text | WikilinkNode> {
   let match: RegExpExecArray | null;
   while ((match = WIKILINK_RE.exec(value)) !== null) {
     if (match.index > lastIndex) {
-      parts.push({ type: 'text', value: value.slice(lastIndex, match.index) } as Text);
+      parts.push({
+        type: "text",
+        value: value.slice(lastIndex, match.index),
+      } as Text);
     }
-    parts.push({ type: 'wikilink', value: match[1] } as WikilinkNode);
+    parts.push({ type: "wikilink", value: match[1] } as WikilinkNode);
     lastIndex = match.index + match[1].length;
   }
   if (lastIndex < value.length) {
-    parts.push({ type: 'text', value: value.slice(lastIndex) } as Text);
+    parts.push({ type: "text", value: value.slice(lastIndex) } as Text);
   }
   return parts;
 }
@@ -50,14 +53,22 @@ function splitWikilinkText(value: string): Array<Text | WikilinkNode> {
  * Mutates `tree` in place — call just before stringification.
  */
 function protectWikilinks(tree: Root): void {
-  visit(tree, 'text', (node: Text, index: number | undefined, parent: Parent | undefined) => {
-    if (!parent || index === undefined) return;
-    if (!node.value.includes('[[')) return;
-    const parts = splitWikilinkText(node.value);
-    if (parts.length === 1 && parts[0].type === 'text') return;
-    (parent.children as Array<Text | WikilinkNode>).splice(index, 1, ...parts);
-    return [SKIP, index + parts.length];
-  });
+  visit(
+    tree,
+    "text",
+    (node: Text, index: number | undefined, parent: Parent | undefined) => {
+      if (!parent || index === undefined) return;
+      if (!node.value.includes("[[")) return;
+      const parts = splitWikilinkText(node.value);
+      if (parts.length === 1 && parts[0].type === "text") return;
+      (parent.children as Array<Text | WikilinkNode>).splice(
+        index,
+        1,
+        ...parts,
+      );
+      return [SKIP, index + parts.length];
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -74,7 +85,7 @@ function protectWikilinks(tree: Root): void {
  * stringification so the raw value is emitted verbatim.
  */
 interface ObsidianTagNode {
-  type: 'obsidianTag';
+  type: "obsidianTag";
   value: string;
 }
 
@@ -93,13 +104,16 @@ function splitObsidianTagText(value: string): Array<Text | ObsidianTagNode> {
   let match: RegExpExecArray | null;
   while ((match = OBSIDIAN_TAG_RE.exec(value)) !== null) {
     if (match.index > lastIndex) {
-      parts.push({ type: 'text', value: value.slice(lastIndex, match.index) } as Text);
+      parts.push({
+        type: "text",
+        value: value.slice(lastIndex, match.index),
+      } as Text);
     }
-    parts.push({ type: 'obsidianTag', value: match[0] } as ObsidianTagNode);
+    parts.push({ type: "obsidianTag", value: match[0] } as ObsidianTagNode);
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < value.length) {
-    parts.push({ type: 'text', value: value.slice(lastIndex) } as Text);
+    parts.push({ type: "text", value: value.slice(lastIndex) } as Text);
   }
   return parts;
 }
@@ -111,14 +125,26 @@ function splitObsidianTagText(value: string): Array<Text | ObsidianTagNode> {
  * Mutates `tree` in place — call just before stringification.
  */
 function protectObsidianTags(tree: Root): void {
-  visit(tree, 'text', (node: Text, index: number | undefined, parent: Parent | undefined) => {
-    if (!parent || index === undefined) return;
-    if (!node.value.includes('#')) return;
-    const parts = splitObsidianTagText(node.value);
-    if (parts.length === 0 || (parts.length === 1 && parts[0].type === 'text')) return;
-    (parent.children as Array<Text | ObsidianTagNode>).splice(index, 1, ...parts);
-    return [SKIP, index + parts.length];
-  });
+  visit(
+    tree,
+    "text",
+    (node: Text, index: number | undefined, parent: Parent | undefined) => {
+      if (!parent || index === undefined) return;
+      if (!node.value.includes("#")) return;
+      const parts = splitObsidianTagText(node.value);
+      if (
+        parts.length === 0 ||
+        (parts.length === 1 && parts[0].type === "text")
+      )
+        return;
+      (parent.children as Array<Text | ObsidianTagNode>).splice(
+        index,
+        1,
+        ...parts,
+      );
+      return [SKIP, index + parts.length];
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +160,7 @@ function protectObsidianTags(tree: Root): void {
  * `<%* … %>` and angle-bracket tags like `<* … *>`.
  */
 interface RawAsteriskNode {
-  type: 'rawAsterisk';
+  type: "rawAsterisk";
 }
 
 // ASCII punctuation characters used by the CommonMark flanking-delimiter rules.
@@ -149,10 +175,10 @@ function asteriskFlanking(
   prev: string,
   next: string,
 ): { left: boolean; right: boolean } {
-  const prevIsWs = prev === '' || /\s/.test(prev);
-  const nextIsWs = next === '' || /\s/.test(next);
-  const prevIsPunct = prev !== '' && ASCII_PUNCT_RE.test(prev);
-  const nextIsPunct = next !== '' && ASCII_PUNCT_RE.test(next);
+  const prevIsWs = prev === "" || /\s/.test(prev);
+  const nextIsWs = next === "" || /\s/.test(next);
+  const prevIsPunct = prev !== "" && ASCII_PUNCT_RE.test(prev);
+  const nextIsPunct = next !== "" && ASCII_PUNCT_RE.test(next);
 
   // CommonMark spec §6.2 (emphasis):
   //   Left-flanking:  not followed by whitespace  AND
@@ -183,13 +209,16 @@ function inertAsteriskPositions(value: string): Set<number> {
   const asts: AsteriskInfo[] = [];
 
   for (let i = 0; i < value.length; i++) {
-    if (value[i] !== '*') continue;
+    if (value[i] !== "*") continue;
 
-    const prev = i > 0 ? value[i - 1] : '';
-    const next = i < value.length - 1 ? value[i + 1] : '';
+    const prev = i > 0 ? value[i - 1] : "";
+    const next = i < value.length - 1 ? value[i + 1] : "";
 
     // Exclude * at line-break boundaries that match the atBreak unsafe rule.
-    if ((i === 0 || prev === '\n') && /[ \t\r\n*]/.test(next === '' ? ' ' : next)) {
+    if (
+      (i === 0 || prev === "\n") &&
+      /[ \t\r\n*]/.test(next === "" ? " " : next)
+    ) {
       continue;
     }
 
@@ -225,32 +254,43 @@ function inertAsteriskPositions(value: string): Set<number> {
  * Mutates `tree` in place — call just before stringification.
  */
 function protectInertAsterisks(tree: Root): void {
-  visit(tree, 'text', (node: Text, index: number | undefined, parent: Parent | undefined) => {
-    if (!parent || index === undefined) return;
-    if (!node.value.includes('*')) return;
+  visit(
+    tree,
+    "text",
+    (node: Text, index: number | undefined, parent: Parent | undefined) => {
+      if (!parent || index === undefined) return;
+      if (!node.value.includes("*")) return;
 
-    const inert = inertAsteriskPositions(node.value);
-    if (inert.size === 0) return;
+      const inert = inertAsteriskPositions(node.value);
+      if (inert.size === 0) return;
 
-    const parts: Array<Text | RawAsteriskNode> = [];
-    let lastIdx = 0;
-    for (let i = 0; i < node.value.length; i++) {
-      if (inert.has(i)) {
-        if (i > lastIdx) {
-          parts.push({ type: 'text', value: node.value.slice(lastIdx, i) } as Text);
+      const parts: Array<Text | RawAsteriskNode> = [];
+      let lastIdx = 0;
+      for (let i = 0; i < node.value.length; i++) {
+        if (inert.has(i)) {
+          if (i > lastIdx) {
+            parts.push({
+              type: "text",
+              value: node.value.slice(lastIdx, i),
+            } as Text);
+          }
+          parts.push({ type: "rawAsterisk" } as RawAsteriskNode);
+          lastIdx = i + 1;
         }
-        parts.push({ type: 'rawAsterisk' } as RawAsteriskNode);
-        lastIdx = i + 1;
       }
-    }
-    if (lastIdx < node.value.length) {
-      parts.push({ type: 'text', value: node.value.slice(lastIdx) } as Text);
-    }
-    if (parts.length <= 1) return;
+      if (lastIdx < node.value.length) {
+        parts.push({ type: "text", value: node.value.slice(lastIdx) } as Text);
+      }
+      if (parts.length <= 1) return;
 
-    (parent.children as Array<Text | RawAsteriskNode>).splice(index, 1, ...parts);
-    return [SKIP, index + parts.length];
-  });
+      (parent.children as Array<Text | RawAsteriskNode>).splice(
+        index,
+        1,
+        ...parts,
+      );
+      return [SKIP, index + parts.length];
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -269,61 +309,69 @@ function protectInertAsterisks(tree: Root): void {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function imageHandler(node: any, _: any, state: any, info: any): string {
   const quote: string = state.options.quote || '"';
-  const suffix = quote === '"' ? 'Quote' : 'Apostrophe';
-  const exit = state.enter('image');
-  let subexit = state.enter('label');
+  const suffix = quote === '"' ? "Quote" : "Apostrophe";
+  const exit = state.enter("image");
+  let subexit = state.enter("label");
   const tracker = state.createTracker(info);
-  let value = tracker.move('![');
+  let value = tracker.move("![");
   value += tracker.move(
-    state.safe(node.alt || '', { before: value, after: ']', ...tracker.current() }),
+    state.safe(node.alt || "", {
+      before: value,
+      after: "]",
+      ...tracker.current(),
+    }),
   );
-  value += tracker.move('](');
+  value += tracker.move("](");
   subexit();
-  if ((!node.url && node.title) || /[\0- \u007F]/.test(node.url || '')) {
-    subexit = state.enter('destinationLiteral');
-    value += tracker.move('<');
-    value += tracker.move(node.url || '');
-    value += tracker.move('>');
+  if ((!node.url && node.title) || /[\0- \u007F]/.test(node.url || "")) {
+    subexit = state.enter("destinationLiteral");
+    value += tracker.move("<");
+    value += tracker.move(node.url || "");
+    value += tracker.move(">");
   } else {
-    subexit = state.enter('destinationRaw');
-    value += tracker.move(node.url || '');
+    subexit = state.enter("destinationRaw");
+    value += tracker.move(node.url || "");
   }
   subexit();
   if (node.title) {
     subexit = state.enter(`title${suffix}`);
-    value += tracker.move(' ' + quote);
+    value += tracker.move(" " + quote);
     value += tracker.move(
-      state.safe(node.title, { before: value, after: quote, ...tracker.current() }),
+      state.safe(node.title, {
+        before: value,
+        after: quote,
+        ...tracker.current(),
+      }),
     );
     value += tracker.move(quote);
     subexit();
   }
-  value += tracker.move(')');
+  value += tracker.move(")");
   exit();
   return value;
 }
-imageHandler.peek = (): string => '!';
+imageHandler.peek = (): string => "!";
 
 /** Returns true if the link should be serialised as `<url>` (autolink form). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isAutolink(node: any, state: any): boolean {
   const child = node.children?.length === 1 ? node.children[0] : null;
-  const raw: string = child?.type === 'text' ? child.value : '';
+  const raw: string = child?.type === "text" ? child.value : "";
   return Boolean(
     !state.options.resourceLink &&
-      node.url &&
-      !node.title &&
-      raw &&
-      (raw === node.url || 'mailto:' + raw === node.url) &&
-      /^[a-z][a-z+.-]+:/i.test(node.url) &&
-      !/[\0- <>\u007F]/.test(node.url),
+    node.url &&
+    !node.title &&
+    raw &&
+    (raw === node.url || "mailto:" + raw === node.url) &&
+    /^[a-z][a-z+.-]+:/i.test(node.url) &&
+    !/[\0- <>\u007F]/.test(node.url),
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function linkHandler(node: any, _: any, state: any, info: any): string {
   const quote: string = state.options.quote || '"';
-  const suffix = quote === '"' ? 'Quote' : 'Apostrophe';
+  const suffix = quote === '"' ? "Quote" : "Apostrophe";
   const tracker = state.createTracker(info);
   let exit: () => void;
   let subexit: () => void;
@@ -332,51 +380,63 @@ function linkHandler(node: any, _: any, state: any, info: any): string {
     // Hide the phrasing context so escapes don't apply inside `<url>`.
     const stack = state.stack;
     state.stack = [];
-    exit = state.enter('autolink');
-    let value = tracker.move('<');
+    exit = state.enter("autolink");
+    let value = tracker.move("<");
     value += tracker.move(
-      state.containerPhrasing(node, { before: value, after: '>', ...tracker.current() }),
+      state.containerPhrasing(node, {
+        before: value,
+        after: ">",
+        ...tracker.current(),
+      }),
     );
-    value += tracker.move('>');
+    value += tracker.move(">");
     exit();
     state.stack = stack;
     return value;
   }
 
-  exit = state.enter('link');
-  subexit = state.enter('label');
-  let value = tracker.move('[');
+  exit = state.enter("link");
+  subexit = state.enter("label");
+  let value = tracker.move("[");
   value += tracker.move(
-    state.containerPhrasing(node, { before: value, after: '](', ...tracker.current() }),
+    state.containerPhrasing(node, {
+      before: value,
+      after: "](",
+      ...tracker.current(),
+    }),
   );
-  value += tracker.move('](');
+  value += tracker.move("](");
   subexit();
-  if ((!node.url && node.title) || /[\0- \u007F]/.test(node.url || '')) {
-    subexit = state.enter('destinationLiteral');
-    value += tracker.move('<');
-    value += tracker.move(node.url || '');
-    value += tracker.move('>');
+  if ((!node.url && node.title) || /[\0- \u007F]/.test(node.url || "")) {
+    subexit = state.enter("destinationLiteral");
+    value += tracker.move("<");
+    value += tracker.move(node.url || "");
+    value += tracker.move(">");
   } else {
-    subexit = state.enter('destinationRaw');
-    value += tracker.move(node.url || '');
+    subexit = state.enter("destinationRaw");
+    value += tracker.move(node.url || "");
   }
   subexit();
   if (node.title) {
     subexit = state.enter(`title${suffix}`);
-    value += tracker.move(' ' + quote);
+    value += tracker.move(" " + quote);
     value += tracker.move(
-      state.safe(node.title, { before: value, after: quote, ...tracker.current() }),
+      state.safe(node.title, {
+        before: value,
+        after: quote,
+        ...tracker.current(),
+      }),
     );
     value += tracker.move(quote);
     subexit();
   }
-  value += tracker.move(')');
+  value += tracker.move(")");
   exit();
   return value;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 linkHandler.peek = (node: any, _: any, state: any): string =>
-  isAutolink(node, state) ? '<' : '[';
+  isAutolink(node, state) ? "<" : "[";
 
 // ---------------------------------------------------------------------------
 // mdast-util-to-markdown handlers
@@ -386,7 +446,7 @@ linkHandler.peek = (node: any, _: any, state: any): string =>
 const customHandlers = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   wikilink: (node: any) => (node as WikilinkNode).value,
-  rawAsterisk: () => '*',
+  rawAsterisk: () => "*",
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   obsidianTag: (node: any) => (node as ObsidianTagNode).value,
   link: linkHandler,
@@ -407,19 +467,28 @@ export function stringifyMarkdown(tree: Root): string {
   protectObsidianTags(tree);
   protectInertAsterisks(tree);
   const processor = unified().use(remarkGfm).use(remarkStringify, {
-    bullet: '*',
-    listItemIndent: 'one',
-    rule: '-',
+    bullet: "*",
+    listItemIndent: "one",
+    rule: "-",
     handlers: customHandlers,
   });
   return processor.stringify(tree);
 }
 
-export function parseFrontmatter(raw: string): { data: Record<string, unknown>; content: string } {
+export function parseFrontmatter(raw: string): {
+  data: Record<string, unknown>;
+  content: string;
+} {
   const parsed = matter(raw);
-  return { data: parsed.data as Record<string, unknown>, content: parsed.content };
+  return {
+    data: parsed.data as Record<string, unknown>,
+    content: parsed.content,
+  };
 }
 
-export function stringifyFrontmatter(data: Record<string, unknown>, content: string): string {
+export function stringifyFrontmatter(
+  data: Record<string, unknown>,
+  content: string,
+): string {
   return matter.stringify(content, data);
 }

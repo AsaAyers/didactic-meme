@@ -1,4 +1,4 @@
-import type { RuleSpec } from './types.js';
+import type { RuleSpec } from "./types.js";
 
 /**
  * Ephemeral task removal rule.
@@ -20,20 +20,20 @@ import type { RuleSpec } from './types.js';
  *   - due < today  (strictly before today — due yesterday or earlier)
  */
 export const removeEphemeralOverdueTasksSpec: RuleSpec = {
-  name: 'removeEphemeralOverdueTasks',
-  dependencies: ['normalizeTodayLiteral'],
-  sources: [{ type: 'glob', pattern: '**/*.md' }],
+  name: "removeEphemeralOverdueTasks",
+  dependencies: ["normalizeTodayLiteral"],
+  sources: [{ type: "glob", pattern: "**/*.md" }],
   query: {
-    type: 'tasks',
+    type: "tasks",
     predicate: {
-      type: 'and',
+      type: "and",
       predicates: [
-        { type: 'unchecked' },
-        { type: 'fieldExists', key: 'ephemeral' },
-        { type: 'fieldExists', key: 'due' },
-        { type: 'fieldDateBefore', key: 'due', date: 'today' },
+        { type: "unchecked" },
+        { type: "fieldExists", key: "ephemeral" },
+        { type: "fieldExists", key: "due" },
+        { type: "fieldDateBefore", key: "due", date: "today" },
       ],
     },
   },
-  actions: [{ type: 'task.remove' }],
+  actions: [{ type: "task.remove" }],
 };

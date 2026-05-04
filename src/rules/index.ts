@@ -1,9 +1,9 @@
-import { stampDoneSpec } from './stampDone.js';
-import { completedTaskRolloverSpec } from './completedTaskRollover.js';
-import { incompleteTaskAlertSpec } from './incompleteTaskAlert.js';
-import { normalizeTodayLiteralSpec } from './normalizeTodayLiteral.js';
-import { removeEphemeralOverdueTasksSpec } from './removeEphemeralOverdueTasks.js';
-import type { RuleSpec } from './types.js';
+import { stampDoneSpec } from "./stampDone.js";
+import { completedTaskRolloverSpec } from "./completedTaskRollover.js";
+import { incompleteTaskAlertSpec } from "./incompleteTaskAlert.js";
+import { normalizeTodayLiteralSpec } from "./normalizeTodayLiteral.js";
+import { removeEphemeralOverdueTasksSpec } from "./removeEphemeralOverdueTasks.js";
+import type { RuleSpec } from "./types.js";
 
 /**
  * Declarative rule specs — interpreted by runRuleSpec in the engine.

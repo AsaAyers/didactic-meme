@@ -6,5 +6,5 @@ tags:
 
 # Heading
 
-* [ ] Task with [[Link]]
-  * [ ] Sub task
+- [ ] Task with [[Link]]
+  - [ ] Sub task

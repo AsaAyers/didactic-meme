@@ -1,4 +1,4 @@
-import type { Task } from '../markdown/tasks.js';
+import type { Task } from "../markdown/tasks.js";
 
 export type RuleContext = {
   vaultPath: string;
@@ -28,7 +28,7 @@ export type RuleContext = {
    * registered spec in dependency order.  An array of rule names runs only
    * those rules plus their transitive dependencies.
    */
-  selectedRuleNames?: string[] | 'all';
+  selectedRuleNames?: string[] | "all";
 };
 
 export type FileChange = {
@@ -52,7 +52,7 @@ export type Rule = {
 
 /** A glob-pattern source (relative to vaultPath). */
 export type GlobSource = {
-  type: 'glob';
+  type: "glob";
   pattern: string;
   /**
    * Glob patterns (relative to vaultPath) for files to exclude from the
@@ -62,21 +62,33 @@ export type GlobSource = {
   exclude?: string[];
 };
 /** A concrete relative-path source. */
-export type PathSource = { type: 'path'; value: string };
+export type PathSource = { type: "path"; value: string };
 export type Source = GlobSource | PathSource;
 
 // --- Predicates -------------------------------------------------------------
 
-export type CheckedPredicate = { type: 'checked' };
-export type UncheckedPredicate = { type: 'unchecked' };
-export type FieldExistsPredicate = { type: 'fieldExists'; key: string };
-export type FieldEqualsPredicate = { type: 'fieldEquals'; key: string; value: string };
+export type CheckedPredicate = { type: "checked" };
+export type UncheckedPredicate = { type: "unchecked" };
+export type FieldExistsPredicate = { type: "fieldExists"; key: string };
+export type FieldEqualsPredicate = {
+  type: "fieldEquals";
+  key: string;
+  value: string;
+};
 /** date: ISO "YYYY-MM-DD" or the literal "today" (resolved at run time). */
-export type FieldDateBeforePredicate = { type: 'fieldDateBefore'; key: string; date: string };
-export type FieldDateAfterPredicate = { type: 'fieldDateAfter'; key: string; date: string };
-export type AndPredicate = { type: 'and'; predicates: TaskPredicate[] };
-export type OrPredicate = { type: 'or'; predicates: TaskPredicate[] };
-export type NotPredicate = { type: 'not'; predicate: TaskPredicate };
+export type FieldDateBeforePredicate = {
+  type: "fieldDateBefore";
+  key: string;
+  date: string;
+};
+export type FieldDateAfterPredicate = {
+  type: "fieldDateAfter";
+  key: string;
+  date: string;
+};
+export type AndPredicate = { type: "and"; predicates: TaskPredicate[] };
+export type OrPredicate = { type: "or"; predicates: TaskPredicate[] };
+export type NotPredicate = { type: "not"; predicate: TaskPredicate };
 
 export type TaskPredicate =
   | CheckedPredicate
@@ -93,7 +105,7 @@ export type TaskPredicate =
 
 /** Select GFM task-list items from the resolved sources. */
 export type TaskQuery = {
-  type: 'tasks';
+  type: "tasks";
   /** When omitted, all tasks are selected. */
   predicate?: TaskPredicate;
 };
@@ -107,7 +119,7 @@ export type Query = TaskQuery;
  * value: ISO date string or "today" (resolved to ctx.today at run time).
  */
 export type SetFieldDateIfMissingAction = {
-  type: 'task.setFieldDateIfMissing';
+  type: "task.setFieldDateIfMissing";
   key: string;
   value: string;
 };
@@ -118,7 +130,7 @@ export type SetFieldDateIfMissingAction = {
  * to:   replacement — ISO date string or "today" (resolved at run time).
  */
 export type ReplaceFieldDateValueAction = {
-  type: 'task.replaceFieldDateValue';
+  type: "task.replaceFieldDateValue";
   key: string;
   from: string;
   to: string;
@@ -132,7 +144,7 @@ export type ReplaceFieldDateValueAction = {
  * Falls back to `ctx.today` when the `done:` field is absent.
  * No-op when the task has no valid `repeat:` field.
  */
-export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };
+export type AdvanceRepeatAction = { type: "task.advanceRepeat" };
 
 /**
  * Escape hatch for side effects that need the full set of matched tasks.
@@ -144,7 +156,7 @@ export type AdvanceRepeatAction = { type: 'task.advanceRepeat' };
  * console.log so previews appear in the returned report string.
  */
 export type CustomAction = {
-  type: 'custom';
+  type: "custom";
   run: (args: {
     tasks: Task[];
     dryRun: boolean;
@@ -163,16 +175,22 @@ export type CustomAction = {
  * Tasks without a `repeat:` field are never duplicated.
  * No-op when `copied` field already exists (idempotent).
  */
-export type RolloverAction = { type: 'task.rollover' };
+export type RolloverAction = { type: "task.rollover" };
 
 /**
  * Remove the task from the document entirely.
  * Used by removeEphemeralOverdueTasks to delete ephemeral tasks that have
  * passed their due date without being completed.
  */
-export type RemoveTaskAction = { type: 'task.remove' };
+export type RemoveTaskAction = { type: "task.remove" };
 
-export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction | RolloverAction | RemoveTaskAction;
+export type Action =
+  | SetFieldDateIfMissingAction
+  | ReplaceFieldDateValueAction
+  | AdvanceRepeatAction
+  | CustomAction
+  | RolloverAction
+  | RemoveTaskAction;
 
 // --- RuleSpec ---------------------------------------------------------------
 

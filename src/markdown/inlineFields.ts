@@ -9,7 +9,7 @@ import invariant from "tiny-invariant";
  * Throws if the key contains characters that could alter the regex pattern.
  */
 export function getInlineField(text: string, key: string): string | undefined {
-  invariant(/^\w+$/.test(key), `Invalid inline field key: ${key}`)
+  invariant(/^\w+$/.test(key), `Invalid inline field key: ${key}`);
   const regex = new RegExp(`(?:^|\\s)${key}:(\\S+)`);
   const match = text.match(regex);
   return match ? match[1] : undefined;
@@ -29,7 +29,10 @@ export function removeInlineField(text: string, key: string): string {
   // Match an optional preceding space (or start-of-string) plus key:value.
   // Replacing the whole match (including the leading space, if any) with ''
   // ensures no double-spaces are left behind.
-  return text.replace(new RegExp(`(^|\\s)${key}:\\S+`), '').replace(/\s{2,}/g, ' ').trim();
+  return text
+    .replace(new RegExp(`(^|\\s)${key}:\\S+`), "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 /**
@@ -40,8 +43,12 @@ export function removeInlineField(text: string, key: string): string {
  * `key` must consist solely of word characters (letters, digits, underscore).
  * Throws if the key contains characters that could alter the regex pattern.
  */
-export function setInlineField(text: string, key: string, value: string): string {
-  invariant( /^\w+$/.test(key), `Invalid inline field key: ${key}`);
+export function setInlineField(
+  text: string,
+  key: string,
+  value: string,
+): string {
+  invariant(/^\w+$/.test(key), `Invalid inline field key: ${key}`);
   const regex = new RegExp(`((?:^|\\s))${key}:\\S+`);
   if (regex.test(text)) {
     return text.replace(regex, `$1${key}:${value}`);

@@ -1,15 +1,15 @@
-import { createPatch } from 'diff';
-import { promises as fs } from 'node:fs';
-import { relative } from 'node:path';
-import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
-import { joinFrontmatter, splitFrontmatter } from '../markdown/frontmatter.js';
-import { ruleSpecs } from '../rules/index.js';
-import { stampDoneUnknownSpec } from '../rules/stampDone.js';
-import { walkMarkdownFiles } from './io.js';
-import { FileWriteManager } from './io.js';
-import { runRuleSpec } from './ruleSpecRunner.js';
-import type { RuleContext, RuleSpec } from '../rules/types.js';
-import { loadConfig, applyConfig } from '../config.js';
+import { createPatch } from "diff";
+import { promises as fs } from "node:fs";
+import { relative } from "node:path";
+import { parseMarkdown, stringifyMarkdown } from "../markdown/parse.js";
+import { joinFrontmatter, splitFrontmatter } from "../markdown/frontmatter.js";
+import { ruleSpecs } from "../rules/index.js";
+import { stampDoneUnknownSpec } from "../rules/stampDone.js";
+import { walkMarkdownFiles } from "./io.js";
+import { FileWriteManager } from "./io.js";
+import { runRuleSpec } from "./ruleSpecRunner.js";
+import type { RuleContext, RuleSpec } from "../rules/types.js";
+import { loadConfig, applyConfig } from "../config.js";
 
 /**
  * Sort `specs` so that every spec's dependencies appear before it in the
@@ -25,7 +25,9 @@ export function sortRuleSpecs(specs: RuleSpec[]): RuleSpec[] {
   for (const spec of specs) {
     for (const dep of spec.dependencies ?? []) {
       if (!specMap.has(dep)) {
-        throw new Error(`RuleSpec "${spec.name}" depends on unknown spec "${dep}"`);
+        throw new Error(
+          `RuleSpec "${spec.name}" depends on unknown spec "${dep}"`,
+        );
       }
     }
   }
@@ -62,7 +64,7 @@ export function sortRuleSpecs(specs: RuleSpec[]): RuleSpec[] {
   }
 
   if (sorted.length !== specs.length) {
-    throw new Error('Circular dependency detected among RuleSpecs');
+    throw new Error("Circular dependency detected among RuleSpecs");
   }
 
   return sorted;
@@ -74,13 +76,16 @@ export function sortRuleSpecs(specs: RuleSpec[]): RuleSpec[] {
  *
  * Throws if any name in `selected` does not correspond to a known spec.
  */
-export function selectRuleSpecs(allSpecs: RuleSpec[], selected: string[]): RuleSpec[] {
+export function selectRuleSpecs(
+  allSpecs: RuleSpec[],
+  selected: string[],
+): RuleSpec[] {
   const specMap = new Map(allSpecs.map((s) => [s.name, s]));
 
   // Validate that every explicitly requested name exists.
   for (const name of selected) {
     if (!specMap.has(name)) {
-      const available = allSpecs.map((s) => s.name).join(', ');
+      const available = allSpecs.map((s) => s.name).join(", ");
       throw new Error(`Unknown rule: "${name}". Available rules: ${available}`);
     }
   }
@@ -120,7 +125,9 @@ export function selectRuleSpecs(allSpecs: RuleSpec[], selected: string[]): RuleS
  * @returns        `changes` — staged file writes (path + content), sorted by path.
  *                 `report`  — everything printed to console during the run.
  */
-export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promise<{
+export async function runAllRules(
+  baseCtx: Omit<RuleContext, "readFile">,
+): Promise<{
   changes: Array<{ path: string; content: string }>;
   report: string;
 }> {
@@ -136,7 +143,11 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
     lines.push(msg);
   };
 
-  const ctx: RuleContext = { ...baseCtx, readFile: (p: string) => queue.read(p), log };
+  const ctx: RuleContext = {
+    ...baseCtx,
+    readFile: (p: string) => queue.read(p),
+    log,
+  };
 
   /**
    * Detail log: emitted only when verbose=true OR when not in dry-run mode.
@@ -152,14 +163,16 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
   const allSpecs = await loadConfig(ctx.vaultPath, ruleSpecs).then(
     (config) => applyConfig(ruleSpecs, config),
     (err: Error) => {
-      log(`Warning: could not load vault config — ${err.message}. Using built-in defaults.`);
+      log(
+        `Warning: could not load vault config — ${err.message}. Using built-in defaults.`,
+      );
       return ruleSpecs;
     },
   );
 
   // Resolve which specs to run based on the `selectedRuleNames` context field.
   const specsToRun =
-    ctx.selectedRuleNames === undefined || ctx.selectedRuleNames === 'all'
+    ctx.selectedRuleNames === undefined || ctx.selectedRuleNames === "all"
       ? sortRuleSpecs(allSpecs)
       : selectRuleSpecs(allSpecs, ctx.selectedRuleNames);
 
@@ -187,37 +200,37 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
     if (written.length > 0) {
       for (const change of written) {
         const relPath = relative(ctx.vaultPath, change.path);
-        let original = '';
+        let original = "";
         try {
-          original = await fs.readFile(change.path, 'utf-8');
+          original = await fs.readFile(change.path, "utf-8");
         } catch {
           // new file — treat original as empty
         }
         log(createPatch(relPath, original, change.content));
       }
     } else {
-      log('No changes.');
+      log("No changes.");
     }
-    logDetail('\n=== Run Summary ===');
+    logDetail("\n=== Run Summary ===");
     for (const s of summaries) {
       logDetail(s);
     }
   } else {
-    logDetail('\n=== Run Summary ===');
+    logDetail("\n=== Run Summary ===");
     for (const s of summaries) {
       logDetail(s);
     }
     if (written.length > 0) {
-      logDetail('\nFiles written:');
+      logDetail("\nFiles written:");
       for (const { path: f } of written) {
         logDetail(`  ${f}`);
       }
     } else {
-      logDetail('\nNo files written.');
+      logDetail("\nNo files written.");
     }
   }
 
-  return { changes: written, report: lines.join('\n') };
+  return { changes: written, report: lines.join("\n") };
 }
 
 /**
@@ -277,7 +290,8 @@ export async function runInitPass(
   const allFiles = await walkMarkdownFiles(vaultPath);
 
   // First pass: collect the normalized content for every file that changes.
-  const changes: Array<{ path: string; original: string; content: string }> = [];
+  const changes: Array<{ path: string; original: string; content: string }> =
+    [];
 
   for (const filePath of allFiles) {
     let rawBuffer: Buffer;
@@ -302,7 +316,7 @@ export async function runInitPass(
     let wasUtf16 = false;
     if (rawBuffer[0] === 0xff && rawBuffer[1] === 0xfe) {
       // UTF-16 LE with BOM: skip the 2-byte BOM, then decode the rest.
-      original = rawBuffer.slice(2).toString('utf16le');
+      original = rawBuffer.slice(2).toString("utf16le");
       wasUtf16 = true;
     } else if (rawBuffer[0] === 0xfe && rawBuffer[1] === 0xff) {
       // UTF-16 BE with BOM: swap bytes before decoding as UTF-16 LE.
@@ -311,7 +325,7 @@ export async function runInitPass(
         swapped[i - 2] = rawBuffer[i + 1];
         swapped[i - 1] = rawBuffer[i];
       }
-      original = swapped.toString('utf16le');
+      original = swapped.toString("utf16le");
       wasUtf16 = true;
     } else {
       // Heuristic BOM-less UTF-16 LE detection: sample the first 512 bytes and
@@ -326,10 +340,10 @@ export async function runInitPass(
         }
       }
       if (isBomlessUtf16Le) {
-        original = rawBuffer.toString('utf16le');
+        original = rawBuffer.toString("utf16le");
         wasUtf16 = true;
       } else {
-        original = rawBuffer.toString('utf-8');
+        original = rawBuffer.toString("utf-8");
       }
     }
 
@@ -352,9 +366,9 @@ export async function runInitPass(
   const stampReadFile = async (p: string): Promise<string> => {
     if (normContentMap.has(p)) return normContentMap.get(p)!;
     try {
-      return await fs.readFile(p, 'utf-8');
+      return await fs.readFile(p, "utf-8");
     } catch {
-      return '';
+      return "";
     }
   };
 
@@ -376,11 +390,15 @@ export async function runInitPass(
       // File is already well-formatted but needs done stamped.
       let rawOriginal: string;
       try {
-        rawOriginal = await fs.readFile(stampChange.path, 'utf-8');
+        rawOriginal = await fs.readFile(stampChange.path, "utf-8");
       } catch {
-        rawOriginal = '';
+        rawOriginal = "";
       }
-      changes.push({ path: stampChange.path, original: rawOriginal, content: stampChange.content });
+      changes.push({
+        path: stampChange.path,
+        original: rawOriginal,
+        content: stampChange.content,
+      });
     }
   }
 
@@ -398,30 +416,38 @@ export async function runInitPass(
   }
   if (unstable.length > 0) {
     throw new Error(
-      `Init normalization is not stable (second pass produced changes) for:\n  ${unstable.join('\n  ')}`,
+      `Init normalization is not stable (second pass produced changes) for:\n  ${unstable.join("\n  ")}`,
     );
   }
 
   if (dryRun) {
     if (changes.length > 0) {
       for (const change of changes) {
-        log(createPatch(relative(vaultPath, change.path), change.original, change.content));
+        log(
+          createPatch(
+            relative(vaultPath, change.path),
+            change.original,
+            change.content,
+          ),
+        );
       }
     } else {
-      log('No changes.');
+      log("No changes.");
     }
   } else {
     for (const change of changes) {
-      await fs.writeFile(change.path, change.content, 'utf-8');
+      await fs.writeFile(change.path, change.content, "utf-8");
     }
   }
 
-  log(`Init: scanned ${allFiles.length} file(s), ${dryRun ? 'would rewrite' : 'rewrote'} ${changes.length}.`);
+  log(
+    `Init: scanned ${allFiles.length} file(s), ${dryRun ? "would rewrite" : "rewrote"} ${changes.length}.`,
+  );
 
   return {
     scanned: allFiles.length,
     rewritten: changes.length,
     changes: changes.map(({ path, content }) => ({ path, content })),
-    report: lines.join('\n'),
+    report: lines.join("\n"),
   };
 }

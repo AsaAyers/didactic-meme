@@ -18,21 +18,21 @@
  * a reader can open any scenario directory and immediately see what the
  * pipeline does to it.
  */
-import { describe, it, expect } from 'vitest';
-import { dirname, join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { promises as fs } from 'node:fs';
-import { walkMarkdownFiles } from '../src/engine/io.js';
-import { runAllRules } from '../src/engine/runner.js';
+import { describe, it, expect } from "vitest";
+import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promises as fs } from "node:fs";
+import { walkMarkdownFiles } from "../src/engine/io.js";
+import { runAllRules } from "../src/engine/runner.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TEST_VAULT = join(__dirname, 'test_vault');
+const TEST_VAULT = join(__dirname, "test_vault");
 
 // Pin the date so the test produces the same output regardless of when it runs.
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 
-describe('test vault — .md.expected snapshots', () => {
-  it('every .md file matches its .md.expected counterpart', async () => {
+describe("test vault — .md.expected snapshots", () => {
+  it("every .md file matches its .md.expected counterpart", async () => {
     const { changes } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
@@ -54,7 +54,7 @@ describe('test vault — .md.expected snapshots', () => {
       // Every .md file must have a .md.expected counterpart.
       let expectedContent: string;
       try {
-        expectedContent = await fs.readFile(expectedPath, 'utf-8');
+        expectedContent = await fs.readFile(expectedPath, "utf-8");
       } catch {
         failures.push(`${relPath}: missing .md.expected file`);
         continue;
@@ -64,21 +64,21 @@ describe('test vault — .md.expected snapshots', () => {
       // modified the file, otherwise fall back to the on-disk content.
       const actualContent = staged.has(mdPath)
         ? staged.get(mdPath)!
-        : await fs.readFile(mdPath, 'utf-8');
+        : await fs.readFile(mdPath, "utf-8");
 
       if (actualContent !== expectedContent) {
         failures.push(`${relPath}: output does not match .md.expected`);
       }
     }
 
-    expect(failures, failures.join('\n')).toEqual([]);
+    expect(failures, failures.join("\n")).toEqual([]);
   });
 
-  it('does not modify any file on disk (dry-run guard)', async () => {
+  it("does not modify any file on disk (dry-run guard)", async () => {
     const mdFiles = await walkMarkdownFiles(TEST_VAULT);
     const before = new Map(
       await Promise.all(
-        mdFiles.map(async (p) => [p, await fs.readFile(p, 'utf-8')] as const),
+        mdFiles.map(async (p) => [p, await fs.readFile(p, "utf-8")] as const),
       ),
     );
 
@@ -90,10 +90,11 @@ describe('test vault — .md.expected snapshots', () => {
     });
 
     for (const [p, content] of before) {
-      const after = await fs.readFile(p, 'utf-8');
-      expect(after, `${relative(TEST_VAULT, p)} was modified on disk in dry-run mode`).toBe(
-        content,
-      );
+      const after = await fs.readFile(p, "utf-8");
+      expect(
+        after,
+        `${relative(TEST_VAULT, p)} was modified on disk in dry-run mode`,
+      ).toBe(content);
     }
   });
 });

@@ -1,2 +1,2 @@
-* [ ] Buy groceries
-* [ ] Do laundry
+- [ ] Buy groceries
+- [ ] Do laundry

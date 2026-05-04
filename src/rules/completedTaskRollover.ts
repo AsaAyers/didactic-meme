@@ -1,4 +1,4 @@
-import type { RuleSpec } from './types.js';
+import type { RuleSpec } from "./types.js";
 
 /**
  * Completed-task rollover rule.
@@ -29,25 +29,28 @@ import type { RuleSpec } from './types.js';
  *   - `copied` field is absent
  */
 export const completedTaskRolloverSpec: RuleSpec = {
-  name: 'completedTaskRollover',
-  dependencies: ['stampDone'],
-  sources: [{ type: 'glob', pattern: '**/*.md' }],
+  name: "completedTaskRollover",
+  dependencies: ["stampDone"],
+  sources: [{ type: "glob", pattern: "**/*.md" }],
   query: {
-    type: 'tasks',
+    type: "tasks",
     predicate: {
-      type: 'and',
+      type: "and",
       predicates: [
-        { type: 'checked' },
+        { type: "checked" },
         // Only recurring tasks are rolled over
-        { type: 'fieldExists', key: 'repeat' },
+        { type: "fieldExists", key: "repeat" },
         // done <= today: done is strictly before tomorrow
-        { type: 'fieldDateBefore', key: 'done', date: 'tomorrow' },
+        { type: "fieldDateBefore", key: "done", date: "tomorrow" },
         // done >= today: done is NOT strictly before today
-        { type: 'not', predicate: { type: 'fieldDateBefore', key: 'done', date: 'today' } },
+        {
+          type: "not",
+          predicate: { type: "fieldDateBefore", key: "done", date: "today" },
+        },
         // Not yet rolled over (idempotency guard)
-        { type: 'not', predicate: { type: 'fieldExists', key: 'copied' } },
+        { type: "not", predicate: { type: "fieldExists", key: "copied" } },
       ],
     },
   },
-  actions: [{ type: 'task.rollover' }],
+  actions: [{ type: "task.rollover" }],
 };

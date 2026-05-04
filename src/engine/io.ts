@@ -1,5 +1,5 @@
-import { promises as fs } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { promises as fs } from "node:fs";
+import { dirname, join } from "node:path";
 
 /**
  * Recursively collect every `.md` file under `dir`, sorted lexicographically
@@ -13,9 +13,9 @@ export async function walkMarkdownFiles(dir: string): Promise<string[]> {
     for (const entry of entries) {
       const name = entry.name as string;
       const fullPath = join(dir, name);
-      if (entry.isDirectory() && !name.startsWith('.')) {
+      if (entry.isDirectory() && !name.startsWith(".")) {
         results.push(...(await walkMarkdownFiles(fullPath)));
-      } else if (entry.isFile() && name.endsWith('.md')) {
+      } else if (entry.isFile() && name.endsWith(".md")) {
         results.push(fullPath);
       }
     }
@@ -27,9 +27,9 @@ export async function walkMarkdownFiles(dir: string): Promise<string[]> {
 
 export async function readFile(path: string): Promise<string> {
   try {
-    return await fs.readFile(path, 'utf-8');
+    return await fs.readFile(path, "utf-8");
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return '';
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return "";
     throw err;
   }
 }
@@ -59,12 +59,14 @@ export class FileWriteManager {
    * returned so the caller can generate diffs or other output.
    * Returns the full list of staged changes (path + final content).
    */
-  async commit(dryRun: boolean): Promise<Array<{ path: string; content: string }>> {
+  async commit(
+    dryRun: boolean,
+  ): Promise<Array<{ path: string; content: string }>> {
     const changes: Array<{ path: string; content: string }> = [];
     for (const [filePath, content] of this.pending) {
       if (!dryRun) {
         await fs.mkdir(dirname(filePath), { recursive: true });
-        await fs.writeFile(filePath, content, 'utf-8');
+        await fs.writeFile(filePath, content, "utf-8");
       }
       changes.push({ path: filePath, content });
     }
