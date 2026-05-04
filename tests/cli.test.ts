@@ -109,8 +109,7 @@ describe('runAllRules — selectedRuleNames', () => {
 
   it('selecting normalizeTodayLiteral alone does not run unrelated rules', async () => {
     // rollover and alert are unrelated to normalizeTodayLiteral.
-    // When only normalizeTodayLiteral is selected, the vault's completed tasks
-    // should not have their done stamped by stampDone.
+    // When only normalizeTodayLiteral is selected, stampDone must NOT run.
     const { changes } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
@@ -118,11 +117,17 @@ describe('runAllRules — selectedRuleNames', () => {
       env: {},
       selectedRuleNames: ['normalizeTodayLiteral'],
     });
-    // Every change should be attributable to normalizeTodayLiteral:
-    // no file should have had done stamped on a checked task (that
-    // would be stampDone's doing).
-    for (const change of changes) {
-      expect(change.content).not.toMatch(/\[x\].*done:/);
+    // Verify stampDone did not run: scenario files that contain checked tasks
+    // with no done: field in the source must not appear in the staged changes
+    // (normalizeTodayLiteral has nothing to change in them, and stampDone
+    // was not selected so it can't add done: either).
+    const unstampedScenarios = ['set-missing', 'repeat-today-fallback'];
+    for (const name of unstampedScenarios) {
+      const change = changes.find((c) => c.path.includes(name));
+      expect(
+        change,
+        `${name}: stampDone must not run when only normalizeTodayLiteral is selected`,
+      ).toBeUndefined();
     }
   });
 
