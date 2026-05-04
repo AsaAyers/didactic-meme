@@ -57,6 +57,50 @@ When a repeating task is completed, `due:` is always set to `newDue`. If `start:
 
 **Migration from `repeat:smtwhfa`:** replace with `repeat:d`.  No other changes required.
 
+## Vault Configuration (`.didatic-meme.json`)
+
+On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault root populated with the default `sources` for every built-in rule.  You can edit this file to customise which files each rule processes.
+
+### Config shape
+
+```jsonc
+{
+  // Each key is the rule name; the value overrides the files that rule scans.
+  "normalizeTodayLiteral": {
+    "sources": [{ "type": "glob", "pattern": "**/*.md" }]
+  },
+  "stampDone": {
+    "sources": [{ "type": "glob", "pattern": "**/*.md" }]
+  },
+  "completedTaskRollover": {
+    "sources": [{ "type": "glob", "pattern": "**/*.md" }]
+  },
+  "removeEphemeralOverdueTasks": {
+    "sources": [{ "type": "glob", "pattern": "**/*.md" }]
+  },
+  "incompleteTaskAlert": {
+    "sources": [
+      { "type": "glob", "pattern": "**/*.md", "exclude": ["archive/**", "templates/**"] }
+    ]
+  }
+}
+```
+
+### Source types
+
+| Type | Fields | Description |
+|---|---|---|
+| `"glob"` | `pattern` (required), `exclude` (optional array) | Matches files using a glob pattern relative to the vault root. `exclude` patterns are also relative to vault root. |
+| `"path"` | `value` (required) | A single concrete file path relative to the vault root. |
+
+### Auto-migration
+
+When a new rule is added in a future release, its default entry is merged into your existing `.didatic-meme.json` automatically on the next run.  You do not need to edit the file by hand unless you want a non-default value.
+
+### Validation
+
+The file is validated with [zod](https://zod.dev/) on every run.  If the file is malformed or contains an invalid source type the run aborts with a clear error message.  Fix or delete the file and re-run.
+
 ## Environment Variables
 
 | Variable | Required | Default | Description |
@@ -315,6 +359,7 @@ If today is 2026-05-11 and the task is still unchecked, it is silently deleted o
 src/
 ├── index.ts                    # CLI entrypoint
 ├── helpText.ts                 # --help output text (exported for testing)
+├── config.ts                   # Vault-level config (.didatic-meme.json) — zod schemas + load/apply helpers
 ├── markdown/
 │   ├── parse.ts                # unified/remark parse + stringify + gray-matter helpers
 │   ├── tasks.ts                # extract / toggle / remove / update GFM task items
@@ -334,6 +379,7 @@ src/
     └── incompleteTaskAlert.ts  # Rule 4
 tests/
 ├── cli.test.ts                 # --help text, selectedRuleNames behaviour
+├── config.test.ts              # vault-level config: create, merge, validation
 ├── tasks.test.ts               # extract tasks, toggle, remove, update
 ├── headings.test.ts            # append-under-heading with trim + create
 ├── inlineFields.test.ts        # getInlineField / setInlineField

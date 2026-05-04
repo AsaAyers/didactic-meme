@@ -9,6 +9,7 @@ import { walkMarkdownFiles } from './io.js';
 import { FileWriteManager } from './io.js';
 import { runRuleSpec } from './ruleSpecRunner.js';
 import type { RuleContext, RuleSpec } from '../rules/types.js';
+import { loadConfig, applyConfig } from '../config.js';
 
 /**
  * Sort `specs` so that every spec's dependencies appear before it in the
@@ -147,11 +148,20 @@ export async function runAllRules(baseCtx: Omit<RuleContext, 'readFile'>): Promi
 
   const summaries: string[] = [];
 
+  // Load vault-level config and apply source overrides to all registered specs.
+  const allSpecs = await loadConfig(ctx.vaultPath, ruleSpecs).then(
+    (config) => applyConfig(ruleSpecs, config),
+    (err: Error) => {
+      log(`Warning: could not load vault config — ${err.message}. Using built-in defaults.`);
+      return ruleSpecs;
+    },
+  );
+
   // Resolve which specs to run based on the `selectedRuleNames` context field.
   const specsToRun =
     ctx.selectedRuleNames === undefined || ctx.selectedRuleNames === 'all'
-      ? sortRuleSpecs(ruleSpecs)
-      : selectRuleSpecs(ruleSpecs, ctx.selectedRuleNames);
+      ? sortRuleSpecs(allSpecs)
+      : selectRuleSpecs(allSpecs, ctx.selectedRuleNames);
 
   // Declarative RuleSpecs (e.g. normalization) run first, ordered by deps.
   for (const spec of specsToRun) {
