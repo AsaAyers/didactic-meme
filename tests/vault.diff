@@ -2,10 +2,11 @@ Index: scenarios/checked-unchecked/tasks.md
 ===================================================================
 --- scenarios/checked-unchecked/tasks.md
 +++ scenarios/checked-unchecked/tasks.md
-@@ -1,2 +1,2 @@
+@@ -1,2 +1,3 @@
 -- [x] Done
 -- [ ] Todo
-+* [x] Done done:unknown
++* [x] Done done:2026-05-03 copied:1
++* [ ] Done
 +* [ ] Todo
 Index: scenarios/init-pass/already-normalized.md
 ===================================================================
@@ -26,19 +27,21 @@ Index: scenarios/init-pass/with-completed-task.md
 ===================================================================
 --- scenarios/init-pass/with-completed-task.md
 +++ scenarios/init-pass/with-completed-task.md
-@@ -1,1 +1,1 @@
+@@ -1,1 +1,2 @@
 -* [x] Completed task without completion date
-+* [x] Completed task without completion date done:unknown
++* [x] Completed task without completion date done:2026-05-03 copied:1
++* [ ] Completed task without completion date
 Index: scenarios/init-pass/with-publish-frontmatter.md
 ===================================================================
 --- scenarios/init-pass/with-publish-frontmatter.md
 +++ scenarios/init-pass/with-publish-frontmatter.md
-@@ -1,4 +1,4 @@
+@@ -1,4 +1,5 @@
  ---
  publish: false
  ---
 -* [x] Make sure frontmatter is preserved on init
-+* [x] Make sure frontmatter is preserved on init done:unknown
++* [x] Make sure frontmatter is preserved on init done:2026-05-03 copied:1
++* [ ] Make sure frontmatter is preserved on init
 Index: scenarios/not-predicate/tasks.md
 ===================================================================
 --- scenarios/not-predicate/tasks.md
@@ -61,38 +64,43 @@ Index: scenarios/repeat-basic/tasks.md
 ===================================================================
 --- scenarios/repeat-basic/tasks.md
 +++ scenarios/repeat-basic/tasks.md
-@@ -1,1 +1,1 @@
+@@ -1,1 +1,2 @@
 -- [x] Water plants repeat:s done:2026-05-03
-+* [ ] Water plants repeat:s done:2026-05-03 due:2026-05-10
++* [x] Water plants repeat:s done:2026-05-03 copied:1
++* [ ] Water plants repeat:s due:2026-05-10
 Index: scenarios/repeat-rollover/tasks.md
 ===================================================================
 --- scenarios/repeat-rollover/tasks.md
 +++ scenarios/repeat-rollover/tasks.md
-@@ -1,1 +1,1 @@
+@@ -1,1 +1,2 @@
 -- [x] Task start:2026-04-27 snooze:2026-04-29 due:2026-05-02 repeat:a done:2026-05-03
-+* [ ] Task start:2026-05-04 snooze:2026-05-06 due:2026-05-09 repeat:a done:2026-05-03
++* [x] Task start:2026-04-27 snooze:2026-04-29 due:2026-05-02 repeat:a done:2026-05-03 copied:1
++* [ ] Task start:2026-05-04 snooze:2026-05-06 due:2026-05-09 repeat:a
 Index: scenarios/repeat-today-fallback/tasks.md
 ===================================================================
 --- scenarios/repeat-today-fallback/tasks.md
 +++ scenarios/repeat-today-fallback/tasks.md
-@@ -1,1 +1,1 @@
+@@ -1,1 +1,2 @@
 -- [x] Water plants repeat:s
-+* [ ] Water plants repeat:s done:unknown due:2026-05-10
++* [x] Water plants repeat:s done:2026-05-03 copied:1
++* [ ] Water plants repeat:s due:2026-05-10
 Index: scenarios/set-missing/tasks.md
 ===================================================================
 --- scenarios/set-missing/tasks.md
 +++ scenarios/set-missing/tasks.md
-@@ -1,1 +1,1 @@
+@@ -1,1 +1,2 @@
 -- [x] Finished task
-+* [x] Finished task done:unknown
++* [x] Finished task done:2026-05-03 copied:1
++* [ ] Finished task
 Index: scenarios/unchecked-today/tasks.md
 ===================================================================
 --- scenarios/unchecked-today/tasks.md
 +++ scenarios/unchecked-today/tasks.md
-@@ -1,2 +1,2 @@
+@@ -1,2 +1,3 @@
 -- [x] Done
 -- [ ] Todo due:today
-+* [x] Done done:unknown
++* [x] Done done:2026-05-03 copied:1
++* [ ] Done
 +* [ ] Todo due:2026-05-03
 Index: TODO.md
 ===================================================================

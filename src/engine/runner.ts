@@ -4,7 +4,7 @@ import { relative } from 'node:path';
 import { parseMarkdown, stringifyMarkdown } from '../markdown/parse.js';
 import { joinFrontmatter, splitFrontmatter } from '../markdown/frontmatter.js';
 import { ruleSpecs } from '../rules/index.js';
-import { stampDoneSpec } from '../rules/stampDone.js';
+import { stampDoneUnknownSpec } from '../rules/stampDone.js';
 import { walkMarkdownFiles } from './io.js';
 import { FileWriteManager } from './io.js';
 import { runRuleSpec } from './ruleSpecRunner.js';
@@ -347,9 +347,9 @@ export async function runInitPass(
     }
   };
 
-  const stampResult = await runRuleSpec(stampDoneSpec, {
+  const stampResult = await runRuleSpec(stampDoneUnknownSpec, {
     vaultPath,
-    today: new Date(), // required by RuleContext; not read because stampDoneSpec uses value:'unknown'
+    today: new Date(), // required by RuleContext; not used because stampDoneUnknownSpec uses value:'unknown'
     dryRun: false, // dry-run is handled for the whole init pass below
     env: {},
     readFile: stampReadFile,

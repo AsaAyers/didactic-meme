@@ -134,7 +134,19 @@ export type CustomAction = {
   }) => Promise<void>;
 };
 
-export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction;
+/**
+ * For a checked task whose `done:` field equals today's date and that does not
+ * yet carry a `copied:1` marker:
+ *   1. Append `copied:1` to the original (completed) task.
+ *   2. Insert a new incomplete task directly after it whose dates are advanced
+ *      according to the task's `repeat:` schedule (if present), or left
+ *      unchanged when no `repeat:` field exists.
+ *
+ * No-op when `copied` field already exists (idempotent).
+ */
+export type RolloverAction = { type: 'task.rollover' };
+
+export type Action = SetFieldDateIfMissingAction | ReplaceFieldDateValueAction | AdvanceRepeatAction | CustomAction | RolloverAction;
 
 // --- RuleSpec ---------------------------------------------------------------
 
