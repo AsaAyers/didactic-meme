@@ -4,6 +4,9 @@
   "description": "TypeScript-based Markdown automation pipeline",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "didactic-meme": "dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "run": "node dist/index.js",
@@ -11,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prepare": "husky"
+    "prepare": "npm run build && (husky || true)"
   },
   "dependencies": {
     "date-fns": "^4.1.0",

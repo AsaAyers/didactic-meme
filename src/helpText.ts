@@ -1,7 +1,7 @@
 export const HELP_TEXT = `\
 Usage:
-  VAULT_PATH=<path> yarn run run [--dry-run] [--verbose] (all | <rule> [<rule>...])
-  VAULT_PATH=<path> yarn run run --init [--dry-run]
+  VAULT_PATH=<path> didactic-meme [--dry-run] [--verbose] (all | <rule> [<rule>...])
+  VAULT_PATH=<path> didactic-meme --init [--dry-run]
 
 Rules:
   all                      Run all registered rules in dependency order.
@@ -35,15 +35,15 @@ Environment variables:
 
 Examples:
   # Run every rule against the vault
-  VAULT_PATH=/my/vault yarn run run -- all
+  VAULT_PATH=/my/vault didactic-meme all
 
   # Dry-run every rule (shows diffs, writes nothing)
-  VAULT_PATH=/my/vault yarn run run -- --dry-run all
+  VAULT_PATH=/my/vault didactic-meme --dry-run all
 
   # Run only stampDone (normalizeTodayLiteral runs first automatically
   # because it is a declared dependency of stampDone)
-  VAULT_PATH=/my/vault yarn run run -- --dry-run stampDone
+  VAULT_PATH=/my/vault didactic-meme --dry-run stampDone
 
   # Normalize formatting and stamp done on checked tasks
-  VAULT_PATH=/my/vault yarn run run -- --init --dry-run
+  VAULT_PATH=/my/vault didactic-meme --init --dry-run
 `;

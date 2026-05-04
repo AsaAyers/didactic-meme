@@ -54,6 +54,42 @@ When a repeating task is completed, `due:` is always set to `newDue`. If `start:
 | `ALERT_URL` | No | — | HTTP endpoint to POST `tmp_alert.md` content to |
 | `ALERT_TOKEN` | No | — | Bearer token sent as `Authorization: Bearer …` header |
 
+## Global Installation
+
+Install the `didactic-meme` command globally so you can run it from anywhere:
+
+```bash
+npm install -g .
+```
+
+> **Note:** The `prepare` script runs `npm run build` automatically, so no
+> separate build step is needed before installing.
+
+Then use the installed command:
+
+```bash
+# Show help
+didactic-meme --help
+
+# Dry-run all rules against your vault
+VAULT_PATH=/path/to/your/vault didactic-meme --dry-run all
+
+# Run only the stampDone rule (dependencies included automatically)
+VAULT_PATH=/path/to/your/vault didactic-meme stampDone
+
+# Normalize the vault with --init
+VAULT_PATH=/path/to/your/vault didactic-meme --init
+
+# Preview --init changes without writing (dry-run)
+VAULT_PATH=/path/to/your/vault didactic-meme --init --dry-run
+```
+
+To uninstall:
+
+```bash
+npm uninstall -g didactic-meme
+```
+
 ## How to Run
 
 ### Install dependencies
@@ -71,13 +107,13 @@ npm run build
 ### Show help
 
 ```bash
-VAULT_PATH=/path/to/your/vault yarn run run -- --help
+VAULT_PATH=/path/to/your/vault didactic-meme --help
 ```
 
 ### Run all rules (real mode)
 
 ```bash
-VAULT_PATH=/path/to/your/vault yarn run run -- all
+VAULT_PATH=/path/to/your/vault didactic-meme all
 ```
 
 ### Run specific rules
@@ -89,23 +125,23 @@ them in the correct order.
 ```bash
 # Stamp done dates only (normalizeTodayLiteral runs first automatically
 # because it is a declared dependency of stampDone)
-VAULT_PATH=/path/to/your/vault yarn run run -- stampDone
+VAULT_PATH=/path/to/your/vault didactic-meme stampDone
 ```
 
 ```bash
 # Run multiple rules explicitly
-VAULT_PATH=/path/to/your/vault yarn run run -- normalizeTodayLiteral stampDone
+VAULT_PATH=/path/to/your/vault didactic-meme normalizeTodayLiteral stampDone
 ```
 
 ### Run with dry-run (prints a unified diff, no files written)
 
 ```bash
-VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run all
+VAULT_PATH=/path/to/your/vault didactic-meme --dry-run all
 ```
 
 ```bash
 # Dry-run for a single rule (dependencies included automatically)
-VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run stampDone
+VAULT_PATH=/path/to/your/vault didactic-meme --dry-run stampDone
 ```
 
 `--dry-run` outputs a unified diff (one patch per changed file, sorted by path) to
@@ -115,13 +151,13 @@ stdout without writing anything to disk.  The format is the same as the
 Add `--verbose` to also print rule-progress logs and the run summary:
 
 ```bash
-VAULT_PATH=/path/to/your/vault yarn run run -- --dry-run --verbose all
+VAULT_PATH=/path/to/your/vault didactic-meme --dry-run --verbose all
 ```
 
 ### Normalize the vault with `--init`
 
 ```bash
-VAULT_PATH=/path/to/your/vault npm run run -- --init
+VAULT_PATH=/path/to/your/vault didactic-meme --init
 ```
 
 `--init` performs a two-step initialization pass over every `.md` file in
@@ -159,7 +195,7 @@ If the second pass would still produce changes the command exits with an error
 Combine with `--dry-run` to preview which files would be rewritten:
 
 ```bash
-VAULT_PATH=/path/to/your/vault npm run run -- --init --dry-run
+VAULT_PATH=/path/to/your/vault didactic-meme --init --dry-run
 ```
 
 `--init` and the normal rule-pipeline mode are mutually exclusive: use one or
