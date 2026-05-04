@@ -68,8 +68,9 @@ describe('runInitPass', () => {
   it('returns correct scanned/rewritten counts', async () => {
     const { scanned, rewritten } = await runInitPass(INIT_SCENARIO, true, undefined);
     expect(scanned).toBe(10);
-    // needs-normalization.md requires a formatting change; with-completed-task.md requires completionDate
-    expect(rewritten).toBe(2);
+    // needs-normalization.md requires formatting; with-completed-task.md and
+    // with-publish-frontmatter.md require completionDate stamping.
+    expect(rewritten).toBe(3);
   });
 
   // ---------------------------------------------------------------------------
@@ -260,12 +261,24 @@ describe('runInitPass', () => {
   });
 
   it('does not corrupt publish:false frontmatter into a Markdown heading (dry-run)', async () => {
-    // Regression test for the bug where `---\npublish: false\n---\n` was
-    // rewritten to `## publish: false\n\n` by remark (the closing `---`
-    // was mis-parsed as a setext heading underline).
+    // This file now intentionally contains a checked task that needs stamping.
+    // We should get a change that adds completionDate while preserving the
+    // frontmatter block byte-for-byte.
     const { changes } = await runInitPass(INIT_SCENARIO, true, undefined);
     const fmChange = changes.find((c) => c.path.includes('with-publish-frontmatter'));
-    expect(fmChange, 'with-publish-frontmatter.md is already normalized and must not require changes').toBeUndefined();
+    expect(fmChange, 'with-publish-frontmatter.md should require completionDate stamping').toBeDefined();
+    expect(fmChange!.content).toContain('completionDate:unknown');
+
+    const original = await readScenarioFile('with-publish-frontmatter.md');
+    const frontmatterRe = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+    const originalFrontmatter = frontmatterRe.exec(original)?.[0];
+    const changedFrontmatter = frontmatterRe.exec(fmChange!.content)?.[0];
+
+    expect(originalFrontmatter).toBeDefined();
+    expect(changedFrontmatter).toBeDefined();
+    expect(changedFrontmatter).toBe(originalFrontmatter);
+    // Regression assertion: no setext-heading artifact from mis-parsed `---`.
+    expect(fmChange!.content).not.toContain('## publish: false');
   });
 
   it('normalizeFileContent preserves publish:false frontmatter without body', async () => {
