@@ -29,6 +29,12 @@ export type RuleContext = {
    * those rules plus their transitive dependencies.
    */
   selectedRuleNames?: string[] | "all";
+  /**
+   * When true, the transitive-dependency expansion for `selectedRuleNames` is
+   * skipped: only the exact rules listed in `selectedRuleNames` are run.
+   * Has no effect when `selectedRuleNames` is `'all'` or omitted.
+   */
+  skipDependencies?: boolean;
 };
 
 export type FileChange = {

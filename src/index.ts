@@ -7,6 +7,7 @@ const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const verbose = args.includes("--verbose");
 const init = args.includes("--init");
+const only = args.includes("--only");
 const help = args.includes("--help") || args.includes("-h");
 
 // Positional arguments: rule names or "all" (everything that doesn't start with '--')
@@ -79,6 +80,7 @@ if (init) {
     verbose,
     env: process.env,
     selectedRuleNames,
+    skipDependencies: only,
   }).catch((err: unknown) => {
     console.error("Fatal error:", (err as Error).message);
     process.exit(1);

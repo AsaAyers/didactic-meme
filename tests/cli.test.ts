@@ -32,6 +32,10 @@ describe("HELP_TEXT", () => {
     expect(HELP_TEXT).toContain("--verbose");
   });
 
+  it("mentions --only", () => {
+    expect(HELP_TEXT).toContain("--only");
+  });
+
   it("mentions --init", () => {
     expect(HELP_TEXT).toContain("--init");
   });
@@ -144,6 +148,40 @@ describe("runAllRules — selectedRuleNames", () => {
         dryRun: true,
         env: {},
         selectedRuleNames: ["nonExistentRule"],
+      }),
+    ).rejects.toThrow('Unknown rule: "nonExistentRule"');
+  });
+
+  it("skipDependencies: runs only the named rule without expanding deps", async () => {
+    // stampDone depends on normalizeTodayLiteral.
+    // With skipDependencies, normalizeTodayLiteral must NOT run.
+    const { changes } = await runAllRules({
+      vaultPath: TEST_VAULT,
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      selectedRuleNames: ["stampDone"],
+      skipDependencies: true,
+    });
+    // normalizeTodayLiteral did not run → "today" is NOT replaced with an ISO date.
+    const todoChange = changes.find((c) => c.path.endsWith("TODO.md"));
+    if (todoChange) {
+      expect(todoChange.content).not.toContain("due:2026-05-03");
+    }
+    // stampDone itself still ran (stamps done: on checked tasks without one).
+    const stampedChange = changes.find((c) => c.path.includes("set-missing"));
+    expect(stampedChange).toBeDefined();
+  });
+
+  it("skipDependencies with unknown rule throws", async () => {
+    await expect(
+      runAllRules({
+        vaultPath: TEST_VAULT,
+        today: TODAY,
+        dryRun: true,
+        env: {},
+        selectedRuleNames: ["nonExistentRule"],
+        skipDependencies: true,
       }),
     ).rejects.toThrow('Unknown rule: "nonExistentRule"');
   });
