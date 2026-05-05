@@ -27,10 +27,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promises as fs } from "node:fs";
 import { runRuleSpec } from "../src/engine/ruleSpecRunner.js";
-import {
-  selectRuleSpecs,
-  sortRuleSpecs,
-} from "../src/engine/runner.js";
+import { selectRuleSpecs, sortRuleSpecs } from "../src/engine/runner.js";
 import type { RuleContext, RuleSpec } from "../src/rules/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -11,8 +11,11 @@ const help = args.includes("--help") || args.includes("-h");
 
 // --only <glob>: optional value-bearing flag
 const onlyIdx = args.indexOf("--only");
-if (onlyIdx !== -1 && (onlyIdx + 1 >= args.length || args[onlyIdx + 1].startsWith("-"))) {
-  console.error('Error: --only requires a glob pattern argument.');
+if (
+  onlyIdx !== -1 &&
+  (onlyIdx + 1 >= args.length || args[onlyIdx + 1].startsWith("-"))
+) {
+  console.error("Error: --only requires a glob pattern argument.");
   console.error('  Example: didactic-meme --dry-run --only "notes/**" all');
   process.exit(1);
 }
