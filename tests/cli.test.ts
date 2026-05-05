@@ -36,6 +36,10 @@ describe("HELP_TEXT", () => {
     expect(HELP_TEXT).toContain("--only");
   });
 
+  it("mentions --watch", () => {
+    expect(HELP_TEXT).toContain("--watch");
+  });
+
   it("mentions --init", () => {
     expect(HELP_TEXT).toContain("--init");
   });

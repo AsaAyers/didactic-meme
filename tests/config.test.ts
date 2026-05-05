@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   loadConfig,
+  loadWatchConfig,
   getDefaultConfig,
   CONFIG_FILENAME,
 } from "../src/config.js";
@@ -138,6 +139,41 @@ describe("loadConfig", () => {
       CONFIG_FILENAME,
     );
   });
+
+  it("ignores the reserved 'watch' key and does not treat it as a rule config", async () => {
+    // A config with a "watch" section plus a rule config should parse without
+    // error — watch is stripped before rule validation.
+    const initial = {
+      watch: { debounce: 5000 },
+      specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+    };
+    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+
+    const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
+
+    // Rule config is returned correctly.
+    expect(config.specA.sources).toEqual([
+      { type: "glob", pattern: "**/*.md" },
+    ]);
+    // "watch" is not part of the returned rules config.
+    expect(config).not.toHaveProperty("watch");
+  });
+
+  it("preserves the 'watch' key verbatim when writing back new defaults", async () => {
+    // Config has watch section but is missing specB — loadConfig will add specB
+    // and write the merged result.  The watch key must survive the write-back.
+    const initial = {
+      watch: { debounce: 3000 },
+      specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+    };
+    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+
+    await loadConfig(tempVault, [SPEC_A, SPEC_B]);
+
+    const written = JSON.parse(await fs.readFile(configPath(), "utf-8"));
+    expect(written.watch).toEqual({ debounce: 3000 });
+    expect(written).toHaveProperty("specB");
+  });
 });
 
 describe("getDefaultConfig", () => {
@@ -151,5 +187,52 @@ describe("getDefaultConfig", () => {
 
   it("returns an empty object for an empty spec list", () => {
     expect(getDefaultConfig([])).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadWatchConfig
+// ---------------------------------------------------------------------------
+
+describe("loadWatchConfig", () => {
+  it("returns an empty object when the config file does not exist", async () => {
+    const cfg = await loadWatchConfig(tempVault);
+    expect(cfg).toEqual({});
+  });
+
+  it("returns an empty object when the config has no 'watch' key", async () => {
+    await fs.writeFile(
+      configPath(),
+      JSON.stringify({ specA: { sources: [] } }),
+      "utf-8",
+    );
+    const cfg = await loadWatchConfig(tempVault);
+    expect(cfg).toEqual({});
+  });
+
+  it("returns the parsed watch config when present", async () => {
+    await fs.writeFile(
+      configPath(),
+      JSON.stringify({ watch: { debounce: 5000 }, specA: { sources: [] } }),
+      "utf-8",
+    );
+    const cfg = await loadWatchConfig(tempVault);
+    expect(cfg).toEqual({ debounce: 5000 });
+  });
+
+  it("returns an empty object when the watch value is malformed (does not throw)", async () => {
+    await fs.writeFile(
+      configPath(),
+      JSON.stringify({ watch: { debounce: "not-a-number" } }),
+      "utf-8",
+    );
+    const cfg = await loadWatchConfig(tempVault);
+    expect(cfg).toEqual({});
+  });
+
+  it("returns an empty object when the config file contains invalid JSON", async () => {
+    await fs.writeFile(configPath(), "{ invalid json }", "utf-8");
+    const cfg = await loadWatchConfig(tempVault);
+    expect(cfg).toEqual({});
   });
 });

@@ -44,6 +44,11 @@ const zRuleConfig = z.object({
 
 export const zConfig = z.record(z.string(), zRuleConfig);
 
+const zWatchConfig = z.object({
+  /** Debounce duration in milliseconds. Defaults to 60000 (60 s). */
+  debounce: z.number().int().positive().optional(),
+});
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -53,6 +58,9 @@ export type RuleConfig = z.infer<typeof zRuleConfig>;
 
 /** The full vault-level config: one entry per rule name. */
 export type Config = z.infer<typeof zConfig>;
+
+/** Watch-mode configuration stored under the `"watch"` key in `.didatic-meme.json`. */
+export type WatchConfig = z.infer<typeof zWatchConfig>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -78,6 +86,9 @@ export function getDefaultConfig(specs: RuleSpec[]): Config {
  *     absent from the stored config, persist the merged result, and return it.
  *   - If the file exists but is invalid (bad JSON or fails zod validation):
  *     throw a descriptive error so the user knows they must fix the file.
+ *
+ * The reserved `"watch"` key is stripped before rule-config validation and
+ * preserved verbatim on write-back so that watch settings are not lost.
  *
  * @param vaultPath  Absolute path to the vault root.
  * @param specs      All registered RuleSpecs (used to derive defaults).
@@ -115,8 +126,13 @@ export async function loadConfig(
     );
   }
 
+  // Strip the reserved "watch" key before rule-config validation so that watch
+  // settings do not cause a zod validation failure.
+  const rawObj = parsed as Record<string, unknown>;
+  const { watch: watchEntry, ...rulesOnlyParsed } = rawObj;
+
   // Validate with zod.
-  const result = zConfig.safeParse(parsed);
+  const result = zConfig.safeParse(rulesOnlyParsed);
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  ${i.path.join(".")}: ${i.message}`)
@@ -139,14 +155,41 @@ export async function loadConfig(
   }
 
   if (needsWrite) {
+    // Preserve the "watch" entry verbatim when writing back.
+    const toWrite =
+      watchEntry !== undefined ? { watch: watchEntry, ...merged } : merged;
     await fs.writeFile(
       configPath,
-      JSON.stringify(merged, null, 2) + "\n",
+      JSON.stringify(toWrite, null, 2) + "\n",
       "utf-8",
     );
   }
 
   return merged;
+}
+
+/**
+ * Load just the `watch` section from the vault-level config file.
+ *
+ * Returns an empty object when the file does not exist or has no `watch` key.
+ * Never throws — malformed `watch` values are silently ignored so that a
+ * broken watch config does not prevent the CLI from starting.
+ */
+export async function loadWatchConfig(vaultPath: string): Promise<WatchConfig> {
+  const configPath = join(vaultPath, CONFIG_FILENAME);
+  let raw: string;
+  try {
+    raw = await fs.readFile(configPath, "utf-8");
+  } catch {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const result = zWatchConfig.safeParse(parsed["watch"]);
+    return result.success ? result.data : {};
+  } catch {
+    return {};
+  }
 }
 
 /**

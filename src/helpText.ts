@@ -1,6 +1,7 @@
 export const HELP_TEXT = `\
 Usage:
   VAULT_PATH=<path> didactic-meme [--dry-run] [--verbose] [--only <glob>] (all | <rule> [<rule>...])
+  VAULT_PATH=<path> didactic-meme --watch [--dry-run] [--verbose] (all | <rule> [<rule>...])
   VAULT_PATH=<path> didactic-meme --init [--dry-run]
 
 Rules:
@@ -25,9 +26,15 @@ Options:
                            matching <glob> (relative to VAULT_PATH).  Rules still
                            run in full dependency order; only the set of files each
                            rule processes is narrowed to the overlap with <glob>.
+  --watch                  Watch vault markdown files for changes and automatically
+                           run the selected rules on each changed file after a
+                           debounce period (default 60 s).  Uses a native filesystem
+                           watcher (no polling).  Not compatible with --init.
+                           The debounce duration is configurable via the vault config:
+                             { "watch": { "debounce": 5000 } }
   --init                   Normalize vault formatting and stamp done:unknown
                            on checked tasks that lack one.
-                           Mutually exclusive with rule selection.
+                           Mutually exclusive with rule selection and --watch.
   --help, -h               Show this help message and exit.
 
 Environment variables:
@@ -48,6 +55,12 @@ Examples:
 
   # Run all rules but only process files under notes/
   VAULT_PATH=/my/vault didactic-meme --dry-run --only "notes/**" all
+
+  # Watch vault for changes and run all rules on each changed file
+  VAULT_PATH=/my/vault didactic-meme --watch all
+
+  # Watch with dry-run (show diffs on each change, write nothing)
+  VAULT_PATH=/my/vault didactic-meme --watch --dry-run all
 
   # Normalize formatting and stamp done on checked tasks
   VAULT_PATH=/my/vault didactic-meme --init --dry-run
