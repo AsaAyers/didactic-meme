@@ -54,9 +54,9 @@ const zWatchConfig = z.object({
  * This means unknown keys and malformed watch values are caught by Zod rather
  * than being silently ignored.
  */
-export const zConfig = z.object({ watch: zWatchConfig.optional() }).catchall(
-  zRuleConfig,
-);
+export const zConfig = z
+  .object({ watch: zWatchConfig.optional() })
+  .catchall(zRuleConfig);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,12 +70,15 @@ export type WatchConfig = z.infer<typeof zWatchConfig>;
 
 /**
  * The full vault-level config: an optional `watch` entry plus one entry per
- * rule name.  Defined manually rather than with `z.infer` to avoid TypeScript's
- * index-signature / known-key intersection conflict.
+ * rule name.  Defined as an intersection rather than with `z.infer` because
+ * Zod's catchall creates a TypeScript intersection (`{ watch?: WatchConfig } &
+ * { [x: string]: RuleConfig }`) where TypeScript treats `watch` as the
+ * intersection of both types.  By defining the type explicitly we get:
+ *   - `config.watch`         → `WatchConfig | undefined`  (explicit property wins)
+ *   - `config[anyOtherKey]`  → `RuleConfig | undefined`   (from index signature)
  */
-export type Config = {
-  watch?: WatchConfig;
-  [key: string]: RuleConfig | WatchConfig | undefined;
+export type Config = { watch?: WatchConfig } & {
+  [key: string]: RuleConfig | undefined;
 };
 
 // ---------------------------------------------------------------------------
@@ -86,13 +89,13 @@ export type Config = {
 export const CONFIG_FILENAME = ".didatic-meme.json";
 
 /**
- * Build the default config from an array of RuleSpecs.
+ * Build the default rule configs from an array of RuleSpecs.
  * Each entry uses the spec's own `sources` array as its default.
+ * Returns a plain record (no `watch` key) so callers can iterate values as
+ * `RuleConfig` without needing to handle the `WatchConfig` union member.
  */
-export function getDefaultConfig(specs: RuleSpec[]): Config {
-  return Object.fromEntries(
-    specs.map((s) => [s.name, { sources: s.sources }]),
-  ) as Config;
+export function getDefaultConfig(specs: RuleSpec[]): Record<string, RuleConfig> {
+  return Object.fromEntries(specs.map((s) => [s.name, { sources: s.sources }]));
 }
 
 /**
@@ -130,7 +133,7 @@ export async function loadConfig(
       JSON.stringify(defaults, null, 2) + "\n",
       "utf-8",
     );
-    return defaults;
+    return defaults as Config;
   }
 
   // Parse JSON.
@@ -189,9 +192,7 @@ export async function loadConfig(
 export function applyConfig(specs: RuleSpec[], config: Config): RuleSpec[] {
   return specs.map((spec) => {
     const entry = config[spec.name];
-    // Skip entries that are missing or do not have a `sources` key (e.g. the
-    // `watch` entry, which is never a spec name in practice).
-    if (!entry || !("sources" in entry)) return spec;
-    return { ...spec, sources: (entry as RuleConfig).sources };
+    if (!entry) return spec;
+    return { ...spec, sources: entry.sources };
   });
 }
