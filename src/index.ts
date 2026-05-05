@@ -9,6 +9,19 @@ const verbose = args.includes("--verbose");
 const init = args.includes("--init");
 const help = args.includes("--help") || args.includes("-h");
 
+// --only <glob>: optional value-bearing flag
+const onlyIdx = args.indexOf("--only");
+if (
+  onlyIdx !== -1 &&
+  (onlyIdx + 1 >= args.length || args[onlyIdx + 1].startsWith("-"))
+) {
+  console.error("Error: --only requires a glob pattern argument.");
+  console.error('  Example: didactic-meme --dry-run --only "notes/**" all');
+  process.exit(1);
+}
+const onlyGlob: string | undefined =
+  onlyIdx !== -1 ? args[onlyIdx + 1] : undefined;
+
 // Positional arguments: rule names or "all" (everything that doesn't start with '--')
 const positional = args.filter((a) => !a.startsWith("-"));
 
@@ -79,6 +92,7 @@ if (init) {
     verbose,
     env: process.env,
     selectedRuleNames,
+    onlyGlob,
   }).catch((err: unknown) => {
     console.error("Fatal error:", (err as Error).message);
     process.exit(1);

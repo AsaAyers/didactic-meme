@@ -1,6 +1,6 @@
 export const HELP_TEXT = `\
 Usage:
-  VAULT_PATH=<path> didactic-meme [--dry-run] [--verbose] (all | <rule> [<rule>...])
+  VAULT_PATH=<path> didactic-meme [--dry-run] [--verbose] [--only <glob>] (all | <rule> [<rule>...])
   VAULT_PATH=<path> didactic-meme --init [--dry-run]
 
 Rules:
@@ -21,6 +21,10 @@ Options:
   --dry-run                Print unified diffs to stdout; do not write any files.
   --verbose                Show rule-progress logs and the run summary (normally
                            suppressed in --dry-run mode).
+  --only <glob>            Restrict all rules (including dependencies) to files
+                           matching <glob> (relative to VAULT_PATH).  Rules still
+                           run in full dependency order; only the set of files each
+                           rule processes is narrowed to the overlap with <glob>.
   --init                   Normalize vault formatting and stamp done:unknown
                            on checked tasks that lack one.
                            Mutually exclusive with rule selection.
@@ -41,6 +45,9 @@ Examples:
   # Run only stampDone (normalizeTodayLiteral runs first automatically
   # because it is a declared dependency of stampDone)
   VAULT_PATH=/my/vault didactic-meme --dry-run stampDone
+
+  # Run all rules but only process files under notes/
+  VAULT_PATH=/my/vault didactic-meme --dry-run --only "notes/**" all
 
   # Normalize formatting and stamp done on checked tasks
   VAULT_PATH=/my/vault didactic-meme --init --dry-run

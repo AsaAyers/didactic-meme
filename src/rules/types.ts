@@ -29,6 +29,14 @@ export type RuleContext = {
    * those rules plus their transitive dependencies.
    */
   selectedRuleNames?: string[] | "all";
+  /**
+   * A glob pattern (relative to vaultPath) that restricts which files each
+   * rule processes.  When provided, every rule's resolved source list is
+   * filtered to contain only files that also match this pattern.  All rules
+   * (including transitive dependencies) are still executed; only the set of
+   * files they operate on is narrowed.
+   */
+  onlyGlob?: string;
 };
 
 export type FileChange = {

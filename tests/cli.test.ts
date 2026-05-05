@@ -32,6 +32,10 @@ describe("HELP_TEXT", () => {
     expect(HELP_TEXT).toContain("--verbose");
   });
 
+  it("mentions --only", () => {
+    expect(HELP_TEXT).toContain("--only");
+  });
+
   it("mentions --init", () => {
     expect(HELP_TEXT).toContain("--init");
   });
@@ -146,6 +150,56 @@ describe("runAllRules — selectedRuleNames", () => {
         selectedRuleNames: ["nonExistentRule"],
       }),
     ).rejects.toThrow('Unknown rule: "nonExistentRule"');
+  });
+
+  it("onlyGlob: restricts files processed to those matching the glob", async () => {
+    // Only process a single specific file via onlyGlob.
+    const { changes } = await runAllRules({
+      vaultPath: TEST_VAULT,
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      onlyGlob: "TODO.md",
+    });
+    // Only the top-level TODO.md should appear in the changes.
+    for (const c of changes) {
+      expect(c.path).toMatch(/TODO\.md$/);
+    }
+  });
+
+  it("onlyGlob: does not suppress all-rules execution", async () => {
+    // When onlyGlob is set, all rules still run — only files are narrowed.
+    // normalizeTodayLiteral should still fire on TODO.md (it matches the glob).
+    const { changes } = await runAllRules({
+      vaultPath: TEST_VAULT,
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      onlyGlob: "TODO.md",
+    });
+    const todoChange = changes.find((c) => c.path.endsWith("TODO.md"));
+    expect(todoChange).toBeDefined();
+    expect(todoChange!.content).toContain("due:2026-05-03");
+  });
+
+  it("onlyGlob: subdirectory glob restricts to files under that directory", async () => {
+    // Use a subdirectory glob — only files under scenarios/ should be processed.
+    const { changes } = await runAllRules({
+      vaultPath: TEST_VAULT,
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      onlyGlob: "scenarios/**",
+    });
+    // Every changed file must live under scenarios/.
+    for (const c of changes) {
+      expect(c.path).toContain("/scenarios/");
+    }
+    // The top-level TODO.md must not appear in the changes.
+    const topLevelTodo = changes.find(
+      (c) => c.path.endsWith("TODO.md") && !c.path.includes("/scenarios/"),
+    );
+    expect(topLevelTodo).toBeUndefined();
   });
 });
 
