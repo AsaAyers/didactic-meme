@@ -6,6 +6,7 @@
  *
  * Shape:
  *   {
+ *     "watch": { "debounce": 60000 },        // optional watch-mode settings
  *     "<ruleName>": { "sources": [ ...Source objects... ] },
  *     ...
  *   }
@@ -42,7 +43,20 @@ const zRuleConfig = z.object({
   sources: z.array(zSource),
 });
 
-export const zConfig = z.record(z.string(), zRuleConfig);
+const zWatchConfig = z.object({
+  /** Debounce duration in milliseconds. Defaults to 60000 (60 s). */
+  debounce: z.number().int().positive().optional(),
+});
+
+/**
+ * Full config schema: explicitly knows about the `watch` key (validated as
+ * WatchConfig) plus a catchall that validates every other key as a RuleConfig.
+ * This means unknown keys and malformed watch values are caught by Zod rather
+ * than being silently ignored.
+ */
+export const zConfig = z
+  .object({ watch: zWatchConfig.optional() })
+  .catchall(zRuleConfig);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,8 +65,21 @@ export const zConfig = z.record(z.string(), zRuleConfig);
 /** Per-rule configuration stored in `.didatic-meme.json`. */
 export type RuleConfig = z.infer<typeof zRuleConfig>;
 
-/** The full vault-level config: one entry per rule name. */
-export type Config = z.infer<typeof zConfig>;
+/** Watch-mode configuration stored under the `"watch"` key in `.didatic-meme.json`. */
+export type WatchConfig = z.infer<typeof zWatchConfig>;
+
+/**
+ * The full vault-level config: an optional `watch` entry plus one entry per
+ * rule name.  Defined as an intersection rather than with `z.infer` because
+ * Zod's catchall creates a TypeScript intersection (`{ watch?: WatchConfig } &
+ * { [x: string]: RuleConfig }`) where TypeScript treats `watch` as the
+ * intersection of both types.  By defining the type explicitly we get:
+ *   - `config.watch`         → `WatchConfig | undefined`  (explicit property wins)
+ *   - `config[anyOtherKey]`  → `RuleConfig | undefined`   (from index signature)
+ */
+export type Config = { watch?: WatchConfig } & {
+  [key: string]: RuleConfig | undefined;
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,10 +89,14 @@ export type Config = z.infer<typeof zConfig>;
 export const CONFIG_FILENAME = ".didatic-meme.json";
 
 /**
- * Build the default config from an array of RuleSpecs.
+ * Build the default rule configs from an array of RuleSpecs.
  * Each entry uses the spec's own `sources` array as its default.
+ * Returns a plain record (no `watch` key) so callers can iterate values as
+ * `RuleConfig` without needing to handle the `WatchConfig` union member.
  */
-export function getDefaultConfig(specs: RuleSpec[]): Config {
+export function getDefaultConfig(
+  specs: RuleSpec[],
+): Record<string, RuleConfig> {
   return Object.fromEntries(specs.map((s) => [s.name, { sources: s.sources }]));
 }
 
@@ -78,6 +109,9 @@ export function getDefaultConfig(specs: RuleSpec[]): Config {
  *     absent from the stored config, persist the merged result, and return it.
  *   - If the file exists but is invalid (bad JSON or fails zod validation):
  *     throw a descriptive error so the user knows they must fix the file.
+ *
+ * The `watch` key is validated as a WatchConfig by `zConfig` and is preserved
+ * in the returned value so callers can read `config.watch` directly.
  *
  * @param vaultPath  Absolute path to the vault root.
  * @param specs      All registered RuleSpecs (used to derive defaults).
@@ -115,7 +149,8 @@ export async function loadConfig(
     );
   }
 
-  // Validate with zod.
+  // Validate the whole config — zConfig knows about `watch` (WatchConfig) and
+  // validates all other keys as RuleConfig via catchall.
   const result = zConfig.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues
@@ -126,7 +161,13 @@ export async function loadConfig(
     );
   }
 
-  const stored = result.data;
+  // Cast needed: Zod's `.catchall()` infers the output as an intersection
+  // `{ watch?: WatchConfig } & { [x: string]: RuleConfig }`.  TypeScript sees
+  // `watch` as `(WatchConfig | undefined) & RuleConfig`, collapsing it to a
+  // type that neither `WatchConfig` nor our manual `Config` accepts without an
+  // assertion.  The runtime shape is correct; we restore the expected `Config`
+  // type here.
+  const stored = result.data as unknown as Config;
 
   // Merge in defaults for any rule not yet present in the file.
   let needsWrite = false;

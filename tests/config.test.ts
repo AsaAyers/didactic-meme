@@ -138,6 +138,56 @@ describe("loadConfig", () => {
       CONFIG_FILENAME,
     );
   });
+
+  it("validates and returns the 'watch' key as part of the config", async () => {
+    // A config with a "watch" section plus a rule config should parse without
+    // error — zConfig knows about `watch` via its explicit schema.
+    const initial = {
+      watch: { debounce: 5000 },
+      specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+    };
+    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+
+    const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
+
+    // Rule config is returned correctly.
+    expect(config.specA.sources).toEqual([
+      { type: "glob", pattern: "**/*.md" },
+    ]);
+    // Watch config is returned as part of the config.
+    expect(config.watch).toEqual({ debounce: 5000 });
+  });
+
+  it("rejects an invalid 'watch' value via zod validation", async () => {
+    // debounce must be a positive integer — a string is invalid.
+    const bad = {
+      watch: { debounce: "not-a-number" },
+      specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+    };
+    await fs.writeFile(configPath(), JSON.stringify(bad), "utf-8");
+
+    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
+      CONFIG_FILENAME,
+    );
+  });
+
+  it("preserves the 'watch' key when writing back new defaults", async () => {
+    // Config has watch section but is missing specB — loadConfig will add specB
+    // and write the merged result.  The watch key must survive the write-back.
+    const initial = {
+      watch: { debounce: 3000 },
+      specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+    };
+    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+
+    const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
+
+    expect(config.watch).toEqual({ debounce: 3000 });
+
+    const written = JSON.parse(await fs.readFile(configPath(), "utf-8"));
+    expect(written.watch).toEqual({ debounce: 3000 });
+    expect(written).toHaveProperty("specB");
+  });
 });
 
 describe("getDefaultConfig", () => {

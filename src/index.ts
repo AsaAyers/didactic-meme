@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 import { runAllRules, runInitPass } from "./engine/runner.js";
+import { startVaultWatcher } from "./engine/watcher.js";
 import { HELP_TEXT } from "./helpText.js";
 import { ruleSpecs } from "./rules/index.js";
+import { loadConfig } from "./config.js";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const verbose = args.includes("--verbose");
 const init = args.includes("--init");
+const watch = args.includes("--watch");
 const help = args.includes("--help") || args.includes("-h");
 
 // --only <glob>: optional value-bearing flag
@@ -40,6 +43,10 @@ console.log(`Starting Markdown automation pipeline...`);
 console.log(`Vault: ${vaultPath}`);
 
 if (init) {
+  if (watch) {
+    console.error("Error: --watch is not compatible with --init.");
+    process.exit(1);
+  }
   console.log(`Mode: init${dryRun ? " (dry run)" : ""}`);
   console.log("");
 
@@ -78,23 +85,62 @@ if (init) {
     }
   }
 
-  if (dryRun) {
-    console.log(`Dry run: true${verbose ? " (verbose)" : ""}`);
-  } else {
-    console.log(`Dry run: false`);
-  }
-  console.log("");
+  // Single shared entry-point for rule execution.  Closures in all parameters
+  // so both the one-shot and watch paths use exactly the same runAllRules call.
+  const run = async (glob?: string): Promise<void> => {
+    await runAllRules({
+      vaultPath,
+      today: new Date(),
+      dryRun,
+      verbose,
+      env: process.env,
+      selectedRuleNames,
+      onlyGlob: glob,
+    });
+  };
 
-  runAllRules({
-    vaultPath,
-    today: new Date(),
-    dryRun,
-    verbose,
-    env: process.env,
-    selectedRuleNames,
-    onlyGlob,
-  }).catch((err: unknown) => {
-    console.error("Fatal error:", (err as Error).message);
-    process.exit(1);
-  });
+  if (watch) {
+    // Watch mode: load config to read the debounce setting, then start watcher.
+    loadConfig(vaultPath, ruleSpecs)
+      .then((config) => {
+        const debounce = config.watch?.debounce ?? 60_000;
+        console.log(`Mode: watch${dryRun ? " (dry run)" : ""}`);
+        console.log(`Debounce: ${debounce}ms`);
+        console.log("");
+        console.log(`Watching vault for markdown changes...`);
+        console.log(`Press Ctrl+C to stop.`);
+        console.log("");
+
+        const stop = startVaultWatcher(
+          vaultPath,
+          async (relPath) => {
+            console.log(`[watch] Running rules for: ${relPath}`);
+            await run(relPath);
+          },
+          { debounce },
+        );
+
+        process.on("SIGINT", () => {
+          console.log("\n[watch] Stopping watcher...");
+          stop();
+          process.exit(0);
+        });
+      })
+      .catch((err: unknown) => {
+        console.error("Fatal error:", (err as Error).message);
+        process.exit(1);
+      });
+  } else {
+    if (dryRun) {
+      console.log(`Dry run: true${verbose ? " (verbose)" : ""}`);
+    } else {
+      console.log(`Dry run: false`);
+    }
+    console.log("");
+
+    run(onlyGlob).catch((err: unknown) => {
+      console.error("Fatal error:", (err as Error).message);
+      process.exit(1);
+    });
+  }
 }

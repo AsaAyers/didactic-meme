@@ -59,12 +59,18 @@ When a repeating task is completed, `due:` is always set to `newDue`. If `start:
 
 ## Vault Configuration (`.didatic-meme.json`)
 
-On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes.
+On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes and to set watch-mode options.
 
 ### Config shape
 
 ```jsonc
 {
+  // Optional watch-mode settings.
+  "watch": {
+    // Debounce duration in milliseconds (default: 60000 = 60 s).
+    "debounce": 60000,
+  },
+
   // Each key is the rule name; the value overrides the files that rule scans.
   "normalizeTodayLiteral": {
     "sources": [{ "type": "glob", "pattern": "**/*.md" }],
@@ -104,6 +110,53 @@ When a new rule is added in a future release, its default entry is merged into y
 ### Validation
 
 The file is validated with [zod](https://zod.dev/) on every run. If the file is malformed or contains an invalid source type the run aborts with a clear error message. Fix or delete the file and re-run.
+
+## Watch Mode (`--watch`)
+
+The `--watch` flag keeps the process running and automatically applies the selected rules whenever a vault markdown file changes.
+
+```bash
+# Watch the vault and run all rules on each changed file
+VAULT_PATH=/my/vault didactic-meme --watch all
+
+# Watch with dry-run (show diffs, write nothing)
+VAULT_PATH=/my/vault didactic-meme --watch --dry-run all
+
+# Watch and apply only specific rules on changes
+VAULT_PATH=/my/vault didactic-meme --watch stampDone
+```
+
+### How it works
+
+1. **Native watcher** — Uses Node.js's built-in `fs.watch()` with `recursive: true`. No polling is ever used.
+2. **Per-file debouncing** — When a `.md` file changes, a debounce timer starts for that file. If the file changes again before the timer expires the timer resets. Rules are only run after the file has been idle for the full debounce period.
+3. **Targeted processing** — Only the changed file is processed (equivalent to passing `--only <changedFile>` on the command line). The rest of the vault is not touched.
+
+### Log output
+
+| Log line                                      | Meaning                                                                       |
+| --------------------------------------------- | ----------------------------------------------------------------------------- |
+| `[watch] change: notes/foo.md`                | A change event was received for `notes/foo.md`; debounce timer started/reset. |
+| `[watch] Processing after idle: notes/foo.md` | Debounce timer expired; rules are about to run for `notes/foo.md`.            |
+| `[watch] Error processing notes/foo.md: …`    | An error occurred while running rules for the file.                           |
+
+### Debounce configuration
+
+The debounce duration defaults to **60 seconds** and can be changed via the `watch.debounce` key in `.didatic-meme.json`:
+
+```json
+{
+  "watch": { "debounce": 5000 }
+}
+```
+
+Set `debounce` to the number of milliseconds the file must be idle before rules are triggered. Shorter values give faster feedback; the default 60 s is suitable for vaults edited by Obsidian, which can produce many rapid save events for a single logical edit.
+
+### Compatibility
+
+- `--watch` is **not** compatible with `--init`. Use them in separate invocations.
+- `--watch` can be combined with `--dry-run` and `--verbose`.
+- `--watch` does not use `--only`; the changed-file path is always used as the implicit filter.
 
 ## Environment Variables
 
