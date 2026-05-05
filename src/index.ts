@@ -3,7 +3,7 @@ import { runAllRules, runInitPass } from "./engine/runner.js";
 import { startVaultWatcher } from "./engine/watcher.js";
 import { HELP_TEXT } from "./helpText.js";
 import { ruleSpecs } from "./rules/index.js";
-import { loadWatchConfig } from "./config.js";
+import { loadConfig } from "./config.js";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
@@ -85,11 +85,25 @@ if (init) {
     }
   }
 
+  // Single shared entry-point for rule execution.  Closures in all parameters
+  // so both the one-shot and watch paths use exactly the same runAllRules call.
+  const run = async (glob?: string): Promise<void> => {
+    await runAllRules({
+      vaultPath,
+      today: new Date(),
+      dryRun,
+      verbose,
+      env: process.env,
+      selectedRuleNames,
+      onlyGlob: glob,
+    });
+  };
+
   if (watch) {
-    // Watch mode: start watcher and run rules on each changed file.
-    loadWatchConfig(vaultPath)
-      .then((watchCfg) => {
-        const debounce = watchCfg.debounce ?? 60_000;
+    // Watch mode: load config to read the debounce setting, then start watcher.
+    loadConfig(vaultPath, ruleSpecs)
+      .then((config) => {
+        const debounce = config.watch?.debounce ?? 60_000;
         console.log(`Mode: watch${dryRun ? " (dry run)" : ""}`);
         console.log(`Debounce: ${debounce}ms`);
         console.log("");
@@ -101,15 +115,7 @@ if (init) {
           vaultPath,
           async (relPath) => {
             console.log(`[watch] Running rules for: ${relPath}`);
-            await runAllRules({
-              vaultPath,
-              today: new Date(),
-              dryRun,
-              verbose,
-              env: process.env,
-              selectedRuleNames,
-              onlyGlob: relPath,
-            });
+            await run(relPath);
           },
           { debounce },
         );
@@ -132,15 +138,7 @@ if (init) {
     }
     console.log("");
 
-    runAllRules({
-      vaultPath,
-      today: new Date(),
-      dryRun,
-      verbose,
-      env: process.env,
-      selectedRuleNames,
-      onlyGlob,
-    }).catch((err: unknown) => {
+    run(onlyGlob).catch((err: unknown) => {
       console.error("Fatal error:", (err as Error).message);
       process.exit(1);
     });
