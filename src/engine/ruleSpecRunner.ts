@@ -349,7 +349,14 @@ export async function runRuleSpec(
 
   const filePaths = await resolveSources(vaultPath, spec.sources);
 
-  for (const p of filePaths) {
+  // When an onlyGlob filter is active, restrict to files that also match it.
+  const { onlyGlob } = ctx;
+  const effectivePaths =
+    onlyGlob !== undefined
+      ? filePaths.filter((p) => matchesGlob(relative(vaultPath, p), onlyGlob))
+      : filePaths;
+
+  for (const p of effectivePaths) {
     if (!p.endsWith(".md")) {
       throw new Error(
         `Engine only processes .md files; refusing to process: ${p}`,
@@ -361,7 +368,7 @@ export async function runRuleSpec(
   let totalModified = 0;
   const allSelected: Task[] = [];
 
-  for (const filePath of filePaths) {
+  for (const filePath of effectivePaths) {
     let raw: string;
     try {
       raw = await ctx.readFile(filePath);

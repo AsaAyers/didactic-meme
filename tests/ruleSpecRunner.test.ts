@@ -29,7 +29,6 @@ import { promises as fs } from "node:fs";
 import { runRuleSpec } from "../src/engine/ruleSpecRunner.js";
 import {
   selectRuleSpecs,
-  selectRuleSpecsOnly,
   sortRuleSpecs,
 } from "../src/engine/runner.js";
 import type { RuleContext, RuleSpec } from "../src/rules/types.js";
@@ -465,42 +464,6 @@ describe("selectRuleSpecs", () => {
     const a = stubSpec("a");
     const b = stubSpec("b");
     expect(() => selectRuleSpecs([a, b], ["x"])).toThrow("a, b");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// selectRuleSpecsOnly — exact selection without dependency expansion
-// ---------------------------------------------------------------------------
-
-describe("selectRuleSpecsOnly", () => {
-  it("returns only the named spec, without its dependencies", () => {
-    const a = stubSpec("a");
-    const b = stubSpec("b", ["a"]);
-    const result = selectRuleSpecsOnly([a, b], ["b"]).map((s) => s.name);
-    expect(result).toEqual(["b"]);
-  });
-
-  it("returns multiple named specs in topological order", () => {
-    const a = stubSpec("a");
-    const b = stubSpec("b", ["a"]);
-    const c = stubSpec("c", ["b"]);
-    const result = selectRuleSpecsOnly([a, b, c], ["c", "a"]).map(
-      (s) => s.name,
-    );
-    expect(result).toEqual(["a", "c"]);
-  });
-
-  it("throws for an unknown rule name", () => {
-    const a = stubSpec("a");
-    expect(() => selectRuleSpecsOnly([a], ["missing"])).toThrow(
-      'Unknown rule: "missing"',
-    );
-  });
-
-  it("includes the available rule names in the error message", () => {
-    const a = stubSpec("a");
-    const b = stubSpec("b");
-    expect(() => selectRuleSpecsOnly([a, b], ["x"])).toThrow("a, b");
   });
 });
 

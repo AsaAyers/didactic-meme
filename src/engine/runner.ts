@@ -110,35 +110,6 @@ export function selectRuleSpecs(
 }
 
 /**
- * From all registered specs, select only those named in `selected` —
- * without expanding transitive dependencies — then return them in registration
- * order (which is already topologically sorted), so that if two of the
- * explicitly selected specs have a dependency relationship between them the
- * order is still correct.
- *
- * Throws if any name in `selected` does not correspond to a known spec.
- */
-export function selectRuleSpecsOnly(
-  allSpecs: RuleSpec[],
-  selected: string[],
-): RuleSpec[] {
-  const specMap = new Map(allSpecs.map((s) => [s.name, s]));
-
-  for (const name of selected) {
-    if (!specMap.has(name)) {
-      const available = allSpecs.map((s) => s.name).join(", ");
-      throw new Error(`Unknown rule: "${name}". Available rules: ${available}`);
-    }
-  }
-
-  // Filter allSpecs to only the explicitly selected ones, preserving
-  // registration order.  allSpecs is already topologically sorted so
-  // the relative ordering between any two selected specs is correct.
-  const selectedSet = new Set(selected);
-  return allSpecs.filter((s) => selectedSet.has(s.name));
-}
-
-/**
  * Run all registered rules against the vault.
  *
  * A single FileWriteManager (transform queue) is shared across every rule:
@@ -203,9 +174,7 @@ export async function runAllRules(
   const specsToRun =
     ctx.selectedRuleNames === undefined || ctx.selectedRuleNames === "all"
       ? sortRuleSpecs(allSpecs)
-      : ctx.skipDependencies
-        ? selectRuleSpecsOnly(allSpecs, ctx.selectedRuleNames)
-        : selectRuleSpecs(allSpecs, ctx.selectedRuleNames);
+      : selectRuleSpecs(allSpecs, ctx.selectedRuleNames);
 
   // Declarative RuleSpecs (e.g. normalization) run first, ordered by deps.
   for (const spec of specsToRun) {
