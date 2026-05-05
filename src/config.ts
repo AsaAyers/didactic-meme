@@ -94,7 +94,9 @@ export const CONFIG_FILENAME = ".didatic-meme.json";
  * Returns a plain record (no `watch` key) so callers can iterate values as
  * `RuleConfig` without needing to handle the `WatchConfig` union member.
  */
-export function getDefaultConfig(specs: RuleSpec[]): Record<string, RuleConfig> {
+export function getDefaultConfig(
+  specs: RuleSpec[],
+): Record<string, RuleConfig> {
   return Object.fromEntries(specs.map((s) => [s.name, { sources: s.sources }]));
 }
 
@@ -133,7 +135,7 @@ export async function loadConfig(
       JSON.stringify(defaults, null, 2) + "\n",
       "utf-8",
     );
-    return defaults as Config;
+    return defaults;
   }
 
   // Parse JSON.
@@ -159,8 +161,12 @@ export async function loadConfig(
     );
   }
 
-  // Cast: z.infer of catchall creates a TypeScript intersection that conflicts
-  // with our manual Config type — the runtime shape is correct.
+  // Cast needed: Zod's `.catchall()` infers the output as an intersection
+  // `{ watch?: WatchConfig } & { [x: string]: RuleConfig }`.  TypeScript sees
+  // `watch` as `(WatchConfig | undefined) & RuleConfig`, collapsing it to a
+  // type that neither `WatchConfig` nor our manual `Config` accepts without an
+  // assertion.  The runtime shape is correct; we restore the expected `Config`
+  // type here.
   const stored = result.data as unknown as Config;
 
   // Merge in defaults for any rule not yet present in the file.
