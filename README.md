@@ -68,7 +68,7 @@ On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault 
   // Optional watch-mode settings.
   "watch": {
     // Debounce duration in milliseconds (default: 60000 = 60 s).
-    "debounce": 60000
+    "debounce": 60000,
   },
 
   // Each key is the rule name; the value overrides the files that rule scans.
@@ -134,11 +134,11 @@ VAULT_PATH=/my/vault didactic-meme --watch stampDone
 
 ### Log output
 
-| Log line | Meaning |
-| --- | --- |
-| `[watch] change: notes/foo.md` | A change event was received for `notes/foo.md`; debounce timer started/reset. |
-| `[watch] Processing after idle: notes/foo.md` | Debounce timer expired; rules are about to run for `notes/foo.md`. |
-| `[watch] Error processing notes/foo.md: …` | An error occurred while running rules for the file. |
+| Log line                                      | Meaning                                                                       |
+| --------------------------------------------- | ----------------------------------------------------------------------------- |
+| `[watch] change: notes/foo.md`                | A change event was received for `notes/foo.md`; debounce timer started/reset. |
+| `[watch] Processing after idle: notes/foo.md` | Debounce timer expired; rules are about to run for `notes/foo.md`.            |
+| `[watch] Error processing notes/foo.md: …`    | An error occurred while running rules for the file.                           |
 
 ### Debounce configuration
 
