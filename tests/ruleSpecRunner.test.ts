@@ -27,7 +27,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promises as fs } from "node:fs";
 import { runRuleSpec } from "../src/engine/ruleSpecRunner.js";
-import { selectRuleSpecs, selectRuleSpecsOnly, sortRuleSpecs } from "../src/engine/runner.js";
+import {
+  selectRuleSpecs,
+  selectRuleSpecsOnly,
+  sortRuleSpecs,
+} from "../src/engine/runner.js";
 import type { RuleContext, RuleSpec } from "../src/rules/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -480,7 +484,9 @@ describe("selectRuleSpecsOnly", () => {
     const a = stubSpec("a");
     const b = stubSpec("b", ["a"]);
     const c = stubSpec("c", ["b"]);
-    const result = selectRuleSpecsOnly([a, b, c], ["c", "a"]).map((s) => s.name);
+    const result = selectRuleSpecsOnly([a, b, c], ["c", "a"]).map(
+      (s) => s.name,
+    );
     expect(result).toEqual(["a", "c"]);
   });
 
