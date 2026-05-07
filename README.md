@@ -424,7 +424,7 @@ Tasks without a `repeat:` field are **never** duplicated and never receive `copi
 
 Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vault and:
 
-1. Groups them by file and sortes them by due date.
+1. Groups them by file and sorts them by due date.
 2. If `rules.incompleteTaskAlert.alertUrl` is set in `.didatic-meme.json`, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `rules.incompleteTaskAlert.alertToken` is set, `Authorization: Bearer <token>`.
 
 **Dependencies:** `stampDone`

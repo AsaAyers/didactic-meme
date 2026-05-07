@@ -95,15 +95,14 @@ export const CONFIG_FILENAME = ".didatic-meme.json";
  * Returns a plain record (no `watch` key) so callers can iterate values as
  * `RuleConfig` without needing to handle the `WatchConfig` union member.
  */
-export function getDefaultConfig(
-  specs: RuleSpec[],
-): Config["rules"] {
+export function getDefaultConfig(specs: RuleSpec[]): Config["rules"] {
   return Object.fromEntries(specs.map((s) => [s.name, { sources: s.sources }]));
 }
 
-function splitLegacyConfig(
-  parsed: unknown,
-): { normalized: unknown; migrated: boolean } {
+function splitLegacyConfig(parsed: unknown): {
+  normalized: unknown;
+  migrated: boolean;
+} {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return { normalized: parsed, migrated: false };
   }
@@ -117,7 +116,9 @@ function splitLegacyConfig(
       return { normalized: parsed, migrated: false };
     }
     const topLevelRules = Object.fromEntries(
-      Object.entries(record).filter(([key]) => key !== "watch" && key !== "rules"),
+      Object.entries(record).filter(
+        ([key]) => key !== "watch" && key !== "rules",
+      ),
     );
     if (Object.keys(topLevelRules).length === 0) {
       return { normalized: parsed, migrated: false };
@@ -125,7 +126,7 @@ function splitLegacyConfig(
     return {
       normalized: {
         watch: record["watch"],
-        rules: { ...(rulesVal as Record<string, unknown>), ...topLevelRules },
+        rules: { ...topLevelRules, ...(rulesVal as Record<string, unknown>) },
       },
       migrated: true,
     };

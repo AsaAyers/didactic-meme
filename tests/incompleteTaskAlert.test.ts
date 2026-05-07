@@ -48,7 +48,11 @@ describe("incompleteTaskAlert — dry-run preview", () => {
       join(tmpdir(), "didatic-meme-incomplete-alert-no-url-"),
     );
     try {
-      await fs.writeFile(join(tempVault, "tasks.md"), "* [ ] Do laundry\n", "utf-8");
+      await fs.writeFile(
+        join(tempVault, "tasks.md"),
+        "* [ ] Do laundry\n",
+        "utf-8",
+      );
       const { report } = await runAllRules({
         vaultPath: tempVault,
         today: TODAY,
