@@ -99,48 +99,8 @@ export function getDefaultConfig(specs: RuleSpec[]): Config["rules"] {
   return Object.fromEntries(specs.map((s) => [s.name, { sources: s.sources }]));
 }
 
-function splitLegacyConfig(parsed: unknown): {
-  normalized: unknown;
-  migrated: boolean;
-} {
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return { normalized: parsed, migrated: false };
-  }
-
-  const record = parsed as Record<string, unknown>;
-  const hasRulesKey = "rules" in record;
-
-  if (hasRulesKey) {
-    const rulesVal = record["rules"];
-    if (!rulesVal || typeof rulesVal !== "object" || Array.isArray(rulesVal)) {
-      return { normalized: parsed, migrated: false };
-    }
-    const topLevelRules = Object.fromEntries(
-      Object.entries(record).filter(
-        ([key]) => key !== "watch" && key !== "rules",
-      ),
-    );
-    if (Object.keys(topLevelRules).length === 0) {
-      return { normalized: parsed, migrated: false };
-    }
-    return {
-      normalized: {
-        watch: record["watch"],
-        rules: { ...topLevelRules, ...(rulesVal as Record<string, unknown>) },
-      },
-      migrated: true,
-    };
-  }
-
-  const { watch, ...legacyRules } = record;
-  return {
-    normalized: { watch, rules: legacyRules },
-    migrated: true,
-  };
-}
-
 /**
- * Load (and if necessary create or migrate) the vault-level config file.
+ * Load (and if necessary create) the vault-level config file.
  *
  * Behaviour:
  *   - If the file does not exist: write the full default config and return it.
@@ -189,8 +149,7 @@ export async function loadConfig(
     );
   }
 
-  const { normalized, migrated } = splitLegacyConfig(parsed);
-  const result = zConfig.safeParse(normalized);
+  const result = zConfig.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  ${i.path.join(".")}: ${i.message}`)
@@ -212,7 +171,7 @@ export async function loadConfig(
     }
   }
 
-  if (needsWrite || migrated) {
+  if (needsWrite) {
     await fs.writeFile(
       configPath,
       JSON.stringify(merged, null, 2) + "\n",

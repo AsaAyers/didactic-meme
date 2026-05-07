@@ -220,28 +220,16 @@ describe("loadConfig", () => {
     expect(written.rules).toHaveProperty("specB");
   });
 
-  it("migrates legacy top-level rule keys into the new rules object", async () => {
-    const initial = {
+  it("rejects legacy top-level rule keys outside the rules object", async () => {
+    const bad = {
       watch: { debounce: 3000 },
       specA: { sources: [{ type: "glob", pattern: "legacy/**/*.md" }] },
     };
-    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+    await fs.writeFile(configPath(), JSON.stringify(bad), "utf-8");
 
-    const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
-
-    expect(config.rules.specA.sources).toEqual([
-      { type: "glob", pattern: "legacy/**/*.md" },
-    ]);
-    expect(config.rules.specB).toEqual({ sources: SPEC_B.sources });
-
-    const written = JSON.parse(await fs.readFile(configPath(), "utf-8"));
-    expect(written).toEqual({
-      watch: { debounce: 3000 },
-      rules: {
-        specA: { sources: [{ type: "glob", pattern: "legacy/**/*.md" }] },
-        specB: { sources: SPEC_B.sources },
-      },
-    });
+    await expect(loadConfig(tempVault, [SPEC_A, SPEC_B])).rejects.toThrow(
+      CONFIG_FILENAME,
+    );
   });
 });
 
