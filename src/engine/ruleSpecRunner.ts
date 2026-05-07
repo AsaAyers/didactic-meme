@@ -439,6 +439,7 @@ export async function runRuleSpec(
         await action.run({
           tasks: allSelected,
           dryRun: ctx.dryRun,
+          config: ctx.config,
           readFile: ctx.readFile,
           log: logFn,
         });

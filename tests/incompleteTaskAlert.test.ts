@@ -6,7 +6,9 @@
  * in the returned `report` string regardless of whether ALERT_URL is set.
  */
 import { describe, it, expect } from "vitest";
+import { promises as fs } from "node:fs";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { runAllRules } from "../src/engine/runner.js";
 
@@ -41,47 +43,36 @@ describe("incompleteTaskAlert — dry-run preview", () => {
     expect(report).toContain("Do laundry");
   });
 
-  it('labels the destination as "(no ALERT_URL configured)" when env var is absent', async () => {
-    // Ensure ALERT_URL is not set for this test.
-    const savedUrl = process.env["ALERT_URL"];
-    delete process.env["ALERT_URL"];
-
+  it('labels the destination as "(no alertUrl configured)" when rule config omits it', async () => {
+    const tempVault = await fs.mkdtemp(
+      join(tmpdir(), "didatic-meme-incomplete-alert-no-url-"),
+    );
     try {
+      await fs.writeFile(join(tempVault, "tasks.md"), "* [ ] Do laundry\n", "utf-8");
       const { report } = await runAllRules({
-        vaultPath: join(SCENARIOS, "incomplete-alert"),
+        vaultPath: tempVault,
         today: TODAY,
         dryRun: true,
         env: {},
         selectedRuleNames: ["incompleteTaskAlert"],
       });
 
-      expect(report).toContain("no ALERT_URL configured");
+      expect(report).toContain("no alertUrl configured");
     } finally {
-      if (savedUrl !== undefined) process.env["ALERT_URL"] = savedUrl;
+      await fs.rm(tempVault, { recursive: true, force: true });
     }
   });
 
-  it("labels the destination with the URL when ALERT_URL is set", async () => {
-    const savedUrl = process.env["ALERT_URL"];
-    process.env["ALERT_URL"] = "https://example.com/hook";
+  it("labels the destination with the URL from rule config", async () => {
+    const { report } = await runAllRules({
+      vaultPath: join(SCENARIOS, "incomplete-alert"),
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      selectedRuleNames: ["incompleteTaskAlert"],
+    });
 
-    try {
-      const { report } = await runAllRules({
-        vaultPath: join(SCENARIOS, "incomplete-alert"),
-        today: TODAY,
-        dryRun: true,
-        env: {},
-        selectedRuleNames: ["incompleteTaskAlert"],
-      });
-
-      expect(report).toContain("https://example.com/hook");
-    } finally {
-      if (savedUrl !== undefined) {
-        process.env["ALERT_URL"] = savedUrl;
-      } else {
-        delete process.env["ALERT_URL"];
-      }
-    }
+    expect(report).toContain("http://localhost:8080/alert");
   });
 
   it("groups tasks by source file with one section heading per file", async () => {

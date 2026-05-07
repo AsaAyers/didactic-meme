@@ -7,8 +7,9 @@
  * Shape:
  *   {
  *     "watch": { "debounce": 60000 },        // optional watch-mode settings
- *     "<ruleName>": { "sources": [ ...Source objects... ] },
- *     ...
+ *     "rules": {
+ *       "<ruleName>": { "sources": [ ...Source objects... ] }
+ *     }
  *   }
  *
  * When the file does not exist it is created automatically with the default
@@ -41,6 +42,8 @@ export const zSource = z.discriminatedUnion("type", [zGlobSource, zPathSource]);
 
 const zRuleConfig = z.object({
   sources: z.array(zSource),
+  alertUrl: z.string().optional(),
+  alertToken: z.string().optional(),
 });
 
 const zWatchConfig = z.object({
@@ -55,14 +58,16 @@ const zWatchConfig = z.object({
 });
 
 /**
- * Full config schema: explicitly knows about the `watch` key (validated as
- * WatchConfig) plus a catchall that validates every other key as a RuleConfig.
- * This means unknown keys and malformed watch values are caught by Zod rather
- * than being silently ignored.
+ * Full config schema:
+ *   - optional watch config
+ *   - required "rules" object keyed by rule name
  */
 export const zConfig = z
-  .object({ watch: zWatchConfig.optional() })
-  .catchall(zRuleConfig);
+  .object({
+    watch: zWatchConfig.optional(),
+    rules: z.record(z.string(), zRuleConfig),
+  })
+  .strict();
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,18 +79,8 @@ export type RuleConfig = z.infer<typeof zRuleConfig>;
 /** Watch-mode configuration stored under the `"watch"` key in `.didatic-meme.json`. */
 export type WatchConfig = z.infer<typeof zWatchConfig>;
 
-/**
- * The full vault-level config: an optional `watch` entry plus one entry per
- * rule name.  Defined as an intersection rather than with `z.infer` because
- * Zod's catchall creates a TypeScript intersection (`{ watch?: WatchConfig } &
- * { [x: string]: RuleConfig }`) where TypeScript treats `watch` as the
- * intersection of both types.  By defining the type explicitly we get:
- *   - `config.watch`         → `WatchConfig | undefined`  (explicit property wins)
- *   - `config[anyOtherKey]`  → `RuleConfig | undefined`   (from index signature)
- */
-export type Config = { watch?: WatchConfig } & {
-  [key: string]: RuleConfig | undefined;
-};
+/** Full vault-level config for `.didatic-meme.json`. */
+export type Config = z.infer<typeof zConfig>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -102,8 +97,45 @@ export const CONFIG_FILENAME = ".didatic-meme.json";
  */
 export function getDefaultConfig(
   specs: RuleSpec[],
-): Record<string, RuleConfig> {
+): Config["rules"] {
   return Object.fromEntries(specs.map((s) => [s.name, { sources: s.sources }]));
+}
+
+function splitLegacyConfig(
+  parsed: unknown,
+): { normalized: unknown; migrated: boolean } {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { normalized: parsed, migrated: false };
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const hasRulesKey = "rules" in record;
+
+  if (hasRulesKey) {
+    const rulesVal = record["rules"];
+    if (!rulesVal || typeof rulesVal !== "object" || Array.isArray(rulesVal)) {
+      return { normalized: parsed, migrated: false };
+    }
+    const topLevelRules = Object.fromEntries(
+      Object.entries(record).filter(([key]) => key !== "watch" && key !== "rules"),
+    );
+    if (Object.keys(topLevelRules).length === 0) {
+      return { normalized: parsed, migrated: false };
+    }
+    return {
+      normalized: {
+        watch: record["watch"],
+        rules: { ...(rulesVal as Record<string, unknown>), ...topLevelRules },
+      },
+      migrated: true,
+    };
+  }
+
+  const { watch, ...legacyRules } = record;
+  return {
+    normalized: { watch, rules: legacyRules },
+    migrated: true,
+  };
 }
 
 /**
@@ -129,6 +161,7 @@ export async function loadConfig(
 ): Promise<Config> {
   const configPath = join(vaultPath, CONFIG_FILENAME);
   const defaults = getDefaultConfig(specs);
+  const defaultConfig: Config = { rules: defaults };
 
   let raw: string;
   try {
@@ -138,10 +171,10 @@ export async function loadConfig(
     // File does not exist — create it with all defaults.
     await fs.writeFile(
       configPath,
-      JSON.stringify(defaults, null, 2) + "\n",
+      JSON.stringify(defaultConfig, null, 2) + "\n",
       "utf-8",
     );
-    return defaults;
+    return defaultConfig;
   }
 
   // Parse JSON.
@@ -155,9 +188,8 @@ export async function loadConfig(
     );
   }
 
-  // Validate the whole config — zConfig knows about `watch` (WatchConfig) and
-  // validates all other keys as RuleConfig via catchall.
-  const result = zConfig.safeParse(parsed);
+  const { normalized, migrated } = splitLegacyConfig(parsed);
+  const result = zConfig.safeParse(normalized);
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  ${i.path.join(".")}: ${i.message}`)
@@ -167,25 +199,19 @@ export async function loadConfig(
     );
   }
 
-  // Cast needed: Zod's `.catchall()` infers the output as an intersection
-  // `{ watch?: WatchConfig } & { [x: string]: RuleConfig }`.  TypeScript sees
-  // `watch` as `(WatchConfig | undefined) & RuleConfig`, collapsing it to a
-  // type that neither `WatchConfig` nor our manual `Config` accepts without an
-  // assertion.  The runtime shape is correct; we restore the expected `Config`
-  // type here.
-  const stored = result.data as unknown as Config;
+  const stored = result.data;
 
   // Merge in defaults for any rule not yet present in the file.
   let needsWrite = false;
-  const merged: Config = { ...stored };
+  const merged: Config = { ...stored, rules: { ...stored.rules } };
   for (const [name, defaultEntry] of Object.entries(defaults)) {
-    if (!(name in merged)) {
-      merged[name] = defaultEntry;
+    if (!(name in merged.rules)) {
+      merged.rules[name] = defaultEntry;
       needsWrite = true;
     }
   }
 
-  if (needsWrite) {
+  if (needsWrite || migrated) {
     await fs.writeFile(
       configPath,
       JSON.stringify(merged, null, 2) + "\n",
@@ -203,7 +229,7 @@ export async function loadConfig(
  */
 export function applyConfig(specs: RuleSpec[], config: Config): RuleSpec[] {
   return specs.map((spec) => {
-    const entry = config[spec.name];
+    const entry = config.rules[spec.name];
     if (!entry) return spec;
     return { ...spec, sources: entry.sources };
   });

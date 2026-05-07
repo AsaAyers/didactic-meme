@@ -15,8 +15,8 @@ Available rules:
                            Depends on: normalizeTodayLiteral.
   completedTaskRollover    Advance due/start/snooze on repeating completed tasks and
                            uncheck them for the next cycle.
-  incompleteTaskAlert      Write overdue/incomplete tasks to ALERT_FILE and optionally
-                           POST to ALERT_URL.
+  incompleteTaskAlert      Write overdue/incomplete tasks and optionally POST
+                           using rules.incompleteTaskAlert.alertUrl in config.
 
 Options:
   --dry-run                Print unified diffs to stdout; do not write any files.
@@ -39,8 +39,18 @@ Options:
 
 Environment variables:
   VAULT_PATH               (required) Absolute path to the vault root.
-  ALERT_URL                (optional) HTTP endpoint to POST alert content to.
-  ALERT_TOKEN              (optional) Bearer token for ALERT_URL.
+
+Config:
+  .didatic-meme.json       Configure rule sources under "rules".
+                           For alerts, set:
+                           {
+                             "rules": {
+                               "incompleteTaskAlert": {
+                                 "alertUrl": "http://localhost:8080/alert",
+                                 "alertToken": "<optional bearer token>"
+                               }
+                             }
+                           }
 
 Examples:
   # Run every rule against the vault

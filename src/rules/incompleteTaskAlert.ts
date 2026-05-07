@@ -13,8 +13,9 @@ function taskSorter(a: Task, b: Task): number {
 }
 const httpAlert: CustomAction = {
   type: "custom",
-  run: async ({ tasks, dryRun, log }) => {
-    const alertUrl = process.env["ALERT_URL"];
+  run: async ({ tasks, dryRun, config, log }) => {
+    const alertRuleConfig = config?.rules["incompleteTaskAlert"];
+    const alertUrl = alertRuleConfig?.alertUrl;
 
     // Group tasks by sourcePath (vault-relative), preserving per-file order.
     const byFile = new Map<string, Task[]>();
@@ -39,14 +40,14 @@ const httpAlert: CustomAction = {
     if (dryRun) {
       const destination = alertUrl
         ? `to ${alertUrl}`
-        : "(no ALERT_URL configured)";
+        : "(no alertUrl configured)";
       log(
         `[dry-run] incompleteTaskAlert: would send alert ${destination} (Title: Incomplete Tasks):\n${content}`,
       );
       return;
     }
     if (!alertUrl) return;
-    const alertToken = process.env["ALERT_TOKEN"];
+    const alertToken = alertRuleConfig?.alertToken;
     // ntfy.sh requires Content-Type: text/plain for inline message bodies.
     // Markdown rendering is enabled via the Markdown header, and the Title
     // header sets the notification title shown in the app.

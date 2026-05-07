@@ -1,4 +1,5 @@
 import type { Task } from "../markdown/tasks.js";
+import type { Config } from "../config.js";
 
 export type RuleContext = {
   vaultPath: string;
@@ -10,6 +11,7 @@ export type RuleContext = {
    */
   verbose?: boolean;
   env: NodeJS.ProcessEnv;
+  config?: Config;
   /**
    * Read a file through the shared transform queue.
    * Always use this instead of importing io.readFile directly so that staged
@@ -168,6 +170,7 @@ export type CustomAction = {
   run: (args: {
     tasks: Task[];
     dryRun: boolean;
+    config?: Config;
     readFile: (path: string) => Promise<string>;
     log: (msg: string) => void;
   }) => Promise<void>;
