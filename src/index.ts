@@ -112,7 +112,9 @@ if (init) {
         if (alertSchedule.length > 0) {
           console.log(`Alert schedule: ${alertSchedule.join(", ")}`);
         } else {
-          console.log(`Alert schedule: (none configured — alert will not fire)`);
+          console.log(
+            `Alert schedule: (none configured — alert will not fire)`,
+          );
         }
         console.log("");
         console.log(`Watching vault for markdown changes...`);
