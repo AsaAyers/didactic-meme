@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { runAllRules, runInitPass } from "./engine/runner.js";
 import { startVaultWatcher } from "./engine/watcher.js";
+import { createAlertScheduler } from "./engine/scheduler.js";
 import { HELP_TEXT } from "./helpText.js";
 import { ruleSpecs } from "./rules/index.js";
 import { loadConfig } from "./config.js";
@@ -100,29 +101,74 @@ if (init) {
   };
 
   if (watch) {
-    // Watch mode: load config to read the debounce setting, then start watcher.
+    // Watch mode: load config to read the debounce and schedule settings.
     loadConfig(vaultPath, ruleSpecs)
       .then((config) => {
         const debounce = config.watch?.debounce ?? 60_000;
+        const alertSchedule = config.watch?.alertSchedule ?? [];
+
         console.log(`Mode: watch${dryRun ? " (dry run)" : ""}`);
         console.log(`Debounce: ${debounce}ms`);
+        if (alertSchedule.length > 0) {
+          console.log(`Alert schedule: ${alertSchedule.join(", ")}`);
+        } else {
+          console.log(`Alert schedule: (none configured — alert will not fire)`);
+        }
         console.log("");
         console.log(`Watching vault for markdown changes...`);
         console.log(`Press Ctrl+C to stop.`);
         console.log("");
 
+        // The name of the alert rule that must only fire on schedule.
+        const ALERT_RULE = "incompleteTaskAlert";
+
+        // Compute the rule names to run on file-change events: every selected
+        // rule except incompleteTaskAlert (which runs on schedule only).
+        const fileChangeRuleNames: string[] = (
+          selectedRuleNames === "all"
+            ? ruleSpecs.map((s) => s.name)
+            : selectedRuleNames
+        ).filter((n) => n !== ALERT_RULE);
+
         const stop = startVaultWatcher(
           vaultPath,
           async (relPath) => {
             console.log(`[watch] Running rules for: ${relPath}`);
-            await run(relPath);
+            if (fileChangeRuleNames.length > 0) {
+              await runAllRules({
+                vaultPath,
+                today: new Date(),
+                dryRun,
+                verbose,
+                env: process.env,
+                selectedRuleNames: fileChangeRuleNames,
+                onlyGlob: relPath,
+              });
+            }
           },
           { debounce },
+        );
+
+        // Run incompleteTaskAlert (and its transitive deps) on schedule only.
+        const stopScheduler = createAlertScheduler(
+          () => alertSchedule,
+          async () => {
+            console.log("[watch] Running scheduled alert...");
+            await runAllRules({
+              vaultPath,
+              today: new Date(),
+              dryRun,
+              verbose,
+              env: process.env,
+              selectedRuleNames: [ALERT_RULE],
+            });
+          },
         );
 
         process.on("SIGINT", () => {
           console.log("\n[watch] Stopping watcher...");
           stop();
+          stopScheduler();
           process.exit(0);
         });
       })

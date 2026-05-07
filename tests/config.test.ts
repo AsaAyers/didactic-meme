@@ -158,6 +158,21 @@ describe("loadConfig", () => {
     expect(config.watch).toEqual({ debounce: 5000 });
   });
 
+  it("accepts and returns alertSchedule in the watch config", async () => {
+    const initial = {
+      watch: { debounce: 5000, alertSchedule: ["08:00", "18:00"] },
+      specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+    };
+    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+
+    const config = await loadConfig(tempVault, [SPEC_A]);
+
+    expect(config.watch).toEqual({
+      debounce: 5000,
+      alertSchedule: ["08:00", "18:00"],
+    });
+  });
+
   it("rejects an invalid 'watch' value via zod validation", async () => {
     // debounce must be a positive integer — a string is invalid.
     const bad = {
