@@ -1,0 +1,7 @@
+services:
+  didactic-meme:
+    build: .
+    volumes:
+      - ${VAULT_PATH:-./vault}:/vault
+    environment:
+      - VAULT_PATH=/vault

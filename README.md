@@ -166,6 +166,51 @@ Set `debounce` to the number of milliseconds the file must be idle before rules 
 | `ALERT_URL`   | No       | —       | HTTP endpoint to POST `tmp_alert.md` content to       |
 | `ALERT_TOKEN` | No       | —       | Bearer token sent as `Authorization: Bearer …` header |
 
+## Docker / Docker Compose
+
+A `Dockerfile` and `docker-compose.yml` are provided for containerized local development.
+The vault is always mounted at `/vault` inside the container; `VAULT_PATH` is preset to `/vault`.
+
+### Default watch mode
+
+```bash
+# Point VAULT_PATH at your vault and start watching
+VAULT_PATH=/path/to/your/vault docker compose up
+```
+
+This runs `didactic-meme --watch all` automatically — all rules fire whenever a vault markdown file changes.
+
+### Mount a specific vault path
+
+The compose file reads the `VAULT_PATH` environment variable to determine what to mount at `/vault`:
+
+```bash
+VAULT_PATH=/path/to/your/vault docker compose up
+```
+
+If `VAULT_PATH` is not set it defaults to `./vault` (a `vault/` directory next to `docker-compose.yml`).
+
+### One-off commands with arbitrary arguments
+
+Use `docker compose run --rm` to pass any CLI arguments instead of the default watch invocation:
+
+```bash
+# Dry-run all rules once
+VAULT_PATH=/path/to/your/vault docker compose run --rm didactic-meme --dry-run all
+
+# Run only the stampDone rule
+VAULT_PATH=/path/to/your/vault docker compose run --rm didactic-meme stampDone
+
+# Watch with dry-run
+VAULT_PATH=/path/to/your/vault docker compose run --rm didactic-meme --watch --dry-run all
+```
+
+### Build the image
+
+```bash
+docker compose build
+```
+
 ## Global Installation
 
 Install the `didactic-meme` command globally so you can run it from anywhere:
