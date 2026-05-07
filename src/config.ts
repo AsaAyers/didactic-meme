@@ -100,7 +100,7 @@ export function getDefaultConfig(specs: RuleSpec[]): Config["rules"] {
 }
 
 /**
- * Load (and if necessary create) the vault-level config file.
+ * Load (and if necessary create or augment) the vault-level config file.
  *
  * Behaviour:
  *   - If the file does not exist: write the full default config and return it.
