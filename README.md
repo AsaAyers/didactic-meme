@@ -173,22 +173,13 @@ The vault is always mounted at `/vault` inside the container; `VAULT_PATH` is pr
 
 ### Default watch mode
 
-```bash
-# Point VAULT_PATH at your vault and start watching
-VAULT_PATH=/path/to/your/vault docker compose up
-```
-
-This runs `didactic-meme --watch all` automatically — all rules fire whenever a vault markdown file changes.
-
-### Mount a specific vault path
-
-The compose file reads the `VAULT_PATH` environment variable to determine what to mount at `/vault`:
+Set `VAULT_PATH` to your vault directory and start the service:
 
 ```bash
 VAULT_PATH=/path/to/your/vault docker compose up
 ```
 
-If `VAULT_PATH` is not set it defaults to `./vault` (a `vault/` directory next to `docker-compose.yml`).
+This mounts your vault at `/vault` inside the container and runs `didactic-meme --watch all` — all rules fire whenever a vault markdown file changes. If `VAULT_PATH` is not set it defaults to `./vault` (a `vault/` directory next to `docker-compose.yml`).
 
 ### One-off commands with arbitrary arguments
 
