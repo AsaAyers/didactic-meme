@@ -46,6 +46,12 @@ const zRuleConfig = z.object({
 const zWatchConfig = z.object({
   /** Debounce duration in milliseconds. Defaults to 60000 (60 s). */
   debounce: z.number().int().positive().optional(),
+  /**
+   * Times at which the incompleteTaskAlert rule fires in watch mode.
+   * Each entry must be a local-time "HH:MM" string (24-hour clock).
+   * When omitted or empty, the alert never fires automatically in watch mode.
+   */
+  alertSchedule: z.array(z.string()).optional(),
 });
 
 /**
