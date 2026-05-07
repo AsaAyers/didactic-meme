@@ -4,7 +4,7 @@ import { startVaultWatcher } from "./engine/watcher.js";
 import { createAlertScheduler } from "./engine/scheduler.js";
 import { HELP_TEXT } from "./helpText.js";
 import { ruleSpecs } from "./rules/index.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, CONFIG_FILENAME } from "./config.js";
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
@@ -105,7 +105,8 @@ if (init) {
     loadConfig(vaultPath, ruleSpecs)
       .then((config) => {
         const debounce = config.watch?.debounce ?? 60_000;
-        const alertSchedule = config.watch?.alertSchedule ?? [];
+        // Mutable so the scheduler picks up changes when the config is reloaded.
+        let alertSchedule: string[] = config.watch?.alertSchedule ?? [];
 
         console.log(`Mode: watch${dryRun ? " (dry run)" : ""}`);
         console.log(`Debounce: ${debounce}ms`);
@@ -135,6 +136,30 @@ if (init) {
         const stop = startVaultWatcher(
           vaultPath,
           async (relPath) => {
+            // Config file changed — reload it and update the live schedule.
+            if (relPath === CONFIG_FILENAME) {
+              console.log(`[watch] Config changed, reloading...`);
+              try {
+                const newConfig = await loadConfig(vaultPath, ruleSpecs);
+                alertSchedule = newConfig.watch?.alertSchedule ?? [];
+                if (alertSchedule.length > 0) {
+                  console.log(
+                    `[watch] Alert schedule updated: ${alertSchedule.join(", ")}`,
+                  );
+                } else {
+                  console.log(
+                    `[watch] Alert schedule updated: (none — alert will not fire)`,
+                  );
+                }
+              } catch (err) {
+                console.error(
+                  `[watch] Failed to reload config:`,
+                  (err as Error).message,
+                );
+              }
+              return;
+            }
+
             console.log(`[watch] Running rules for: ${relPath}`);
             if (fileChangeRuleNames.length > 0) {
               await runAllRules({
@@ -148,7 +173,7 @@ if (init) {
               });
             }
           },
-          { debounce },
+          { debounce, additionalFiles: [CONFIG_FILENAME] },
         );
 
         // Run incompleteTaskAlert (and its transitive deps) on schedule only.

@@ -4,6 +4,13 @@ import { resolve, relative } from "node:path";
 export type WatcherOptions = {
   /** Debounce duration in milliseconds. Defaults to 60 000 (60 s). */
   debounce?: number;
+  /**
+   * Extra vault-relative file paths to watch in addition to `*.md` files.
+   * A file-change event is forwarded to `onProcess` whenever the changed
+   * file's relative path appears in this set.  Useful for watching
+   * configuration files such as `.didatic-meme.json`.
+   */
+  additionalFiles?: string[];
 };
 
 /**
@@ -82,17 +89,20 @@ export function startVaultWatcher(
   opts: WatcherOptions = {},
 ): () => void {
   const debounceMs = opts.debounce ?? 60_000;
+  const extraFiles = new Set(opts.additionalFiles ?? []);
   const debouncer = createFileDebouncer(debounceMs, onProcess);
 
   const watcher = watch(
     vaultPath,
     { recursive: true },
     (eventType, filename) => {
-      if (!filename || !filename.endsWith(".md")) return;
+      if (!filename) return;
 
       // resolve + relative normalises any platform path separators.
       const absPath = resolve(vaultPath, filename);
       const relPath = relative(vaultPath, absPath);
+
+      if (!relPath.endsWith(".md") && !extraFiles.has(relPath)) return;
 
       debouncer.notify(relPath, eventType ?? "change");
     },
