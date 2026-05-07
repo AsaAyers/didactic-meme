@@ -161,7 +161,10 @@ export async function runAllRules(
 
   // Load vault-level config and apply source overrides to all registered specs.
   const allSpecs = await loadConfig(ctx.vaultPath, ruleSpecs).then(
-    (config) => applyConfig(ruleSpecs, config),
+    (config) => {
+      ctx.config = config;
+      return applyConfig(ruleSpecs, config);
+    },
     (err: Error) => {
       log(
         `Warning: could not load vault config — ${err.message}. Using built-in defaults.`,

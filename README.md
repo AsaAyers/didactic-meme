@@ -59,7 +59,7 @@ When a repeating task is completed, `due:` is always set to `newDue`. If `start:
 
 ## Vault Configuration (`.didatic-meme.json`)
 
-On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes and to set watch-mode options.
+On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes, alert delivery settings, and watch-mode options.
 
 ### Config shape
 
@@ -69,29 +69,35 @@ On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault 
   "watch": {
     // Debounce duration in milliseconds (default: 60000 = 60 s).
     "debounce": 60000,
+    // Optional scheduled run times (HH:MM local time) for incompleteTaskAlert.
+    "alertSchedule": ["09:00"],
   },
 
-  // Each key is the rule name; the value overrides the files that rule scans.
-  "normalizeTodayLiteral": {
-    "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-  },
-  "stampDone": {
-    "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-  },
-  "completedTaskRollover": {
-    "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-  },
-  "removeEphemeralOverdueTasks": {
-    "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-  },
-  "incompleteTaskAlert": {
-    "sources": [
-      {
-        "type": "glob",
-        "pattern": "**/*.md",
-        "exclude": ["archive/**", "templates/**"],
-      },
-    ],
+  // Rule-specific settings and source overrides.
+  "rules": {
+    "normalizeTodayLiteral": {
+      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
+    },
+    "stampDone": {
+      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
+    },
+    "completedTaskRollover": {
+      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
+    },
+    "removeEphemeralOverdueTasks": {
+      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
+    },
+    "incompleteTaskAlert": {
+      "sources": [
+        {
+          "type": "glob",
+          "pattern": "**/*.md",
+          "exclude": ["archive/**", "templates/**"],
+        },
+      ],
+      "alertUrl": "http://localhost:8080/alert",
+      "alertToken": "optional-token",
+    },
   },
 }
 ```
@@ -105,7 +111,7 @@ On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault 
 
 ### Auto-migration
 
-When a new rule is added in a future release, its default entry is merged into your existing `.didatic-meme.json` automatically on the next run. You do not need to edit the file by hand unless you want a non-default value.
+When a new rule is added in a future release, its default entry is merged into `rules` in your existing `.didatic-meme.json` automatically on the next run. You do not need to edit the file by hand unless you want a non-default value.
 
 ### Validation
 
@@ -160,11 +166,9 @@ Set `debounce` to the number of milliseconds the file must be idle before rules 
 
 ## Environment Variables
 
-| Variable      | Required | Default | Description                                           |
-| ------------- | -------- | ------- | ----------------------------------------------------- |
-| `VAULT_PATH`  | **Yes**  | —       | Absolute path to the Obsidian vault root              |
-| `ALERT_URL`   | No       | —       | HTTP endpoint to POST `tmp_alert.md` content to       |
-| `ALERT_TOKEN` | No       | —       | Bearer token sent as `Authorization: Bearer …` header |
+| Variable     | Required | Default | Description                              |
+| ------------ | -------- | ------- | ---------------------------------------- |
+| `VAULT_PATH` | **Yes**  | —       | Absolute path to the Obsidian vault root |
 
 ## Docker / Docker Compose
 
@@ -420,8 +424,8 @@ Tasks without a `repeat:` field are **never** duplicated and never receive `copi
 
 Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vault and:
 
-1. Groups them by file and sortes them by due date.
-2. If `ALERT_URL` is set, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `ALERT_TOKEN` is set, `Authorization: Bearer <token>`.
+1. Groups them by file and sorts them by due date.
+2. If `rules.incompleteTaskAlert.alertUrl` is set in `.didatic-meme.json`, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `rules.incompleteTaskAlert.alertToken` is set, `Authorization: Bearer <token>`.
 
 **Dependencies:** `stampDone`
 

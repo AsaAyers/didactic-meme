@@ -1,46 +1,54 @@
 {
-  "normalizeTodayLiteral": {
-    "sources": [
-      {
-        "type": "glob",
-        "pattern": "**/*.md"
-      }
+  "watch": {
+    "alertSchedule": [
+      "09:00"
     ]
   },
-  "stampDone": {
-    "sources": [
-      {
-        "type": "glob",
-        "pattern": "**/*.md"
-      }
-    ]
-  },
-  "completedTaskRollover": {
-    "sources": [
-      {
-        "type": "glob",
-        "pattern": "**/*.md"
-      }
-    ]
-  },
-  "removeEphemeralOverdueTasks": {
-    "sources": [
-      {
-        "type": "glob",
-        "pattern": "**/*.md"
-      }
-    ]
-  },
-  "incompleteTaskAlert": {
-    "sources": [
-      {
-        "type": "glob",
-        "pattern": "**/*.md",
-        "exclude": [
-          "archive/**",
-          "templates/**"
-        ]
-      }
-    ]
+  "rules": {
+    "normalizeTodayLiteral": {
+      "sources": [
+        {
+          "type": "glob",
+          "pattern": "**/*.md"
+        }
+      ]
+    },
+    "stampDone": {
+      "sources": [
+        {
+          "type": "glob",
+          "pattern": "**/*.md"
+        }
+      ]
+    },
+    "completedTaskRollover": {
+      "sources": [
+        {
+          "type": "glob",
+          "pattern": "**/*.md"
+        }
+      ]
+    },
+    "removeEphemeralOverdueTasks": {
+      "sources": [
+        {
+          "type": "glob",
+          "pattern": "**/*.md"
+        }
+      ]
+    },
+    "incompleteTaskAlert": {
+      "sources": [
+        {
+          "type": "glob",
+          "pattern": "**/*.md",
+          "exclude": [
+            "archive/**",
+            "templates/**"
+          ]
+        }
+      ],
+      "alertUrl": "http://localhost:8080/alert"
+    }
   }
 }
