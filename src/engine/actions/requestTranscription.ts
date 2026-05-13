@@ -1,22 +1,14 @@
-import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { MarkdownLink } from "../../markdown/links.js";
 import type { RequestTranscriptionAction } from "../../rules/types.js";
 import type { ActionOutcome, LinkActionContext } from "./types.js";
 import { resolveTranscriptContext } from "./linkTranscriptionContext.js";
+import { buildPlaceholder } from "../../transcription/format.js";
+import type { TranscriptionJob } from "../../transcription/types.js";
 
-function buildJobId(
-  link: MarkdownLink,
-  transcriptPath: string,
-  sourceNotePath: string,
-  createdAtMs: number,
-): string {
-  const digest = createHash("sha1")
-    .update(
-      `${sourceNotePath}|${link.target}|${transcriptPath}|${link.lineIndex}`,
-    )
-    .digest("hex")
-    .slice(0, 12);
-  return `${createdAtMs.toString(36)}-${digest}`;
+function buildJobId(createdAtMs: number): string {
+  const uuid = randomUUID();
+  return `${createdAtMs.toString(36)}-${uuid}`;
 }
 
 export function applyRequestTranscription(
@@ -33,24 +25,25 @@ export function applyRequestTranscription(
   if (!transcript || transcript.transcriptExists) {
     return { text: taskText };
   }
+
   const createdAtMs = ctx.today.getTime();
   const createdAt = ctx.today.toISOString();
+  const job: TranscriptionJob = {
+    id: buildJobId(createdAtMs),
+    audioPath: transcript.audioPath,
+    transcriptPath: transcript.transcriptPath,
+    sourceNotePath: ctx.sourceNotePath,
+    createdAt,
+  };
 
   return {
     text: taskText,
-    transcriptionJobs: [
-      {
-        id: buildJobId(
-          link,
-          transcript.transcriptPath,
-          ctx.sourceNotePath,
-          createdAtMs,
-        ),
-        audioPath: transcript.audioPath,
-        transcriptPath: transcript.transcriptPath,
-        sourceNotePath: ctx.sourceNotePath,
-        createdAt,
-      },
-    ],
+    newFiles: {
+      [transcript.transcriptPath]: buildPlaceholder(
+        job.id,
+        `[[${link.target}]]`,
+      ),
+    },
+    transcriptionJobs: [job],
   };
 }

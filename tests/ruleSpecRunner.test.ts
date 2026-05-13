@@ -37,11 +37,22 @@ const SCENARIOS = join(__dirname, "test_vault", "scenarios");
 
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 const TODAY_STR = "2026-05-03";
-const TRANSCRIPT_PLACEHOLDER = `# Transcript
 
-Status: pending
-Job: 
-`;
+function expectPendingTranscriptPlaceholder(
+  content: string,
+  expectedAudioTarget: string,
+): void {
+  expect(content).toContain("# Transcript");
+  expect(content).toContain("Status: pending");
+  expect(content).toContain(
+    "> Transcription is pending. This file will be updated when the job completes.",
+  );
+  expect(content).toContain(`Source audio: [[${expectedAudioTarget}]]`);
+
+  const jobMatch = content.match(/^Job: ([a-z0-9-]+)$/m);
+  expect(jobMatch).not.toBeNull();
+  expect(jobMatch?.[1]).toMatch(/^[a-z0-9-]+$/);
+}
 
 /** Build a context that reads directly from disk (no transform queue). */
 function makeCtx(vaultPath: string): RuleContext {
@@ -559,7 +570,10 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
       expect(noteChange?.content).toContain(
         "![[audio/clip.m4a]]\n![[audio/clip.transcript.md]]",
       );
-      expect(transcriptChange?.content).toBe(TRANSCRIPT_PLACEHOLDER);
+      expectPendingTranscriptPlaceholder(
+        transcriptChange?.content ?? "",
+        "audio/clip.m4a",
+      );
       expect(result.summary).toContain("enqueued 1 transcription job(s)");
     });
   });
@@ -585,7 +599,10 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
 
       expect(result.changes).toHaveLength(1);
       expect(result.changes[0]?.path).toBe(transcriptPath);
-      expect(result.changes[0]?.content).toBe(TRANSCRIPT_PLACEHOLDER);
+      expectPendingTranscriptPlaceholder(
+        result.changes[0]?.content ?? "",
+        "audio/clip.m4a",
+      );
     });
   });
 

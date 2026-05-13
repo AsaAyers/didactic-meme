@@ -1,4 +1,4 @@
-import type { TranscriptionJob } from "../../rules/types.js";
+import type { TranscriptionJob } from "../../transcription/types.js";
 
 export type LinkActionContext = {
   vaultPath: string;

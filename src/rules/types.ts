@@ -1,5 +1,6 @@
 import type { Task } from "../markdown/tasks.js";
 import type { Config } from "../config.js";
+import type { TranscriptionJob } from "../transcription/types.js";
 
 export type RuleContext = {
   vaultPath: string;
@@ -233,18 +234,6 @@ export type Action =
   | RequestTranscriptionAction;
 
 // --- Link action result model -----------------------------------------------
-
-/**
- * A transcription job to be enqueued for an audio file.
- * All paths are absolute.
- */
-export type TranscriptionJob = {
-  id: string;
-  audioPath: string;
-  transcriptPath: string;
-  sourceNotePath: string;
-  createdAt: string;
-};
 
 /**
  * The result returned by a link action for a single matched link.
