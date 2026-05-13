@@ -32,8 +32,8 @@ const WORKER_ONLY_EXPECTED_OUTPUTS = new Set([
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 
 const CREATED_DIRS: string[] = [];
-const deterministicJobIdFactory = (createdAt: Date): string =>
-  `${createdAt.getTime().toString(36)}-test-job-001`;
+const deterministicJobIdFactory = (): string =>
+  `${TODAY.getTime().toString(36)}-test-job-001`;
 
 async function createTempDir(prefix: string): Promise<string> {
   const dir = await fs.mkdtemp(join(tmpdir(), prefix));
@@ -88,6 +88,7 @@ describe("test vault — .md.expected snapshots", () => {
     const pipelineOutputs = new Map(changes.map((c) => [c.path, c.content]));
     const expectedFiles = await walkExpectedFiles(TEST_VAULT);
     const failures: string[] = [];
+    const toEqual: string[] = [];
 
     for (const expectedPath of expectedFiles) {
       const actualPath = expectedPath.slice(0, -".expected".length);
@@ -103,15 +104,17 @@ describe("test vault — .md.expected snapshots", () => {
 
       if (actualContent === undefined) {
         failures.push(`${relPath}: expected output file was not produced`);
+        toEqual.push("");
         continue;
       }
 
       if (actualContent !== expectedContent) {
-        failures.push(`${relPath}: output does not match .md.expected`);
+        failures.push(`${relPath}\n${actualContent}`);
+        toEqual.push(`${relPath}\n${expectedContent}`);
       }
     }
 
-    expect(failures, failures.join("\n")).toEqual([]);
+    expect(failures, `${failures.length} file failsures`).toEqual(toEqual);
   });
 
   it("does not modify any committed markdown file on disk in dry-run mode", async () => {
@@ -160,7 +163,7 @@ describe("test vault — .md.expected snapshots", () => {
       dryRun: false,
       env: { STATE_DIR: stateDir },
       selectedRuleNames: ["ensureAudioTranscripts"],
-      jobIdFactory: () => "mop07pc0-test-job-001",
+      jobIdFactory: () => "mopf7ts0-test-job-001",
     });
 
     await startWorker({
