@@ -101,7 +101,10 @@ export function createGlobalDebouncer(
       pending.clear();
       console.log(`[watch] Processing after idle: ${relPaths.join(", ")}`);
       onProcess(relPaths).catch((err: unknown) => {
-        console.error(`[watch] Error processing files:`, (err as Error).message);
+        console.error(
+          `[watch] Error processing files:`,
+          (err as Error).message,
+        );
       });
     }, debounceMs);
   };

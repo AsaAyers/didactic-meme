@@ -129,10 +129,11 @@ if (init) {
         console.log("");
 
         // Compute rule names for normal file-change processing and fast-path.
-        const { allFileChangeRuleNames, fastPathRuleNames } = selectWatchRuleSets(
-          selectedRuleNames,
-          ruleSpecs.map((s) => s.name),
-        );
+        const { allFileChangeRuleNames, fastPathRuleNames } =
+          selectWatchRuleSets(
+            selectedRuleNames,
+            ruleSpecs.map((s) => s.name),
+          );
 
         const stop = startVaultWatcher(
           vaultPath,
@@ -181,30 +182,33 @@ if (init) {
           { debounce, additionalFiles: [CONFIG_FILENAME] },
         );
 
-        const stopFastPath = fastPathRuleNames.length > 0
-          ? startVaultWatcher(
-              vaultPath,
-              async (relPaths) => {
-                const targetPaths = relPaths.filter((p) => p !== CONFIG_FILENAME);
-                if (targetPaths.length === 0) return;
-                console.log(
-                  `[watch] Running fast-path rules for: ${targetPaths.join(", ")}`,
-                );
-                for (const relPath of targetPaths) {
-                  await runAllRules({
-                    vaultPath,
-                    today: new Date(),
-                    dryRun,
-                    verbose,
-                    env: process.env,
-                    selectedRuleNames: fastPathRuleNames,
-                    onlyGlob: relPath,
-                  });
-                }
-              },
-              { debounce: FAST_PATH_DEBOUNCE_MS },
-            )
-          : () => undefined;
+        const stopFastPath =
+          fastPathRuleNames.length > 0
+            ? startVaultWatcher(
+                vaultPath,
+                async (relPaths) => {
+                  const targetPaths = relPaths.filter(
+                    (p) => p !== CONFIG_FILENAME,
+                  );
+                  if (targetPaths.length === 0) return;
+                  console.log(
+                    `[watch] Running fast-path rules for: ${targetPaths.join(", ")}`,
+                  );
+                  for (const relPath of targetPaths) {
+                    await runAllRules({
+                      vaultPath,
+                      today: new Date(),
+                      dryRun,
+                      verbose,
+                      env: process.env,
+                      selectedRuleNames: fastPathRuleNames,
+                      onlyGlob: relPath,
+                    });
+                  }
+                },
+                { debounce: FAST_PATH_DEBOUNCE_MS },
+              )
+            : () => undefined;
 
         // Run incompleteTaskAlert (and its transitive deps) on schedule only.
         const stopScheduler = createAlertScheduler(

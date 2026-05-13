@@ -13,7 +13,10 @@ describe("selectWatchRuleSets", () => {
     const result = selectWatchRuleSets("all", allRules);
 
     expect(result.fastPathRuleNames).toEqual([...FAST_PATH_RULES]);
-    expect(result.allFileChangeRuleNames).toEqual([...FAST_PATH_RULES, "stampDone"]);
+    expect(result.allFileChangeRuleNames).toEqual([
+      ...FAST_PATH_RULES,
+      "stampDone",
+    ]);
   });
 
   it("returns empty fast-path rules when none are selected", () => {

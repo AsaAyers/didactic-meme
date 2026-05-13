@@ -1,5 +1,5 @@
 export const ALERT_RULE = "incompleteTaskAlert";
-export const FAST_PATH_RULES = ["ensureAudioTranscripts"] as const;
+export const FAST_PATH_RULES = ["ensureAudioTranscripts"];
 export const FAST_PATH_DEBOUNCE_MS = 1_000;
 
 export function selectWatchRuleSets(
