@@ -145,8 +145,8 @@ describe("test vault — .md.expected snapshots", () => {
   it("uses the fake worker backend for the transcription failure scenario", async () => {
     const scenarioName = "audio-embed-transcription-failure";
     const sourceScenario = join(TEST_VAULT, "scenarios", scenarioName);
-    const vaultPath = await createTempDir("didactic-meme-vault-");
-    const stateDir = await createTempDir("didactic-meme-state-");
+    const vaultPath = await createTempDir("onyx-vellum-vault-");
+    const stateDir = await createTempDir("onyx-vellum-state-");
     const expectedAudioPath = join(
       vaultPath,
       "recordings",

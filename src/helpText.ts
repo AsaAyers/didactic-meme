@@ -1,8 +1,8 @@
 export const HELP_TEXT = `\
 Usage:
-  VAULT_PATH=<path> didactic-meme [--dry-run] [--verbose] [--only <glob>] (all | <rule> [<rule>...])
-  VAULT_PATH=<path> didactic-meme --watch [--dry-run] [--verbose] (all | <rule> [<rule>...])
-  VAULT_PATH=<path> didactic-meme --init [--dry-run]
+  VAULT_PATH=<path> onyx-vellum [--dry-run] [--verbose] [--only <glob>] (all | <rule> [<rule>...])
+  VAULT_PATH=<path> onyx-vellum --watch [--dry-run] [--verbose] (all | <rule> [<rule>...])
+  VAULT_PATH=<path> onyx-vellum --init [--dry-run]
 
 Rules:
   all                      Run all registered rules in dependency order.
@@ -43,7 +43,7 @@ Environment variables:
   VAULT_PATH               (required) Absolute path to the vault root.
 
 Config:
-  .didactic-meme.json      Configure rule sources under "rules".
+  .onyx-vellum.json      Configure rule sources under "rules".
                            For alerts, set:
                            {
                              "rules": {
@@ -56,24 +56,24 @@ Config:
 
 Examples:
   # Run every rule against the vault
-  VAULT_PATH=/my/vault didactic-meme all
+  VAULT_PATH=/my/vault onyx-vellum all
 
   # Dry-run every rule (shows diffs, writes nothing)
-  VAULT_PATH=/my/vault didactic-meme --dry-run all
+  VAULT_PATH=/my/vault onyx-vellum --dry-run all
 
   # Run only stampDone (normalizeTodayLiteral runs first automatically
   # because it is a declared dependency of stampDone)
-  VAULT_PATH=/my/vault didactic-meme --dry-run stampDone
+  VAULT_PATH=/my/vault onyx-vellum --dry-run stampDone
 
   # Run all rules but only process files under notes/
-  VAULT_PATH=/my/vault didactic-meme --dry-run --only "notes/**" all
+  VAULT_PATH=/my/vault onyx-vellum --dry-run --only "notes/**" all
 
   # Watch vault for changes and run all rules on each changed file
-  VAULT_PATH=/my/vault didactic-meme --watch all
+  VAULT_PATH=/my/vault onyx-vellum --watch all
 
   # Watch with dry-run (show diffs on each change, write nothing)
-  VAULT_PATH=/my/vault didactic-meme --watch --dry-run all
+  VAULT_PATH=/my/vault onyx-vellum --watch --dry-run all
 
   # Normalize formatting and stamp done on checked tasks
-  VAULT_PATH=/my/vault didactic-meme --init --dry-run
+  VAULT_PATH=/my/vault onyx-vellum --init --dry-run
 `;

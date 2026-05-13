@@ -1,5 +1,5 @@
 services:
-  didactic-meme:
+  onyx-vellum:
     build: .
     volumes:
       - ${VAULT_PATH:-./vault}:/vault

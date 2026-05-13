@@ -1,11 +1,12 @@
 {
-  "name": "didactic-meme",
+  "name": "onyx-vellum",
   "version": "1.0.0",
   "description": "TypeScript-based Markdown automation pipeline",
   "type": "module",
+  "private": true,
   "main": "dist/index.js",
   "bin": {
-    "didactic-meme": "dist/index.js"
+    "onyx-vellum": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",

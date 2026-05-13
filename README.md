@@ -1,4 +1,4 @@
-# didactic-meme
+# onyx-vellum
 
 A TypeScript-based Markdown automation pipeline for an [Obsidian](https://obsidian.md/) vault.
 
@@ -57,9 +57,9 @@ When a repeating task is completed, `due:` is always set to `newDue`. If `start:
 
 **Migration from `repeat:smtwhfa`:** replace with `repeat:d`. No other changes required.
 
-## Vault Configuration (`.didactic-meme.json`)
+## Vault Configuration (`.onyx-vellum.json`)
 
-On first run, `didactic-meme` creates a `.didactic-meme.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes, alert delivery settings, and watch-mode options.
+On first run, `onyx-vellum` creates a `.onyx-vellum.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes, alert delivery settings, and watch-mode options.
 
 ### Config shape
 
@@ -114,7 +114,7 @@ On first run, `didactic-meme` creates a `.didactic-meme.json` file in your vault
 
 ### Auto-migration
 
-When a new rule is added in a future release, its default entry is merged into `rules` in your existing `.didactic-meme.json` automatically on the next run. You do not need to edit the file by hand unless you want a non-default value.
+When a new rule is added in a future release, its default entry is merged into `rules` in your existing `.onyx-vellum.json` automatically on the next run. You do not need to edit the file by hand unless you want a non-default value.
 
 ### Validation
 
@@ -126,13 +126,13 @@ The `--watch` flag keeps the process running and automatically applies the selec
 
 ```bash
 # Watch the vault and run all rules on each changed file
-VAULT_PATH=/my/vault didactic-meme --watch all
+VAULT_PATH=/my/vault onyx-vellum --watch all
 
 # Watch with dry-run (show diffs, write nothing)
-VAULT_PATH=/my/vault didactic-meme --watch --dry-run all
+VAULT_PATH=/my/vault onyx-vellum --watch --dry-run all
 
 # Watch and apply only specific rules on changes
-VAULT_PATH=/my/vault didactic-meme --watch stampDone
+VAULT_PATH=/my/vault onyx-vellum --watch stampDone
 ```
 
 ### How it works
@@ -151,7 +151,7 @@ VAULT_PATH=/my/vault didactic-meme --watch stampDone
 
 ### Debounce configuration
 
-The debounce duration defaults to **60 seconds** and can be changed via the `watch.debounce` key in `.didactic-meme.json`:
+The debounce duration defaults to **60 seconds** and can be changed via the `watch.debounce` key in `.onyx-vellum.json`:
 
 ```json
 {
@@ -169,16 +169,16 @@ Set `debounce` to the number of milliseconds the file must be idle before rules 
 
 ## Environment Variables
 
-| Variable     | Required | Default                        | Description                                       |
-| ------------ | -------- | ------------------------------ | ------------------------------------------------- |
-| `VAULT_PATH` | **Yes**  | —                              | Absolute path to the Obsidian vault root          |
-| `STATE_DIR`  | No       | sibling `.didactic-meme-state` | Filesystem queue root for transcription job state |
+| Variable     | Required | Default                      | Description                                       |
+| ------------ | -------- | ---------------------------- | ------------------------------------------------- |
+| `VAULT_PATH` | **Yes**  | —                            | Absolute path to the Obsidian vault root          |
+| `STATE_DIR`  | No       | sibling `.onyx-vellum-state` | Filesystem queue root for transcription job state |
 
 ## Docker / Docker Compose
 
 `docker-compose.yml` now starts the full stack:
 
-- `didactic-meme` — the main watch-mode pipeline
+- `onyx-vellum` — the main watch-mode pipeline
 - `transcriber-worker` — a long-running GPU transcription worker
 
 Both services mount the vault at `/vault` and share a named `state` volume at
@@ -200,7 +200,7 @@ VAULT_PATH=/path/to/your/vault docker compose up --build
 ```
 
 This mounts your vault at `/vault`, mounts the shared queue state at `/state`,
-starts `didactic-meme --watch all`, and starts the GPU worker in the same
+starts `onyx-vellum --watch all`, and starts the GPU worker in the same
 compose project. If `VAULT_PATH` is not set it defaults to `./vault` (a
 `vault/` directory next to `docker-compose.yml`).
 
@@ -216,13 +216,13 @@ watch invocation:
 
 ```bash
 # Dry-run all rules once
-VAULT_PATH=/path/to/your/vault docker compose run --rm didactic-meme --dry-run all
+VAULT_PATH=/path/to/your/vault docker compose run --rm onyx-vellum --dry-run all
 
 # Run only the stampDone rule
-VAULT_PATH=/path/to/your/vault docker compose run --rm didactic-meme stampDone
+VAULT_PATH=/path/to/your/vault docker compose run --rm onyx-vellum stampDone
 
 # Watch with dry-run
-VAULT_PATH=/path/to/your/vault docker compose run --rm didactic-meme --watch --dry-run all
+VAULT_PATH=/path/to/your/vault docker compose run --rm onyx-vellum --watch --dry-run all
 ```
 
 ### Build the image
@@ -258,7 +258,7 @@ will automatically pick up any stale jobs left in `/state/processing`.
 
 ## Global Installation
 
-Install the `didactic-meme` command globally so you can run it from anywhere:
+Install the `onyx-vellum` command globally so you can run it from anywhere:
 
 ```bash
 npm install -g .
@@ -271,25 +271,25 @@ Then use the installed command:
 
 ```bash
 # Show help
-didactic-meme --help
+onyx-vellum --help
 
 # Dry-run all rules against your vault
-VAULT_PATH=/path/to/your/vault didactic-meme --dry-run all
+VAULT_PATH=/path/to/your/vault onyx-vellum --dry-run all
 
 # Run only the stampDone rule (dependencies included automatically)
-VAULT_PATH=/path/to/your/vault didactic-meme stampDone
+VAULT_PATH=/path/to/your/vault onyx-vellum stampDone
 
 # Normalize the vault with --init
-VAULT_PATH=/path/to/your/vault didactic-meme --init
+VAULT_PATH=/path/to/your/vault onyx-vellum --init
 
 # Preview --init changes without writing (dry-run)
-VAULT_PATH=/path/to/your/vault didactic-meme --init --dry-run
+VAULT_PATH=/path/to/your/vault onyx-vellum --init --dry-run
 ```
 
 To uninstall:
 
 ```bash
-npm uninstall -g didactic-meme
+npm uninstall -g onyx-vellum
 ```
 
 ## How to Run
@@ -309,13 +309,13 @@ npm run build
 ### Show help
 
 ```bash
-VAULT_PATH=/path/to/your/vault didactic-meme --help
+VAULT_PATH=/path/to/your/vault onyx-vellum --help
 ```
 
 ### Run all rules (real mode)
 
 ```bash
-VAULT_PATH=/path/to/your/vault didactic-meme all
+VAULT_PATH=/path/to/your/vault onyx-vellum all
 ```
 
 ### Run specific rules
@@ -327,23 +327,23 @@ them in the correct order.
 ```bash
 # Stamp done dates only (normalizeTodayLiteral runs first automatically
 # because it is a declared dependency of stampDone)
-VAULT_PATH=/path/to/your/vault didactic-meme stampDone
+VAULT_PATH=/path/to/your/vault onyx-vellum stampDone
 ```
 
 ```bash
 # Run multiple rules explicitly
-VAULT_PATH=/path/to/your/vault didactic-meme normalizeTodayLiteral stampDone
+VAULT_PATH=/path/to/your/vault onyx-vellum normalizeTodayLiteral stampDone
 ```
 
 ### Run with dry-run (prints a unified diff, no files written)
 
 ```bash
-VAULT_PATH=/path/to/your/vault didactic-meme --dry-run all
+VAULT_PATH=/path/to/your/vault onyx-vellum --dry-run all
 ```
 
 ```bash
 # Dry-run for a single rule (dependencies included automatically)
-VAULT_PATH=/path/to/your/vault didactic-meme --dry-run stampDone
+VAULT_PATH=/path/to/your/vault onyx-vellum --dry-run stampDone
 ```
 
 `--dry-run` outputs a unified diff (one patch per changed file, sorted by path) to
@@ -353,13 +353,13 @@ stdout without writing anything to disk. The format is the same as the
 Add `--verbose` to also print rule-progress logs and the run summary:
 
 ```bash
-VAULT_PATH=/path/to/your/vault didactic-meme --dry-run --verbose all
+VAULT_PATH=/path/to/your/vault onyx-vellum --dry-run --verbose all
 ```
 
 ### Normalize the vault with `--init`
 
 ```bash
-VAULT_PATH=/path/to/your/vault didactic-meme --init
+VAULT_PATH=/path/to/your/vault onyx-vellum --init
 ```
 
 `--init` performs a two-step initialization pass over every `.md` file in
@@ -397,7 +397,7 @@ If the second pass would still produce changes the command exits with an error
 Combine with `--dry-run` to preview which files would be rewritten:
 
 ```bash
-VAULT_PATH=/path/to/your/vault didactic-meme --init --dry-run
+VAULT_PATH=/path/to/your/vault onyx-vellum --init --dry-run
 ```
 
 `--init` and the normal rule-pipeline mode are mutually exclusive: use one or
@@ -484,7 +484,7 @@ Tasks without a `repeat:` field are **never** duplicated and never receive `copi
 Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vault and:
 
 1. Groups them by file and sorts them by due date.
-2. If `rules.incompleteTaskAlert.alertUrl` is set in `.didactic-meme.json`, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `rules.incompleteTaskAlert.alertToken` is set, `Authorization: Bearer <token>`.
+2. If `rules.incompleteTaskAlert.alertUrl` is set in `.onyx-vellum.json`, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `rules.incompleteTaskAlert.alertToken` is set, `Authorization: Bearer <token>`.
 
 **Dependencies:** `stampDone`
 
@@ -590,7 +590,7 @@ Docker Compose section for details).
 src/
 ├── index.ts                    # CLI entrypoint
 ├── helpText.ts                 # --help output text (exported for testing)
-├── config.ts                   # Vault-level config (.didactic-meme.json) — zod schemas + load/apply helpers
+├── config.ts                   # Vault-level config (.onyx-vellum.json) — zod schemas + load/apply helpers
 ├── markdown/
 │   ├── parse.ts                # unified/remark parse + stringify + gray-matter helpers
 │   ├── tasks.ts                # extract / toggle / remove / update GFM task items

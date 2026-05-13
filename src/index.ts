@@ -20,7 +20,7 @@ if (
   (onlyIdx + 1 >= args.length || args[onlyIdx + 1].startsWith("-"))
 ) {
   console.error("Error: --only requires a glob pattern argument.");
-  console.error('  Example: didactic-meme --dry-run --only "notes/**" all');
+  console.error('  Example: onyx-vellum --dry-run --only "notes/**" all');
   process.exit(1);
 }
 const onlyGlob: string | undefined =
@@ -61,8 +61,8 @@ if (init) {
     console.error('Error: specify "all" or a list of rule names to run.');
     console.error("");
     console.error("Examples:");
-    console.error("  didactic-meme all");
-    console.error("  didactic-meme --dry-run stampDone");
+    console.error("  onyx-vellum all");
+    console.error("  onyx-vellum --dry-run stampDone");
     console.error("");
     console.error("Run with --help for full usage information.");
     process.exit(1);

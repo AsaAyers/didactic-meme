@@ -536,7 +536,7 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
     run: (vaultPath: string) => Promise<void>,
   ): Promise<void> {
     const vaultPath = await fs.mkdtemp(
-      join(tmpdir(), "didactic-meme-transcript-"),
+      join(tmpdir(), "onyx-vellum-transcript-"),
     );
     try {
       await run(vaultPath);

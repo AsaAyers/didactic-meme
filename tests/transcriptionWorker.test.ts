@@ -15,7 +15,7 @@ async function createTempDir(prefix: string): Promise<string> {
 }
 
 async function runWorkerForSingleJob(job: TranscriptionJob): Promise<string> {
-  const stateDir = await createTempDir("didactic-meme-worker-state-");
+  const stateDir = await createTempDir("onyx-vellum-worker-state-");
   await enqueue(stateDir, job);
   return runWorkerForSingleStateDir(stateDir, job.transcriptPath);
 }
@@ -56,7 +56,7 @@ afterEach(async () => {
 
 describe("transcription worker", () => {
   it("writes source audio wikilink relative to source note", async () => {
-    const vaultDir = await createTempDir("didactic-meme-worker-vault-");
+    const vaultDir = await createTempDir("onyx-vellum-worker-vault-");
     const audioPath = join(vaultDir, "audio", "clip.m4a");
     const transcriptPath = join(vaultDir, "audio", "clip.transcript.md");
     const sourceNotePath = join(vaultDir, "daily.md");
@@ -75,7 +75,7 @@ describe("transcription worker", () => {
   });
 
   it("supports parent-directory relative paths from nested notes", async () => {
-    const vaultDir = await createTempDir("didactic-meme-worker-vault-");
+    const vaultDir = await createTempDir("onyx-vellum-worker-vault-");
     const sourceNotePath = join(vaultDir, "notes", "daily.md");
     const audioPath = join(vaultDir, "audio", "clip.m4a");
     const transcriptPath = join(vaultDir, "audio", "clip.transcript.md");
@@ -95,8 +95,8 @@ describe("transcription worker", () => {
   });
 
   it("retries stale processing jobs when the worker restarts", async () => {
-    const vaultDir = await createTempDir("didactic-meme-worker-vault-");
-    const stateDir = await createTempDir("didactic-meme-worker-state-");
+    const vaultDir = await createTempDir("onyx-vellum-worker-vault-");
+    const stateDir = await createTempDir("onyx-vellum-worker-state-");
     const audioPath = join(vaultDir, "audio", "clip.m4a");
     const transcriptPath = join(vaultDir, "audio", "clip.transcript.md");
     const sourceNotePath = join(vaultDir, "daily.md");

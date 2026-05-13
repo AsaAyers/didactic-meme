@@ -13,7 +13,7 @@ import type { TranscriptionJob } from "../src/transcription/types.js";
 const CREATED_DIRS: string[] = [];
 
 async function createStateDir(): Promise<string> {
-  const stateDir = await fs.mkdtemp(join(tmpdir(), "didactic-meme-queue-"));
+  const stateDir = await fs.mkdtemp(join(tmpdir(), "onyx-vellum-queue-"));
   CREATED_DIRS.push(stateDir);
   return stateDir;
 }

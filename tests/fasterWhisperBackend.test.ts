@@ -22,7 +22,7 @@ afterEach(async () => {
 
 describe("createFasterWhisperBackend", () => {
   it("reuses a single long-lived backend process across transcriptions", async () => {
-    const dir = await createTempDir("didactic-meme-backend-");
+    const dir = await createTempDir("onyx-vellum-backend-");
     const scriptPath = join(dir, "mock-backend.mjs");
     await fs.writeFile(
       scriptPath,
@@ -67,7 +67,7 @@ process.stdin.on("data", (chunk) => {
   });
 
   it("surfaces backend-side transcription errors", async () => {
-    const dir = await createTempDir("didactic-meme-backend-");
+    const dir = await createTempDir("onyx-vellum-backend-");
     const scriptPath = join(dir, "mock-backend.mjs");
     await fs.writeFile(
       scriptPath,

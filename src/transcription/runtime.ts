@@ -1,6 +1,6 @@
 import { dirname, join, resolve } from "node:path";
 
-const DEFAULT_STATE_DIRNAME = ".didactic-meme-state";
+const DEFAULT_STATE_DIRNAME = ".onyx-vellum-state";
 
 export function resolveStateDir(
   env: NodeJS.ProcessEnv,

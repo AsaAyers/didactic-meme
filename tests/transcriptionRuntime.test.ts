@@ -24,8 +24,8 @@ afterEach(async () => {
 
 describe("transcription runtime", () => {
   it("enqueues transcription jobs into STATE_DIR when rules run for real", async () => {
-    const vaultDir = await createTempDir("didactic-meme-vault-");
-    const stateDir = await createTempDir("didactic-meme-state-");
+    const vaultDir = await createTempDir("onyx-vellum-vault-");
+    const stateDir = await createTempDir("onyx-vellum-state-");
     await fs.mkdir(join(vaultDir, "audio"), { recursive: true });
     await fs.writeFile(
       join(vaultDir, "daily.md"),
@@ -66,7 +66,7 @@ describe("transcription runtime", () => {
   it("defaults the state directory to a vault sibling outside the vault", () => {
     const vaultPath = "/tmp/example/vault";
     expect(resolveStateDir({}, vaultPath)).toBe(
-      join(dirname(vaultPath), ".didactic-meme-state"),
+      join(dirname(vaultPath), ".onyx-vellum-state"),
     );
   });
 });
