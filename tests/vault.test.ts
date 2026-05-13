@@ -32,16 +32,13 @@ const WORKER_ONLY_EXPECTED_OUTPUTS = new Set([
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 
 const CREATED_DIRS: string[] = [];
+const deterministicJobIdFactory = (createdAt: Date): string =>
+  `${createdAt.getTime().toString(36)}-test-job-001`;
 
 async function createTempDir(prefix: string): Promise<string> {
   const dir = await fs.mkdtemp(join(tmpdir(), prefix));
   CREATED_DIRS.push(dir);
   return dir;
-}
-
-function createDeterministicJobIdFactory(): (createdAt: Date) => string {
-  return (createdAt: Date) =>
-    `${createdAt.getTime().toString(36)}-test-job-001`;
 }
 
 async function walkExpectedFiles(dir: string): Promise<string[]> {
@@ -85,10 +82,10 @@ describe("test vault — .md.expected snapshots", () => {
       today: TODAY,
       dryRun: true,
       env: {},
-      jobIdFactory: createDeterministicJobIdFactory(),
+      jobIdFactory: deterministicJobIdFactory,
     });
 
-    const staged = new Map(changes.map((c) => [c.path, c.content]));
+    const pipelineOutputs = new Map(changes.map((c) => [c.path, c.content]));
     const expectedFiles = await walkExpectedFiles(TEST_VAULT);
     const failures: string[] = [];
 
@@ -102,7 +99,7 @@ describe("test vault — .md.expected snapshots", () => {
 
       const expectedContent = await fs.readFile(expectedPath, "utf-8");
       const actualContent =
-        staged.get(actualPath) ?? (await readOptionalFile(actualPath));
+        pipelineOutputs.get(actualPath) ?? (await readOptionalFile(actualPath));
 
       if (actualContent === undefined) {
         failures.push(`${relPath}: expected output file was not produced`);
@@ -130,7 +127,7 @@ describe("test vault — .md.expected snapshots", () => {
       today: TODAY,
       dryRun: true,
       env: {},
-      jobIdFactory: createDeterministicJobIdFactory(),
+      jobIdFactory: deterministicJobIdFactory,
     });
 
     for (const [p, content] of before) {
