@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { buildFailureContent, buildSuccessContent } from "./format.js";
 import { claimNext, markDone, markFailed } from "./queue.js";
-import type { TranscriptionJob, WorkerOptions } from "./types.js";
+import type { WorkerOptions } from "./types.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
 
@@ -9,6 +9,9 @@ async function readSourceAudioWikilink(
   transcriptPath: string,
   audioPath: string,
 ): Promise<string> {
+  // Reuse the source-audio wikilink from the existing placeholder when present
+  // so worker rewrites preserve relative vault links. Fall back to an absolute
+  // audio-path wikilink when the placeholder cannot be read.
   try {
     const current = await fs.readFile(transcriptPath, "utf-8");
     const match = current.match(/^Source audio: (.+)$/m);
@@ -20,29 +23,19 @@ async function readSourceAudioWikilink(
 }
 
 async function recoverStaleProcessingJobs(stateDir: string): Promise<void> {
-  await fs.mkdir(`${stateDir}/pending`, { recursive: true });
-  while (true) {
-    const job = await readNextProcessingJob(stateDir);
-    if (!job) return;
-    await fs.rename(
-      `${stateDir}/processing/${job.id}.json`,
-      `${stateDir}/pending/${job.id}.json`,
-    );
-  }
-}
-
-async function readNextProcessingJob(
-  stateDir: string,
-): Promise<TranscriptionJob | null> {
   const processingDir = `${stateDir}/processing`;
+  const pendingDir = `${stateDir}/pending`;
   await fs.mkdir(processingDir, { recursive: true });
+  await fs.mkdir(pendingDir, { recursive: true });
   const files = (await fs.readdir(processingDir))
     .filter((name) => name.endsWith(".json"))
     .sort((a, b) => a.localeCompare(b));
-  const first = files[0];
-  if (!first) return null;
-  const raw = await fs.readFile(`${processingDir}/${first}`, "utf-8");
-  return JSON.parse(raw) as TranscriptionJob;
+
+  await Promise.all(
+    files.map((file) =>
+      fs.rename(`${processingDir}/${file}`, `${pendingDir}/${file}`),
+    ),
+  );
 }
 
 function defaultSleep(ms: number): Promise<void> {

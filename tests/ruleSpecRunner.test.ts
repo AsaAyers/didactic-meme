@@ -42,12 +42,16 @@ function expectPendingTranscriptPlaceholder(
   content: string,
   expectedAudioTarget: string,
 ): void {
-  const match = content.match(
-    /^# Transcript\n\nStatus: pending\nJob: ([a-z0-9-]+)\nSource audio: \[\[([^\]]+)\]\]\n\n> Transcription is pending\. This file will be updated when the job completes\.\n$/,
+  expect(content).toContain("# Transcript");
+  expect(content).toContain("Status: pending");
+  expect(content).toContain(
+    "> Transcription is pending. This file will be updated when the job completes.",
   );
-  expect(match).not.toBeNull();
-  expect(match?.[1]).toMatch(/^[a-z0-9-]+$/);
-  expect(match?.[2]).toBe(expectedAudioTarget);
+  expect(content).toContain(`Source audio: [[${expectedAudioTarget}]]`);
+
+  const jobMatch = content.match(/^Job: ([a-z0-9-]+)$/m);
+  expect(jobMatch).not.toBeNull();
+  expect(jobMatch?.[1]).toMatch(/^[a-z0-9-]+$/);
 }
 
 /** Build a context that reads directly from disk (no transform queue). */

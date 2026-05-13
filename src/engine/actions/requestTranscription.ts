@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { MarkdownLink } from "../../markdown/links.js";
 import type { RequestTranscriptionAction } from "../../rules/types.js";
 import type { ActionOutcome, LinkActionContext } from "./types.js";
@@ -7,7 +7,7 @@ import { buildPlaceholder } from "../../transcription/format.js";
 import type { TranscriptionJob } from "../../transcription/types.js";
 
 function buildJobId(createdAtMs: number): string {
-  const randomSuffix = randomBytes(6).toString("hex");
+  const randomSuffix = randomUUID();
   return `${createdAtMs.toString(36)}-${randomSuffix}`;
 }
 
