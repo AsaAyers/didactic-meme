@@ -514,7 +514,8 @@ describe("ruleSpecRunner — nested list preservation on task modification", () 
 
 // ---------------------------------------------------------------------------
 // ensureAudioTranscripts
-// (Not covered by the current E2E vault scenarios)
+// (Covers behavior not fully asserted by the E2E vault snapshots, such as
+// placeholder-file creation, transcription-job enqueueing, and skip cases.)
 // ---------------------------------------------------------------------------
 
 describe("ruleSpecRunner — ensureAudioTranscripts", () => {

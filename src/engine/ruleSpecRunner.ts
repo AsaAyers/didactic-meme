@@ -488,7 +488,7 @@ async function runActions(
   const summary =
     totalLinksMatched > 0
       ? totalTranscriptionJobs > 0
-        ? `Processed ${totalLinksMatched} link(s), enqueued ${totalTranscriptionJobs} transcription job(s), across ${changes.length} file(s).`
+        ? `Processed ${totalLinksMatched} link(s) and enqueued ${totalTranscriptionJobs} transcription job(s) across ${changes.length} file(s).`
         : `Processed ${totalLinksMatched} link(s) across ${changes.length} file(s).`
       : `Modified ${totalTasksModified} task(s) across ${changes.length} file(s).`;
 
