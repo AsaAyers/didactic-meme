@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
 import { promises as fs } from "node:fs";
 import { runRuleSpec } from "../src/engine/ruleSpecRunner.js";
 import { selectRuleSpecs, sortRuleSpecs } from "../src/engine/runner.js";
-import type { RuleContext, RuleSpec } from "../src/rules/types.js";
+import type { RuleContext, RuleSpec, LinkQuery } from "../src/rules/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCENARIOS = join(__dirname, "test_vault", "scenarios");
@@ -502,5 +502,19 @@ describe("ruleSpecRunner — nested list preservation on task modification", () 
 
     // No extra blank line must be inserted before the nested list.
     expect(content).not.toMatch(/\n\n\s*1\. Nested/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// LinkQuery type
+// (not covered by E2E vault — no link-query specs exist there)
+// ---------------------------------------------------------------------------
+
+describe("LinkQuery", () => {
+  it("satisfies LinkQuery with embed and extension filters", () => {
+    const q: LinkQuery = { type: "link", embed: true, extension: ".m4a" };
+    expect(q.type).toBe("link");
+    expect(q.embed).toBe(true);
+    expect(q.extension).toBe(".m4a");
   });
 });
