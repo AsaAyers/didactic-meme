@@ -381,6 +381,11 @@ export async function runRuleSpec(
     const tree = parseMarkdown(frontmatterParts.body);
     const allTasks = extractTasks(tree, relative(vaultPath, filePath));
 
+    if (query.type !== "tasks") {
+      // LinkQuery: not yet executed by the engine; recognized but no-op for now.
+      continue;
+    }
+
     const selected = query.predicate
       ? allTasks.filter((t) => evaluatePredicate(t, query.predicate!, today))
       : allTasks;

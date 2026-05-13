@@ -120,7 +120,16 @@ export type TaskQuery = {
   predicate?: TaskPredicate;
 };
 
-export type Query = TaskQuery;
+/** Select Markdown links (including wikilinks) from the resolved sources. */
+export type LinkQuery = {
+  type: "link";
+  /** When true, only match embeds (![[...]] or ![](...)). Default: false (match all links). */
+  embed?: boolean;
+  /** When set, only match links whose target ends with this extension (e.g. ".m4a"). */
+  extension?: string;
+};
+
+export type Query = TaskQuery | LinkQuery;
 
 // --- Actions ----------------------------------------------------------------
 
