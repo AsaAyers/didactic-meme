@@ -12,7 +12,7 @@ function jobPath(
   stateDir: string,
   dir: (typeof QUEUE_DIRS)[number],
   id: string,
-) {
+): string {
   return join(queuePath(stateDir, dir), `${id}.json`);
 }
 

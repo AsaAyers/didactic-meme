@@ -57,6 +57,7 @@ describe("transcription queue", () => {
 
   it("claimNext moves the oldest job from pending to processing", async () => {
     const stateDir = await createStateDir();
+    // Queue ordering is filename-lexicographic, so this test uses sortable IDs.
     const older = makeJob("01j0-a");
     const newer = makeJob("01j0-b");
     await enqueue(stateDir, newer);

@@ -13,7 +13,7 @@ function toAudioWikilink(audioPath: string): string {
 async function recoverStaleProcessingJobs(stateDir: string): Promise<void> {
   await fs.mkdir(`${stateDir}/pending`, { recursive: true });
   while (true) {
-    const job = await claimNextFromProcessing(stateDir);
+    const job = await readNextProcessingJob(stateDir);
     if (!job) return;
     await fs.rename(
       `${stateDir}/processing/${job.id}.json`,
@@ -22,7 +22,7 @@ async function recoverStaleProcessingJobs(stateDir: string): Promise<void> {
   }
 }
 
-async function claimNextFromProcessing(
+async function readNextProcessingJob(
   stateDir: string,
 ): Promise<TranscriptionJob | null> {
   const processingDir = `${stateDir}/processing`;
