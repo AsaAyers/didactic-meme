@@ -134,12 +134,14 @@ if (init) {
             selectedRuleNames,
             ruleSpecs.map((s) => s.name),
           );
+        const markdownTargets = (relPaths: string[]): string[] =>
+          relPaths.filter((p) => p !== CONFIG_FILENAME);
 
         const stop = startVaultWatcher(
           vaultPath,
           async (relPaths) => {
-            const includesConfig = relPaths.includes(CONFIG_FILENAME);
-            if (includesConfig) {
+            const configChanged = relPaths.includes(CONFIG_FILENAME);
+            if (configChanged) {
               console.log(`[watch] Config changed, reloading...`);
               try {
                 const newConfig = await loadConfig(vaultPath, ruleSpecs);
@@ -161,7 +163,7 @@ if (init) {
               }
             }
 
-            const targetPaths = relPaths.filter((p) => p !== CONFIG_FILENAME);
+            const targetPaths = markdownTargets(relPaths);
             if (targetPaths.length === 0) return;
 
             console.log(`[watch] Running rules for: ${targetPaths.join(", ")}`);
@@ -185,11 +187,9 @@ if (init) {
         const stopFastPath =
           fastPathRuleNames.length > 0
             ? startVaultWatcher(
-                vaultPath,
-                async (relPaths) => {
-                  const targetPaths = relPaths.filter(
-                    (p) => p !== CONFIG_FILENAME,
-                  );
+              vaultPath,
+              async (relPaths) => {
+                  const targetPaths = markdownTargets(relPaths);
                   if (targetPaths.length === 0) return;
                   console.log(
                     `[watch] Running fast-path rules for: ${targetPaths.join(", ")}`,
