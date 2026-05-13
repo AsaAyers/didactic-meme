@@ -45,7 +45,7 @@ const SPEC_B: RuleSpec = {
 let tempVault: string;
 
 beforeEach(async () => {
-  tempVault = await fs.mkdtemp(join(tmpdir(), "didatic-meme-config-test-"));
+  tempVault = await fs.mkdtemp(join(tmpdir(), "didactic-meme-config-test-"));
 });
 
 afterEach(async () => {

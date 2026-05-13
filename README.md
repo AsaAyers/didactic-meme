@@ -57,9 +57,9 @@ When a repeating task is completed, `due:` is always set to `newDue`. If `start:
 
 **Migration from `repeat:smtwhfa`:** replace with `repeat:d`. No other changes required.
 
-## Vault Configuration (`.didatic-meme.json`)
+## Vault Configuration (`.didactic-meme.json`)
 
-On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes, alert delivery settings, and watch-mode options.
+On first run, `didactic-meme` creates a `.didactic-meme.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes, alert delivery settings, and watch-mode options.
 
 ### Config shape
 
@@ -111,7 +111,7 @@ On first run, `didactic-meme` creates a `.didatic-meme.json` file in your vault 
 
 ### Auto-migration
 
-When a new rule is added in a future release, its default entry is merged into `rules` in your existing `.didatic-meme.json` automatically on the next run. You do not need to edit the file by hand unless you want a non-default value.
+When a new rule is added in a future release, its default entry is merged into `rules` in your existing `.didactic-meme.json` automatically on the next run. You do not need to edit the file by hand unless you want a non-default value.
 
 ### Validation
 
@@ -148,7 +148,7 @@ VAULT_PATH=/my/vault didactic-meme --watch stampDone
 
 ### Debounce configuration
 
-The debounce duration defaults to **60 seconds** and can be changed via the `watch.debounce` key in `.didatic-meme.json`:
+The debounce duration defaults to **60 seconds** and can be changed via the `watch.debounce` key in `.didactic-meme.json`:
 
 ```json
 {
@@ -425,7 +425,7 @@ Tasks without a `repeat:` field are **never** duplicated and never receive `copi
 Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vault and:
 
 1. Groups them by file and sorts them by due date.
-2. If `rules.incompleteTaskAlert.alertUrl` is set in `.didatic-meme.json`, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `rules.incompleteTaskAlert.alertToken` is set, `Authorization: Bearer <token>`.
+2. If `rules.incompleteTaskAlert.alertUrl` is set in `.didactic-meme.json`, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `rules.incompleteTaskAlert.alertToken` is set, `Authorization: Bearer <token>`.
 
 **Dependencies:** `stampDone`
 
@@ -458,7 +458,7 @@ If today is 2026-05-11 and the task is still unchecked, it is silently deleted o
 src/
 ├── index.ts                    # CLI entrypoint
 ├── helpText.ts                 # --help output text (exported for testing)
-├── config.ts                   # Vault-level config (.didatic-meme.json) — zod schemas + load/apply helpers
+├── config.ts                   # Vault-level config (.didactic-meme.json) — zod schemas + load/apply helpers
 ├── markdown/
 │   ├── parse.ts                # unified/remark parse + stringify + gray-matter helpers
 │   ├── tasks.ts                # extract / toggle / remove / update GFM task items

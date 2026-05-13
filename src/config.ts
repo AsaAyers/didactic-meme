@@ -1,7 +1,7 @@
 /**
  * Vault-level configuration for didactic-meme.
  *
- * The config file `.didatic-meme.json` lives at the vault root and lets users
+ * The config file `.didactic-meme.json` lives at the vault root and lets users
  * customise which files each rule operates on by overriding its `sources`.
  *
  * Shape:
@@ -73,13 +73,13 @@ export const zConfig = z
 // Types
 // ---------------------------------------------------------------------------
 
-/** Per-rule configuration stored in `.didatic-meme.json`. */
+/** Per-rule configuration stored in `.didactic-meme.json`. */
 export type RuleConfig = z.infer<typeof zRuleConfig>;
 
-/** Watch-mode configuration stored under the `"watch"` key in `.didatic-meme.json`. */
+/** Watch-mode configuration stored under the `"watch"` key in `.didactic-meme.json`. */
 export type WatchConfig = z.infer<typeof zWatchConfig>;
 
-/** Full vault-level config for `.didatic-meme.json`. */
+/** Full vault-level config for `.didactic-meme.json`. */
 export type Config = z.infer<typeof zConfig>;
 
 // ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ export type Config = z.infer<typeof zConfig>;
 // ---------------------------------------------------------------------------
 
 /** The file name of the vault-level config, relative to the vault root. */
-export const CONFIG_FILENAME = ".didatic-meme.json";
+export const CONFIG_FILENAME = ".didactic-meme.json";
 
 /**
  * Build the default rule configs from an array of RuleSpecs.

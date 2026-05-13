@@ -41,7 +41,7 @@ Environment variables:
   VAULT_PATH               (required) Absolute path to the vault root.
 
 Config:
-  .didatic-meme.json       Configure rule sources under "rules".
+  .didactic-meme.json      Configure rule sources under "rules".
                            For alerts, set:
                            {
                              "rules": {
