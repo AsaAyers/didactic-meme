@@ -543,11 +543,16 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
       );
       await fs.writeFile(audioPath, "audio-bytes", "utf-8");
 
-      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+      const result = await runRuleSpec(
+        ensureAudioTranscriptsSpec,
+        makeCtx(vaultPath),
+      );
 
       expect(result.changes).toHaveLength(2);
       const noteChange = result.changes.find((c) => c.path === notePath);
-      const transcriptChange = result.changes.find((c) => c.path === transcriptPath);
+      const transcriptChange = result.changes.find(
+        (c) => c.path === transcriptPath,
+      );
       expect(noteChange?.content).toContain(
         "![[audio/clip.m4a]]\n![[audio/clip.transcript.md]]",
       );
@@ -570,7 +575,10 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
       );
       await fs.writeFile(audioPath, "audio-bytes", "utf-8");
 
-      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+      const result = await runRuleSpec(
+        ensureAudioTranscriptsSpec,
+        makeCtx(vaultPath),
+      );
 
       expect(result.changes).toHaveLength(1);
       expect(result.changes[0]?.path).toBe(transcriptPath);
@@ -590,7 +598,10 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
       await fs.writeFile(join(vaultPath, "audio", "one.m4a"), "one", "utf-8");
       await fs.writeFile(join(vaultPath, "audio", "two.m4a"), "two", "utf-8");
 
-      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+      const result = await runRuleSpec(
+        ensureAudioTranscriptsSpec,
+        makeCtx(vaultPath),
+      );
       const noteChange = result.changes.find((c) => c.path === notePath);
 
       expect(noteChange?.content).toContain(
@@ -611,11 +622,16 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
       await fs.writeFile(audioPath, "audio-bytes", "utf-8");
       await fs.writeFile(transcriptPath, "# Existing transcript", "utf-8");
 
-      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+      const result = await runRuleSpec(
+        ensureAudioTranscriptsSpec,
+        makeCtx(vaultPath),
+      );
 
       expect(result.changes).toHaveLength(1);
       expect(result.changes[0]?.path).toBe(notePath);
-      expect(result.changes[0]?.content).toContain("![[audio/clip.transcript.md]]");
+      expect(result.changes[0]?.content).toContain(
+        "![[audio/clip.transcript.md]]",
+      );
       expect(result.summary).toContain("enqueued 0 transcription job(s)");
     });
   });
@@ -648,7 +664,10 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
         "utf-8",
       );
 
-      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+      const result = await runRuleSpec(
+        ensureAudioTranscriptsSpec,
+        makeCtx(vaultPath),
+      );
       expect(result.changes).toHaveLength(0);
       expect(result.summary).toContain("enqueued 0 transcription job(s)");
     });

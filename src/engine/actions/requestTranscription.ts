@@ -1,10 +1,20 @@
+import { createHash } from "node:crypto";
 import type { MarkdownLink } from "../../markdown/links.js";
 import type { RequestTranscriptionAction } from "../../rules/types.js";
 import type { ActionOutcome, LinkActionContext } from "./types.js";
 import { resolveTranscriptContext } from "./linkTranscriptionContext.js";
 
-function buildJobId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+function buildJobId(
+  link: MarkdownLink,
+  transcriptPath: string,
+  sourceNotePath: string,
+  createdAt: string,
+): string {
+  const digest = createHash("sha1")
+    .update(`${sourceNotePath}|${link.target}|${transcriptPath}|${link.lineIndex}`)
+    .digest("hex")
+    .slice(0, 12);
+  return `${Date.parse(createdAt).toString(36)}-${digest}`;
 }
 
 export function applyRequestTranscription(
@@ -18,16 +28,22 @@ export function applyRequestTranscription(
   if (!transcript || transcript.transcriptExists || !ctx) {
     return { text: taskText };
   }
+  const createdAt = ctx.today.toISOString();
 
   return {
     text: taskText,
     transcriptionJobs: [
       {
-        id: buildJobId(),
+        id: buildJobId(
+          link!,
+          transcript.transcriptPath,
+          ctx.sourceNotePath,
+          createdAt,
+        ),
         audioPath: transcript.audioPath,
         transcriptPath: transcript.transcriptPath,
         sourceNotePath: ctx.sourceNotePath,
-        createdAt: new Date().toISOString(),
+        createdAt,
       },
     ],
   };

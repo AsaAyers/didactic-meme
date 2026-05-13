@@ -424,14 +424,15 @@ async function runActions(
       let lineOffset = 0;
 
       for (const link of matchedLinks) {
-        const currentLink: MarkdownLink = {
-          ...link,
-          lineIndex: link.lineIndex + lineOffset,
-        };
         for (const action of actions) {
+          const currentLink: MarkdownLink = {
+            ...link,
+            lineIndex: link.lineIndex + lineOffset,
+          };
           const linkCtx: LinkActionContext = {
             vaultPath: ctx.vaultPath,
             sourceNotePath: filePath,
+            today: ctx.today,
           };
           const beforeBody = currentBody;
           const outcome = applyAction(

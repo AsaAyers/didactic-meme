@@ -1,5 +1,12 @@
 import { existsSync } from "node:fs";
-import { basename, dirname, extname, isAbsolute, relative, resolve } from "node:path";
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  relative,
+  resolve,
+} from "node:path";
 import {
   buildMirroredTranscriptEmbed,
   deriveTranscriptTarget,
