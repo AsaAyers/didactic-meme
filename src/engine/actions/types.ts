@@ -4,7 +4,7 @@ export type LinkActionContext = {
   vaultPath: string;
   sourceNotePath: string;
   today: Date;
-  jobIdFactory?: (createdAt: Date) => string;
+  jobIdFactory: (createdAt: Date) => string;
 };
 
 export type ActionOutcome = {

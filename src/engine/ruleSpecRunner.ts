@@ -20,6 +20,7 @@ import { applyAdvanceRepeat } from "./actions/advanceRepeat.js";
 import { applyCustom } from "./actions/custom.js";
 import { applyEnsureSiblingTranscript } from "./actions/ensureSiblingTranscript.js";
 import { applyRemoveTask } from "./actions/removeTask.js";
+import { buildJobId } from "./actions/requestTranscription.js";
 import { applyReplaceFieldDateValue } from "./actions/replaceFieldDateValue.js";
 import { applyRequestTranscription } from "./actions/requestTranscription.js";
 import { applyRollover } from "./actions/rollover.js";
@@ -443,7 +444,7 @@ async function runActions(
             vaultPath: ctx.vaultPath,
             sourceNotePath: filePath,
             today: ctx.today,
-            jobIdFactory: ctx.jobIdFactory,
+            jobIdFactory: ctx.jobIdFactory ?? buildJobId,
           };
           const beforeBody = currentBody;
           const outcome = applyAction(

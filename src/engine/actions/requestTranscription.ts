@@ -6,7 +6,8 @@ import { resolveTranscriptContext } from "./linkTranscriptionContext.js";
 import { buildPlaceholder } from "../../transcription/format.js";
 import type { TranscriptionJob } from "../../transcription/types.js";
 
-function buildJobId(createdAtMs: number): string {
+export function buildJobId(createdAt: Date): string {
+  const createdAtMs = createdAt.getTime();
   const uuid = randomUUID();
   return `${createdAtMs.toString(36)}-${uuid}`;
 }
@@ -26,10 +27,9 @@ export function applyRequestTranscription(
     return { text: taskText };
   }
 
-  const createdAtMs = ctx.today.getTime();
   const createdAt = ctx.today.toISOString();
   const job: TranscriptionJob = {
-    id: ctx.jobIdFactory?.(ctx.today) ?? buildJobId(createdAtMs),
+    id: ctx.jobIdFactory(ctx.today),
     audioPath: transcript.audioPath,
     transcriptPath: transcript.transcriptPath,
     sourceNotePath: ctx.sourceNotePath,
