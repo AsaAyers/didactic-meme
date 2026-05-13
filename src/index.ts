@@ -134,7 +134,7 @@ if (init) {
             selectedRuleNames,
             ruleSpecs.map((s) => s.name),
           );
-        const markdownTargets = (relPaths: string[]): string[] =>
+        const getNonConfigPaths = (relPaths: string[]): string[] =>
           relPaths.filter((p) => p !== CONFIG_FILENAME);
 
         const stop = startVaultWatcher(
@@ -163,11 +163,12 @@ if (init) {
               }
             }
 
-            const targetPaths = markdownTargets(relPaths);
+            const targetPaths = getNonConfigPaths(relPaths);
             if (targetPaths.length === 0) return;
 
             console.log(`[watch] Running rules for: ${targetPaths.join(", ")}`);
             if (allFileChangeRuleNames.length > 0) {
+              // Keep this sequential: runAllRules mutates shared vault files.
               for (const relPath of targetPaths) {
                 await runAllRules({
                   vaultPath,
@@ -189,11 +190,12 @@ if (init) {
             ? startVaultWatcher(
               vaultPath,
               async (relPaths) => {
-                  const targetPaths = markdownTargets(relPaths);
+                  const targetPaths = getNonConfigPaths(relPaths);
                   if (targetPaths.length === 0) return;
                   console.log(
                     `[watch] Running fast-path rules for: ${targetPaths.join(", ")}`,
                   );
+                  // Keep this sequential: runAllRules mutates shared vault files.
                   for (const relPath of targetPaths) {
                     await runAllRules({
                       vaultPath,
