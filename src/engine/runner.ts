@@ -8,7 +8,10 @@ import { stampDoneUnknownSpec } from "../rules/stampDone.js";
 import { walkMarkdownFiles } from "./io.js";
 import { FileWriteManager } from "./io.js";
 import { runRuleSpec } from "./ruleSpecRunner.js";
+import { enqueue } from "../transcription/queue.js";
+import { resolveStateDir } from "../transcription/runtime.js";
 import type { RuleContext, RuleSpec } from "../rules/types.js";
+import type { TranscriptionJob } from "../transcription/types.js";
 import { loadConfig, applyConfig } from "../config.js";
 
 /**
@@ -158,6 +161,7 @@ export async function runAllRules(
   };
 
   const summaries: string[] = [];
+  const transcriptionJobs: TranscriptionJob[] = [];
 
   // Load vault-level config and apply source overrides to all registered specs.
   const allSpecs = await loadConfig(ctx.vaultPath, ruleSpecs).then(
@@ -187,6 +191,7 @@ export async function runAllRules(
       for (const change of result.changes) {
         queue.stage(change.path, change.content);
       }
+      transcriptionJobs.push(...result.transcriptionJobs);
       summaries.push(`  [${spec.name}] ${result.summary}`);
     } catch (err) {
       summaries.push(`  [${spec.name}] ERROR: ${(err as Error).message}`);
@@ -195,6 +200,12 @@ export async function runAllRules(
 
   // Flush everything once at the end.
   const written = await queue.commit(ctx.dryRun);
+  if (!ctx.dryRun && transcriptionJobs.length > 0) {
+    const stateDir = resolveStateDir(ctx.env, ctx.vaultPath);
+    for (const job of transcriptionJobs) {
+      await enqueue(stateDir, job);
+    }
+  }
 
   // Sort by path for deterministic output.
   written.sort((a, b) => a.path.localeCompare(b.path));

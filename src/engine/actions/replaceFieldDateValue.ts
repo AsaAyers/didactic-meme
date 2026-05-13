@@ -1,7 +1,4 @@
-import {
-  getInlineField,
-  setInlineField,
-} from "../../markdown/inlineFields.js";
+import { getInlineField, setInlineField } from "../../markdown/inlineFields.js";
 import type { ReplaceFieldDateValueAction } from "../../rules/types.js";
 import { resolveToValue } from "./dateHelpers.js";
 import type { ActionOutcome } from "./types.js";

@@ -1,9 +1,10 @@
 import { addDays, differenceInCalendarDays } from "date-fns";
+import { getInlineField, setInlineField } from "../../markdown/inlineFields.js";
 import {
-  getInlineField,
-  setInlineField,
-} from "../../markdown/inlineFields.js";
-import { computeNextDue, parseDateStr, parseRepeat } from "../../rules/scheduleUtils.js";
+  computeNextDue,
+  parseDateStr,
+  parseRepeat,
+} from "../../rules/scheduleUtils.js";
 import type { AdvanceRepeatAction } from "../../rules/types.js";
 import { formatDate } from "./dateHelpers.js";
 import type { ActionOutcome } from "./types.js";

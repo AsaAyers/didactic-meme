@@ -37,6 +37,7 @@ import type {
   Source,
   TaskPredicate,
 } from "../rules/types.js";
+import type { TranscriptionJob } from "../transcription/types.js";
 
 // ---------------------------------------------------------------------------
 // Source resolution
@@ -363,8 +364,13 @@ async function runActions(
   actions: Action[],
   queryResults: QueryResult[],
   ctx: RuleContext,
-): Promise<{ changes: FileChange[]; summary: string }> {
+): Promise<{
+  changes: FileChange[];
+  summary: string;
+  transcriptionJobs: TranscriptionJob[];
+}> {
   const changes: FileChange[] = [];
+  const transcriptionJobs: TranscriptionJob[] = [];
   let totalTasksModified = 0;
   let totalLinksMatched = 0;
   let totalTranscriptionJobs = 0;
@@ -457,6 +463,7 @@ async function runActions(
           }
           if (outcome.transcriptionJobs) {
             totalTranscriptionJobs += outcome.transcriptionJobs.length;
+            transcriptionJobs.push(...outcome.transcriptionJobs);
           }
         }
       }
@@ -492,7 +499,7 @@ async function runActions(
         : `Processed ${totalLinksMatched} link(s) across ${changes.length} file(s).`
       : `Modified ${totalTasksModified} task(s) across ${changes.length} file(s).`;
 
-  return { changes, summary };
+  return { changes, summary, transcriptionJobs };
 }
 
 // ---------------------------------------------------------------------------
@@ -502,7 +509,11 @@ async function runActions(
 export async function runRuleSpec(
   spec: RuleSpec,
   ctx: RuleContext,
-): Promise<{ changes: FileChange[]; summary: string }> {
+): Promise<{
+  changes: FileChange[];
+  summary: string;
+  transcriptionJobs: TranscriptionJob[];
+}> {
   const filePaths = await resolveEffectiveSourcePaths(
     spec,
     ctx.vaultPath,

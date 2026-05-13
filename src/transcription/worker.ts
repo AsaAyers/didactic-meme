@@ -1,7 +1,10 @@
 import { promises as fs } from "node:fs";
 import { dirname, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createFasterWhisperBackend } from "./fasterWhisperBackend.js";
 import { buildFailureContent, buildSuccessContent } from "./format.js";
 import { claimNext, markDone, markFailed } from "./queue.js";
+import { resolveStateDir } from "./runtime.js";
 import type { TranscriptionJob, WorkerOptions } from "./types.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
@@ -71,4 +74,30 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
       await sleep(pollIntervalMs);
     }
   }
+}
+
+async function main(): Promise<void> {
+  const vaultPath = process.env["VAULT_PATH"] ?? "/vault";
+  const stateDir = resolveStateDir(process.env, vaultPath);
+  const backend = createFasterWhisperBackend({
+    executablePath: process.env["FASTER_WHISPER_EXECUTABLE"],
+    scriptPath: process.env["FASTER_WHISPER_SCRIPT"],
+    model: process.env["FASTER_WHISPER_MODEL"],
+    device: process.env["FASTER_WHISPER_DEVICE"],
+    computeType: process.env["FASTER_WHISPER_COMPUTE_TYPE"],
+    downloadRoot: process.env["FASTER_WHISPER_DOWNLOAD_ROOT"],
+  });
+
+  console.log(`Starting transcription worker...`);
+  console.log(`Vault: ${vaultPath}`);
+  console.log(`State dir: ${stateDir}`);
+
+  await startWorker({ stateDir, backend });
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((err: unknown) => {
+    console.error("Fatal transcription worker error:", (err as Error).message);
+    process.exit(1);
+  });
 }
