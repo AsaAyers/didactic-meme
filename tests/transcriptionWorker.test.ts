@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { enqueue } from "../src/transcription/queue.js";
+import { claimNext, enqueue } from "../src/transcription/queue.js";
 import { startWorker } from "../src/transcription/worker.js";
 import type { TranscriptionJob } from "../src/transcription/types.js";
 
@@ -17,7 +17,13 @@ async function createTempDir(prefix: string): Promise<string> {
 async function runWorkerForSingleJob(job: TranscriptionJob): Promise<string> {
   const stateDir = await createTempDir("didactic-meme-worker-state-");
   await enqueue(stateDir, job);
+  return runWorkerForSingleStateDir(stateDir, job.transcriptPath);
+}
 
+async function runWorkerForSingleStateDir(
+  stateDir: string,
+  transcriptPath: string,
+): Promise<string> {
   let shouldRun = true;
   await startWorker({
     stateDir,
@@ -37,7 +43,7 @@ async function runWorkerForSingleJob(job: TranscriptionJob): Promise<string> {
     sleep: async () => Promise.resolve(),
   });
 
-  return fs.readFile(job.transcriptPath, "utf-8");
+  return fs.readFile(transcriptPath, "utf-8");
 }
 
 afterEach(async () => {
@@ -86,5 +92,34 @@ describe("transcription worker", () => {
 
     expect(content).toContain("Status: done");
     expect(content).toContain("Source audio: [[../audio/clip.m4a]]");
+  });
+
+  it("retries stale processing jobs when the worker restarts", async () => {
+    const vaultDir = await createTempDir("didactic-meme-worker-vault-");
+    const stateDir = await createTempDir("didactic-meme-worker-state-");
+    const audioPath = join(vaultDir, "audio", "clip.m4a");
+    const transcriptPath = join(vaultDir, "audio", "clip.transcript.md");
+    const sourceNotePath = join(vaultDir, "daily.md");
+    await fs.mkdir(join(vaultDir, "audio"), { recursive: true });
+
+    const job = {
+      id: "01j-worker-c",
+      audioPath,
+      transcriptPath,
+      sourceNotePath,
+      createdAt: "2026-05-13T00:00:00.000Z",
+    };
+    await enqueue(stateDir, job);
+    await claimNext(stateDir);
+
+    const content = await runWorkerForSingleStateDir(stateDir, transcriptPath);
+
+    expect(content).toContain("Status: done");
+    await expect(
+      fs.stat(join(stateDir, "pending", `${job.id}.json`)),
+    ).rejects.toThrow();
+    await expect(
+      fs.stat(join(stateDir, "done", `${job.id}.json`)),
+    ).resolves.toBeDefined();
   });
 });

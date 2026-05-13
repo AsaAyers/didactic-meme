@@ -3,5 +3,33 @@ services:
     build: .
     volumes:
       - ${VAULT_PATH:-./vault}:/vault
+      - state:/state
     environment:
       - VAULT_PATH=/vault
+      - STATE_DIR=/state
+  transcriber-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["node", "dist/transcription/worker.js"]
+    volumes:
+      - ${VAULT_PATH:-./vault}:/vault
+      - state:/state
+    environment:
+      - VAULT_PATH=/vault
+      - STATE_DIR=/state
+      - FASTER_WHISPER_MODEL=large-v3
+      - FASTER_WHISPER_DEVICE=cuda
+      - FASTER_WHISPER_COMPUTE_TYPE=float16
+      - FASTER_WHISPER_DOWNLOAD_ROOT=/state/faster-whisper-cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  state:

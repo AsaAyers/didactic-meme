@@ -166,28 +166,50 @@ Set `debounce` to the number of milliseconds the file must be idle before rules 
 
 ## Environment Variables
 
-| Variable     | Required | Default | Description                              |
-| ------------ | -------- | ------- | ---------------------------------------- |
-| `VAULT_PATH` | **Yes**  | —       | Absolute path to the Obsidian vault root |
+| Variable     | Required | Default                        | Description                                        |
+| ------------ | -------- | ------------------------------ | -------------------------------------------------- |
+| `VAULT_PATH` | **Yes**  | —                              | Absolute path to the Obsidian vault root           |
+| `STATE_DIR`  | No       | sibling `.didactic-meme-state` | Filesystem queue root for transcription job state  |
 
 ## Docker / Docker Compose
 
-A `Dockerfile` and `docker-compose.yml` are provided for containerized local development.
-The vault is always mounted at `/vault` inside the container; `VAULT_PATH` is preset to `/vault`.
+`docker-compose.yml` now starts the full stack:
 
-### Default watch mode
+- `didactic-meme` — the main watch-mode pipeline
+- `transcriber-worker` — a long-running GPU transcription worker
 
-Set `VAULT_PATH` to your vault directory and start the service:
+Both services mount the vault at `/vault` and share a named `state` volume at
+`/state`. The queue lives in `/state` instead of inside the vault, so pending /
+processing / done / failed job files do not pollute your notes.
+
+### Prerequisites
+
+- Docker with Compose support
+- An NVIDIA GPU on the host
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+
+### Start the full stack
+
+Set `VAULT_PATH` to your vault directory and start both services:
 
 ```bash
-VAULT_PATH=/path/to/your/vault docker compose up
+VAULT_PATH=/path/to/your/vault docker compose up --build
 ```
 
-This mounts your vault at `/vault` inside the container and runs `didactic-meme --watch all` — all rules fire whenever a vault markdown file changes. If `VAULT_PATH` is not set it defaults to `./vault` (a `vault/` directory next to `docker-compose.yml`).
+This mounts your vault at `/vault`, mounts the shared queue state at `/state`,
+starts `didactic-meme --watch all`, and starts the GPU worker in the same
+compose project. If `VAULT_PATH` is not set it defaults to `./vault` (a
+`vault/` directory next to `docker-compose.yml`).
+
+The worker image includes Python, `faster-whisper`, and FFmpeg, and is
+preconfigured to use the `large-v3` model with CUDA (`float16`). Model downloads
+are cached under `/state/faster-whisper-cache`, so they stay outside the vault
+and survive container restarts.
 
 ### One-off commands with arbitrary arguments
 
-Use `docker compose run --rm` to pass any CLI arguments instead of the default watch invocation:
+Use `docker compose run --rm` to pass any CLI arguments instead of the default
+watch invocation:
 
 ```bash
 # Dry-run all rules once
@@ -205,6 +227,31 @@ VAULT_PATH=/path/to/your/vault docker compose run --rm didactic-meme --watch --d
 ```bash
 docker compose build
 ```
+
+### Worker service details
+
+The worker runs the built Node entrypoint directly:
+
+```bash
+node dist/transcription/worker.js
+```
+
+Inside that container, the Node worker keeps a long-lived `faster-whisper`
+backend process running in the same image. Compose requests one NVIDIA GPU with
+the standard device reservation pattern:
+
+```yaml
+deploy:
+  resources:
+    reservations:
+      devices:
+        - driver: nvidia
+          count: 1
+          capabilities: [gpu]
+```
+
+`transcriber-worker` uses `restart: unless-stopped`, so restarting the service
+will automatically pick up any stale jobs left in `/state/processing`.
 
 ## Global Installation
 
