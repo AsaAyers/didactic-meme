@@ -8,7 +8,7 @@ function buildJobId(
   link: MarkdownLink,
   transcriptPath: string,
   sourceNotePath: string,
-  createdAt: string,
+  createdAtMs: number,
 ): string {
   const digest = createHash("sha1")
     .update(
@@ -16,7 +16,7 @@ function buildJobId(
     )
     .digest("hex")
     .slice(0, 12);
-  return `${Date.parse(createdAt).toString(36)}-${digest}`;
+  return `${createdAtMs.toString(36)}-${digest}`;
 }
 
 export function applyRequestTranscription(
@@ -33,13 +33,19 @@ export function applyRequestTranscription(
   if (!transcript || transcript.transcriptExists) {
     return { text: taskText };
   }
+  const createdAtMs = ctx.today.getTime();
   const createdAt = ctx.today.toISOString();
 
   return {
     text: taskText,
     transcriptionJobs: [
       {
-        id: buildJobId(link, transcript.transcriptPath, ctx.sourceNotePath, createdAt),
+        id: buildJobId(
+          link,
+          transcript.transcriptPath,
+          ctx.sourceNotePath,
+          createdAtMs,
+        ),
         audioPath: transcript.audioPath,
         transcriptPath: transcript.transcriptPath,
         sourceNotePath: ctx.sourceNotePath,

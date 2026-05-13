@@ -24,10 +24,14 @@ export type ResolvedTranscriptContext = {
 };
 
 function isWithinVault(vaultPath: string, filePath: string): boolean {
-  const vaultRealPath = realpathSync(vaultPath);
-  const fileRealPath = realpathSync(filePath);
-  const rel = relative(vaultRealPath, fileRealPath);
-  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  try {
+    const vaultRealPath = realpathSync(vaultPath);
+    const fileRealPath = realpathSync(filePath);
+    const rel = relative(vaultRealPath, fileRealPath);
+    return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  } catch {
+    return false;
+  }
 }
 
 export function resolveTranscriptContext(

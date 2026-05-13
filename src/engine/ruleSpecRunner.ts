@@ -187,6 +187,10 @@ function buildMarkdownFileChange(
   return { path: filePath, content: newContent };
 }
 
+function countLines(text: string): number {
+  return (text.match(/\n/g)?.length ?? 0) + 1;
+}
+
 // ---------------------------------------------------------------------------
 // Predicate evaluation
 // ---------------------------------------------------------------------------
@@ -444,8 +448,7 @@ async function runActions(
           );
           if (outcome.updatedBody !== undefined) {
             currentBody = outcome.updatedBody;
-            lineOffset +=
-              currentBody.split("\n").length - beforeBody.split("\n").length;
+            lineOffset += countLines(currentBody) - countLines(beforeBody);
           }
           if (outcome.newFiles) {
             for (const [path, content] of Object.entries(outcome.newFiles)) {
