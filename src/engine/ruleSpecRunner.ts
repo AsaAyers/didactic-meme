@@ -22,6 +22,7 @@ import {
   computeNextDue,
 } from "../rules/scheduleUtils.js";
 import { extractMarkdownLinks, matchesLinkQuery } from "../markdown/links.js";
+import type { MarkdownLink } from "../markdown/links.js";
 import { walkMarkdownFiles } from "./io.js";
 import type {
   Action,
@@ -29,6 +30,7 @@ import type {
   GlobSource,
   LinkActionResult,
   PathSource,
+  Query,
   RuleContext,
   RuleSpec,
   Source,
@@ -407,87 +409,198 @@ function applyAction(
 }
 
 // ---------------------------------------------------------------------------
-// Task branch
+// Link action application (stub — extended in plan 004)
 // ---------------------------------------------------------------------------
 
-async function runTaskQuerySpec(
-  spec: RuleSpec,
+function applyLinkAction(action: Action, link: MarkdownLink): LinkActionResult {
+  switch (action.type) {
+    case "link.ensureSiblingTranscript":
+    case "link.requestTranscription":
+      // Implementation lives in plan 004's rule module; stub returns an empty
+      // result so the engine can route LinkQuery specs without error.
+      void link;
+      return {};
+    default:
+      return {};
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Internal query result types
+// ---------------------------------------------------------------------------
+
+type TaskQueryResult = {
+  type: "tasks";
+  filePath: string;
+  raw: string;
+  parts: SplitFrontmatterResult;
+  tree: ReturnType<typeof parseMarkdown>;
+  selectedTasks: Task[];
+};
+
+type LinkQueryResult = {
+  type: "links";
+  filePath: string;
+  raw: string;
+  parts: SplitFrontmatterResult;
+  matchedLinks: MarkdownLink[];
+};
+
+type QueryResult = TaskQueryResult | LinkQueryResult;
+
+// ---------------------------------------------------------------------------
+// Query phase
+// ---------------------------------------------------------------------------
+
+/**
+ * For each source file, run the query and return a `QueryResult` describing
+ * which tasks or links were selected.  The caller then hands these results to
+ * `runActions` which applies the configured actions uniformly.
+ */
+async function runQuery(
+  query: Query,
   filePaths: string[],
   ctx: RuleContext,
-): Promise<{ changes: FileChange[]; summary: string }> {
-  const { today } = ctx;
-  const { query, actions } = spec;
-
-  const changes: FileChange[] = [];
-  let totalModified = 0;
-  const allSelected: Task[] = [];
+): Promise<QueryResult[]> {
+  const results: QueryResult[] = [];
 
   for (const filePath of filePaths) {
     const loaded = await loadMarkdownSourceFile(filePath, ctx.readFile);
     if (!loaded) continue;
     const { raw, parts } = loaded;
 
-    const tree = parseMarkdown(parts.body);
-    const allTasks = extractTasks(tree, relative(ctx.vaultPath, filePath));
-
-    const selected =
-      query.type === "tasks" && query.predicate
-        ? allTasks.filter((t) => evaluatePredicate(t, query.predicate!, today))
+    if (query.type === "tasks") {
+      const tree = parseMarkdown(parts.body);
+      const allTasks = extractTasks(tree, relative(ctx.vaultPath, filePath));
+      const selectedTasks = query.predicate
+        ? allTasks.filter((t) =>
+            evaluatePredicate(t, query.predicate!, ctx.today),
+          )
         : allTasks;
-
-    let modified = 0;
-    for (const task of selected) {
-      let newText = task.text;
-      let shouldUncheck = false;
-      let insertDuplicateText: string | undefined;
-      let shouldRemove = false;
-      for (const action of actions) {
-        const outcome = applyAction(newText, action, today);
-        newText = outcome.text;
-        if (outcome.uncheck) shouldUncheck = true;
-        if (outcome.insertDuplicateAfter !== undefined)
-          insertDuplicateText = outcome.insertDuplicateAfter;
-        if (outcome.remove) shouldRemove = true;
-      }
-      if (shouldRemove) {
-        removeTask(tree, task.text);
-        modified++;
-        continue;
-      }
-      const textChanged = newText !== task.text;
-      if (textChanged) {
-        updateTaskText(tree, task.text, newText);
-      }
-      if (shouldUncheck) {
-        setTaskChecked(tree, newText, false);
-      }
-      if (insertDuplicateText !== undefined) {
-        insertTaskAfter(tree, newText, insertDuplicateText, false);
-      }
-      if (textChanged || shouldUncheck || insertDuplicateText !== undefined) {
-        modified++;
+      results.push({ type: "tasks", filePath, raw, parts, tree, selectedTasks });
+    } else {
+      // link query
+      const links = extractMarkdownLinks(parts.body);
+      const matchedLinks = links.filter((l) => matchesLinkQuery(l, query));
+      if (matchedLinks.length > 0) {
+        results.push({ type: "links", filePath, raw, parts, matchedLinks });
       }
     }
+  }
 
-    if (modified > 0) {
-      const newContent = joinFrontmatter(parts, stringifyMarkdown(tree));
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// Actions phase
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply the rule's configured actions to every item in `queryResults` and
+ * return the resulting file changes.
+ *
+ * For task results: each matched task is mutated in the AST, then the file is
+ * serialised if anything changed.  CustomAction side effects are fired once
+ * with the complete set of matched tasks across all files.
+ *
+ * For link results: link actions are called for each matched link; any body
+ * mutations and new files produced are collected and staged.
+ */
+async function runActions(
+  actions: Action[],
+  queryResults: QueryResult[],
+  ctx: RuleContext,
+): Promise<{ changes: FileChange[]; summary: string }> {
+  const changes: FileChange[] = [];
+  let totalTasksModified = 0;
+  let totalLinksMatched = 0;
+  const allSelectedTasks: Task[] = [];
+
+  for (const result of queryResults) {
+    if (result.type === "tasks") {
+      const { filePath, raw, parts, tree, selectedTasks } = result;
+      const { today } = ctx;
+      let modified = 0;
+
+      for (const task of selectedTasks) {
+        let newText = task.text;
+        let shouldUncheck = false;
+        let insertDuplicateText: string | undefined;
+        let shouldRemove = false;
+        for (const action of actions) {
+          const outcome = applyAction(newText, action, today);
+          newText = outcome.text;
+          if (outcome.uncheck) shouldUncheck = true;
+          if (outcome.insertDuplicateAfter !== undefined)
+            insertDuplicateText = outcome.insertDuplicateAfter;
+          if (outcome.remove) shouldRemove = true;
+        }
+        if (shouldRemove) {
+          removeTask(tree, task.text);
+          modified++;
+          continue;
+        }
+        const textChanged = newText !== task.text;
+        if (textChanged) {
+          updateTaskText(tree, task.text, newText);
+        }
+        if (shouldUncheck) {
+          setTaskChecked(tree, newText, false);
+        }
+        // Insert the clone immediately after the (possibly updated) original task.
+        if (insertDuplicateText !== undefined) {
+          insertTaskAfter(tree, newText, insertDuplicateText, false);
+        }
+        if (textChanged || shouldUncheck || insertDuplicateText !== undefined) {
+          modified++;
+        }
+      }
+
+      if (modified > 0) {
+        const newContent = joinFrontmatter(parts, stringifyMarkdown(tree));
+        const change = buildMarkdownFileChange(filePath, raw, newContent);
+        if (change) {
+          changes.push(change);
+          totalTasksModified += modified;
+        }
+      }
+
+      allSelectedTasks.push(...selectedTasks);
+    } else {
+      // link result
+      const { filePath, raw, parts, matchedLinks } = result;
+      totalLinksMatched += matchedLinks.length;
+      let currentBody = parts.body;
+
+      for (const link of matchedLinks) {
+        for (const action of actions) {
+          const actionResult = applyLinkAction(action, link);
+          if (actionResult.updatedBody !== undefined) {
+            currentBody = actionResult.updatedBody;
+          }
+          if (actionResult.newFiles) {
+            for (const [path, content] of Object.entries(actionResult.newFiles)) {
+              changes.push({ path, content });
+            }
+          }
+        }
+      }
+
+      const newContent = joinFrontmatter(parts, currentBody);
       const change = buildMarkdownFileChange(filePath, raw, newContent);
       if (change) {
         changes.push(change);
-        totalModified += modified;
       }
     }
-
-    allSelected.push(...selected);
   }
 
-  // Fire CustomAction side effects once with ALL matched tasks.
-  if (allSelected.length > 0) {
+  // Fire CustomAction side effects once with ALL matched tasks across all files.
+  if (allSelectedTasks.length > 0) {
     const logFn = ctx.log ?? console.log;
     for (const action of actions) {
       if (action.type === "custom") {
         await action.run({
-          tasks: allSelected,
+          tasks: allSelectedTasks,
           dryRun: ctx.dryRun,
           config: ctx.config,
           readFile: ctx.readFile,
@@ -497,99 +610,12 @@ async function runTaskQuerySpec(
     }
   }
 
-  return {
-    changes,
-    summary: `Modified ${totalModified} task(s) across ${changes.length} file(s).`,
-  };
-}
+  const summary =
+    totalLinksMatched > 0
+      ? `Processed ${totalLinksMatched} link(s) across ${changes.length} file(s).`
+      : `Modified ${totalTasksModified} task(s) across ${changes.length} file(s).`;
 
-// ---------------------------------------------------------------------------
-// Link branch
-// ---------------------------------------------------------------------------
-
-/**
- * Apply a single link action to a matched link and return the structured
- * result. Link actions return a `LinkActionResult` describing body mutations
- * and new files to create; the runner accumulates these results across all
- * matching links before committing changes.
- *
- * This dispatcher will grow as new link action types are added. Currently
- * recognises `link.ensureSiblingTranscript` and `link.requestTranscription`
- * (both are no-ops until the `ensureAudioTranscripts` rule is implemented in
- * plan 004 — they return empty results here so the framework compiles and the
- * existing tests stay green).
- */
-function applyLinkAction(action: Action): LinkActionResult {
-  switch (action.type) {
-    case "link.ensureSiblingTranscript":
-    case "link.requestTranscription":
-      // Implementation lives in plan 004's rule module; stub returns empty
-      // result so the engine can route LinkQuery specs without error.
-      return {};
-    default:
-      // Task actions and custom actions are not applicable to the link branch.
-      return {};
-  }
-}
-
-async function runLinkQuerySpec(
-  spec: RuleSpec,
-  filePaths: string[],
-  ctx: RuleContext,
-): Promise<{
-  changes: FileChange[];
-  newFiles: Record<string, string>;
-  summary: string;
-}> {
-  const { query, actions } = spec;
-
-  if (query.type !== "link") {
-    return { changes: [], newFiles: {}, summary: "0 link(s) matched." };
-  }
-
-  const changes: FileChange[] = [];
-  const newFiles: Record<string, string> = {};
-  let totalMatched = 0;
-
-  for (const filePath of filePaths) {
-    const loaded = await loadMarkdownSourceFile(filePath, ctx.readFile);
-    if (!loaded) continue;
-    const { raw, parts } = loaded;
-
-    const links = extractMarkdownLinks(parts.body);
-    const matchedLinks = links.filter((l) => matchesLinkQuery(l, query));
-    if (matchedLinks.length === 0) continue;
-
-    totalMatched += matchedLinks.length;
-
-    // Accumulate body mutations and new files across all matching links and
-    // all actions, so each action can see the body as updated by previous ones.
-    let currentBody = parts.body;
-
-    for (let i = 0; i < matchedLinks.length; i++) {
-      for (const action of actions) {
-        const result = applyLinkAction(action);
-        if (result.updatedBody !== undefined) {
-          currentBody = result.updatedBody;
-        }
-        if (result.newFiles) {
-          Object.assign(newFiles, result.newFiles);
-        }
-      }
-    }
-
-    const newContent = joinFrontmatter(parts, currentBody);
-    const change = buildMarkdownFileChange(filePath, raw, newContent);
-    if (change) {
-      changes.push(change);
-    }
-  }
-
-  return {
-    changes,
-    newFiles,
-    summary: `Processed ${totalMatched} link(s) across ${changes.length} file(s).`,
-  };
+  return { changes, summary };
 }
 
 // ---------------------------------------------------------------------------
@@ -600,28 +626,11 @@ export async function runRuleSpec(
   spec: RuleSpec,
   ctx: RuleContext,
 ): Promise<{ changes: FileChange[]; summary: string }> {
-  const { vaultPath } = ctx;
-  const { query } = spec;
-
   const filePaths = await resolveEffectiveSourcePaths(
     spec,
-    vaultPath,
+    ctx.vaultPath,
     ctx.onlyGlob,
   );
-
-  if (query.type === "link") {
-    const result = await runLinkQuerySpec(spec, filePaths, ctx);
-    // Stage new files so they appear in dry-run diffs.
-    const allChanges: FileChange[] = [
-      ...result.changes,
-      ...Object.entries(result.newFiles).map(([path, content]) => ({
-        path,
-        content,
-      })),
-    ];
-    return { changes: allChanges, summary: result.summary };
-  }
-
-  // Default: task query
-  return runTaskQuerySpec(spec, filePaths, ctx);
+  const queryResults = await runQuery(spec.query, filePaths, ctx);
+  return runActions(spec.actions, queryResults, ctx);
 }
