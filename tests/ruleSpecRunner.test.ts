@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { promises as fs } from "node:fs";
 import { runRuleSpec } from "../src/engine/ruleSpecRunner.js";
+import { buildJobId } from "../src/engine/actions/requestTranscription.js";
 import { selectRuleSpecs, sortRuleSpecs } from "../src/engine/runner.js";
 import { ensureAudioTranscriptsSpec } from "../src/rules/ensureAudioTranscripts.js";
 import type { RuleContext, RuleSpec, LinkQuery } from "../src/rules/types.js";
@@ -60,6 +61,7 @@ function makeCtx(vaultPath: string): RuleContext {
     vaultPath,
     today: TODAY,
     dryRun: false,
+    jobIdFactory: buildJobId,
     env: {},
     readFile: (path: string) => fs.readFile(path, "utf-8").catch(() => ""),
   };
