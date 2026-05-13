@@ -134,11 +134,11 @@ async function resolveSources(
  * paths that are safe to process (.md only).
  */
 async function resolveEffectiveSourcePaths(
-  spec: RuleSpec,
+  sources: RuleSpec["sources"],
   vaultPath: string,
   onlyGlob?: string,
 ): Promise<string[]> {
-  const filePaths = await resolveSources(vaultPath, spec.sources);
+  const filePaths = await resolveSources(vaultPath, sources);
 
   const effectivePaths =
     onlyGlob !== undefined
@@ -516,7 +516,7 @@ export async function runRuleSpec(
   transcriptionJobs: TranscriptionJob[];
 }> {
   const filePaths = await resolveEffectiveSourcePaths(
-    spec,
+    spec.sources,
     ctx.vaultPath,
     ctx.onlyGlob,
   );

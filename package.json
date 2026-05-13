@@ -15,8 +15,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "prepare": "npm run build && (husky || true)"
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
