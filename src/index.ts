@@ -2,6 +2,13 @@
 import { runAllRules, runInitPass } from "./engine/runner.js";
 import { startVaultWatcher } from "./engine/watcher.js";
 import { createAlertScheduler } from "./engine/scheduler.js";
+import {
+  ALERT_RULE,
+  FAST_PATH_RULE,
+  FAST_PATH_DEBOUNCE_MS,
+  selectWatchRuleSets,
+  createStopAll,
+} from "./engine/watchMode.js";
 import { HELP_TEXT } from "./helpText.js";
 import { ruleSpecs } from "./rules/index.js";
 import { loadConfig, CONFIG_FILENAME } from "./config.js";
@@ -122,16 +129,11 @@ if (init) {
         console.log(`Press Ctrl+C to stop.`);
         console.log("");
 
-        // The name of the alert rule that must only fire on schedule.
-        const ALERT_RULE = "incompleteTaskAlert";
-
-        // Compute the rule names to run on file-change events: every selected
-        // rule except incompleteTaskAlert (which runs on schedule only).
-        const fileChangeRuleNames: string[] = (
-          selectedRuleNames === "all"
-            ? ruleSpecs.map((s) => s.name)
-            : selectedRuleNames
-        ).filter((n) => n !== ALERT_RULE);
+        // Compute rule names for normal file-change processing and fast-path.
+        const { fileChangeRuleNames, enableFastPath } = selectWatchRuleSets(
+          selectedRuleNames,
+          ruleSpecs.map((s) => s.name),
+        );
 
         const stop = startVaultWatcher(
           vaultPath,
@@ -176,6 +178,26 @@ if (init) {
           { debounce, additionalFiles: [CONFIG_FILENAME] },
         );
 
+        const stopFastPath = enableFastPath
+          ? startVaultWatcher(
+              vaultPath,
+              async (relPath) => {
+                if (relPath === CONFIG_FILENAME) return;
+                console.log(`[watch] Running fast-path rule for: ${relPath}`);
+                await runAllRules({
+                  vaultPath,
+                  today: new Date(),
+                  dryRun,
+                  verbose,
+                  env: process.env,
+                  selectedRuleNames: [FAST_PATH_RULE],
+                  onlyGlob: relPath,
+                });
+              },
+              { debounce: FAST_PATH_DEBOUNCE_MS },
+            )
+          : () => undefined;
+
         // Run incompleteTaskAlert (and its transitive deps) on schedule only.
         const stopScheduler = createAlertScheduler(
           () => alertSchedule,
@@ -192,10 +214,11 @@ if (init) {
           },
         );
 
+        const stopAll = createStopAll([stop, stopFastPath, stopScheduler]);
+
         process.on("SIGINT", () => {
           console.log("\n[watch] Stopping watcher...");
-          stop();
-          stopScheduler();
+          stopAll();
           process.exit(0);
         });
       })
