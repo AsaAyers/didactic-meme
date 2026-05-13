@@ -47,7 +47,7 @@ Point users to `007_docker_compose_gpu_transcriber.md` (or the relevant README s
 
 ## Configuration
 
-The rule uses the **existing per-rule `sources` model** — no special transcript configuration is needed for v1. To restrict the rule to a specific folder, configure its `sources` in `.didatic-meme.json`:
+The rule uses the **existing per-rule `sources` model** — no special transcript configuration is needed for v1. To restrict the rule to a specific folder, configure its `sources` in `.didactic-meme.json`:
 
 ```json
 {

@@ -8,7 +8,7 @@ export type WatcherOptions = {
    * Extra vault-relative file paths to watch in addition to `*.md` files.
    * A file-change event is forwarded to `onProcess` whenever the changed
    * file's relative path appears in this set.  Useful for watching
-   * configuration files such as `.didatic-meme.json`.
+   * configuration files such as `.didactic-meme.json`.
    */
   additionalFiles?: string[];
 };

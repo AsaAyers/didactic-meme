@@ -45,7 +45,7 @@ describe("incompleteTaskAlert — dry-run preview", () => {
 
   it('labels the destination as "(no alertUrl configured)" when rule config omits it', async () => {
     const tempVault = await fs.mkdtemp(
-      join(tmpdir(), "didatic-meme-incomplete-alert-no-url-"),
+      join(tmpdir(), "didactic-meme-incomplete-alert-no-url-"),
     );
     try {
       await fs.writeFile(
