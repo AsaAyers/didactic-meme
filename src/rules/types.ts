@@ -204,13 +204,61 @@ export type RolloverAction = { type: "task.rollover" };
  */
 export type RemoveTaskAction = { type: "task.remove" };
 
+/**
+ * For each audio embed matched by a LinkQuery: derive the sibling transcript
+ * path, insert a transcript embed into the source note if absent, create a
+ * placeholder transcript file if it does not exist, and enqueue a
+ * transcription job when the placeholder is newly created.
+ */
+export type EnsureSiblingTranscriptAction = {
+  type: "link.ensureSiblingTranscript";
+};
+
+/**
+ * Enqueue a transcription job for each audio embed matched by a LinkQuery.
+ * Used in conjunction with `link.ensureSiblingTranscript`.
+ */
+export type RequestTranscriptionAction = {
+  type: "link.requestTranscription";
+};
+
 export type Action =
   | SetFieldDateIfMissingAction
   | ReplaceFieldDateValueAction
   | AdvanceRepeatAction
   | CustomAction
   | RolloverAction
-  | RemoveTaskAction;
+  | RemoveTaskAction
+  | EnsureSiblingTranscriptAction
+  | RequestTranscriptionAction;
+
+// --- Link action result model -----------------------------------------------
+
+/**
+ * A transcription job to be enqueued for an audio file.
+ * All paths are absolute.
+ */
+export type TranscriptionJob = {
+  id: string;
+  audioPath: string;
+  transcriptPath: string;
+  sourceNotePath: string;
+  createdAt: string;
+};
+
+/**
+ * The result returned by a link action for a single matched link.
+ * The runner accumulates results across all matching links and actions to
+ * produce `FileChange` objects and stage any newly created files.
+ */
+export type LinkActionResult = {
+  /** Updated body of the source note (if changed). */
+  updatedBody?: string;
+  /** New files to create, keyed by absolute path. */
+  newFiles?: Record<string, string>;
+  /** Transcription jobs to enqueue. */
+  transcriptionJobs?: TranscriptionJob[];
+};
 
 // --- RuleSpec ---------------------------------------------------------------
 

@@ -2,6 +2,7 @@ import { join, relative } from "node:path";
 import { addDays, differenceInCalendarDays, format } from "date-fns";
 import { parseMarkdown, stringifyMarkdown } from "../markdown/parse.js";
 import { joinFrontmatter, splitFrontmatter } from "../markdown/frontmatter.js";
+import type { SplitFrontmatterResult } from "../markdown/frontmatter.js";
 import {
   extractTasks,
   insertTaskAfter,
@@ -20,11 +21,13 @@ import {
   parseRepeat,
   computeNextDue,
 } from "../rules/scheduleUtils.js";
+import { extractMarkdownLinks, matchesLinkQuery } from "../markdown/links.js";
 import { walkMarkdownFiles } from "./io.js";
 import type {
   Action,
   FileChange,
   GlobSource,
+  LinkActionResult,
   PathSource,
   RuleContext,
   RuleSpec,
@@ -116,6 +119,69 @@ async function resolveSources(
     }
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Shared file-processing helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply glob source rules and the `onlyGlob` filter; return absolute file
+ * paths that are safe to process (.md only).
+ */
+async function resolveEffectiveSourcePaths(
+  spec: RuleSpec,
+  vaultPath: string,
+  onlyGlob?: string,
+): Promise<string[]> {
+  const filePaths = await resolveSources(vaultPath, spec.sources);
+
+  const effectivePaths =
+    onlyGlob !== undefined
+      ? filePaths.filter((p) => matchesGlob(relative(vaultPath, p), onlyGlob))
+      : filePaths;
+
+  for (const p of effectivePaths) {
+    if (!p.endsWith(".md")) {
+      throw new Error(
+        `Engine only processes .md files; refusing to process: ${p}`,
+      );
+    }
+  }
+
+  return effectivePaths;
+}
+
+/**
+ * Read a file from the staged queue (or disk) and split it into frontmatter
+ * and body. Returns `null` if the file cannot be read or is empty.
+ */
+async function loadMarkdownSourceFile(
+  filePath: string,
+  readFile: (path: string) => Promise<string>,
+): Promise<{ raw: string; parts: SplitFrontmatterResult } | null> {
+  let raw: string;
+  try {
+    raw = await readFile(filePath);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  const parts = splitFrontmatter(raw);
+  return { raw, parts };
+}
+
+/**
+ * Produce a `FileChange` when `newContent` differs from `originalContent`;
+ * return `null` when there is no change.
+ */
+function buildMarkdownFileChange(
+  filePath: string,
+  originalContent: string,
+  newContent: string,
+): FileChange | null {
+  if (newContent === originalContent) return null;
+  return { path: filePath, content: newContent };
 }
 
 // ---------------------------------------------------------------------------
@@ -333,62 +399,41 @@ function applyAction(
       return { text: taskText };
     case "task.remove":
       return { text: taskText, remove: true };
+    case "link.ensureSiblingTranscript":
+    case "link.requestTranscription":
+      // Link actions are handled by applyLinkAction, not here.
+      return { text: taskText };
   }
 }
 
 // ---------------------------------------------------------------------------
-// Public runner
+// Task branch
 // ---------------------------------------------------------------------------
 
-export async function runRuleSpec(
+async function runTaskQuerySpec(
   spec: RuleSpec,
+  filePaths: string[],
   ctx: RuleContext,
 ): Promise<{ changes: FileChange[]; summary: string }> {
-  const { vaultPath, today } = ctx;
+  const { today } = ctx;
   const { query, actions } = spec;
-
-  const filePaths = await resolveSources(vaultPath, spec.sources);
-
-  // When an onlyGlob filter is active, restrict to files that also match it.
-  const { onlyGlob } = ctx;
-  const effectivePaths =
-    onlyGlob !== undefined
-      ? filePaths.filter((p) => matchesGlob(relative(vaultPath, p), onlyGlob))
-      : filePaths;
-
-  for (const p of effectivePaths) {
-    if (!p.endsWith(".md")) {
-      throw new Error(
-        `Engine only processes .md files; refusing to process: ${p}`,
-      );
-    }
-  }
 
   const changes: FileChange[] = [];
   let totalModified = 0;
   const allSelected: Task[] = [];
 
-  for (const filePath of effectivePaths) {
-    let raw: string;
-    try {
-      raw = await ctx.readFile(filePath);
-    } catch {
-      continue;
-    }
-    if (!raw) continue;
+  for (const filePath of filePaths) {
+    const loaded = await loadMarkdownSourceFile(filePath, ctx.readFile);
+    if (!loaded) continue;
+    const { raw, parts } = loaded;
 
-    const frontmatterParts = splitFrontmatter(raw);
-    const tree = parseMarkdown(frontmatterParts.body);
-    const allTasks = extractTasks(tree, relative(vaultPath, filePath));
+    const tree = parseMarkdown(parts.body);
+    const allTasks = extractTasks(tree, relative(ctx.vaultPath, filePath));
 
-    if (query.type !== "tasks") {
-      // LinkQuery: not yet executed by the engine; recognized but no-op for now.
-      continue;
-    }
-
-    const selected = query.predicate
-      ? allTasks.filter((t) => evaluatePredicate(t, query.predicate!, today))
-      : allTasks;
+    const selected =
+      query.type === "tasks" && query.predicate
+        ? allTasks.filter((t) => evaluatePredicate(t, query.predicate!, today))
+        : allTasks;
 
     let modified = 0;
     for (const task of selected) {
@@ -416,7 +461,6 @@ export async function runRuleSpec(
       if (shouldUncheck) {
         setTaskChecked(tree, newText, false);
       }
-      // Insert the clone immediately after the (possibly updated) original task.
       if (insertDuplicateText !== undefined) {
         insertTaskAfter(tree, newText, insertDuplicateText, false);
       }
@@ -426,11 +470,12 @@ export async function runRuleSpec(
     }
 
     if (modified > 0) {
-      changes.push({
-        path: filePath,
-        content: joinFrontmatter(frontmatterParts, stringifyMarkdown(tree)),
-      });
-      totalModified += modified;
+      const newContent = joinFrontmatter(parts, stringifyMarkdown(tree));
+      const change = buildMarkdownFileChange(filePath, raw, newContent);
+      if (change) {
+        changes.push(change);
+        totalModified += modified;
+      }
     }
 
     allSelected.push(...selected);
@@ -456,4 +501,129 @@ export async function runRuleSpec(
     changes,
     summary: `Modified ${totalModified} task(s) across ${changes.length} file(s).`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Link branch
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply a single link action to a matched link and return the structured
+ * result. Link actions return a `LinkActionResult` describing body mutations
+ * and new files to create; the runner accumulates these results across all
+ * matching links before committing changes.
+ *
+ * This dispatcher will grow as new link action types are added. Currently
+ * recognises `link.ensureSiblingTranscript` and `link.requestTranscription`
+ * (both are no-ops until the `ensureAudioTranscripts` rule is implemented in
+ * plan 004 — they return empty results here so the framework compiles and the
+ * existing tests stay green).
+ */
+function applyLinkAction(
+  action: Action,
+): LinkActionResult {
+  switch (action.type) {
+    case "link.ensureSiblingTranscript":
+    case "link.requestTranscription":
+      // Implementation lives in plan 004's rule module; stub returns empty
+      // result so the engine can route LinkQuery specs without error.
+      return {};
+    default:
+      // Task actions and custom actions are not applicable to the link branch.
+      return {};
+  }
+}
+
+async function runLinkQuerySpec(
+  spec: RuleSpec,
+  filePaths: string[],
+  ctx: RuleContext,
+): Promise<{
+  changes: FileChange[];
+  newFiles: Record<string, string>;
+  summary: string;
+}> {
+  const { query, actions } = spec;
+
+  if (query.type !== "link") {
+    return { changes: [], newFiles: {}, summary: "0 link(s) matched." };
+  }
+
+  const changes: FileChange[] = [];
+  const newFiles: Record<string, string> = {};
+  let totalMatched = 0;
+
+  for (const filePath of filePaths) {
+    const loaded = await loadMarkdownSourceFile(filePath, ctx.readFile);
+    if (!loaded) continue;
+    const { raw, parts } = loaded;
+
+    const links = extractMarkdownLinks(parts.body);
+    const matchedLinks = links.filter((l) => matchesLinkQuery(l, query));
+    if (matchedLinks.length === 0) continue;
+
+    totalMatched += matchedLinks.length;
+
+    // Accumulate body mutations and new files across all matching links and
+    // all actions, so each action can see the body as updated by previous ones.
+    let currentBody = parts.body;
+
+    for (let i = 0; i < matchedLinks.length; i++) {
+      for (const action of actions) {
+        const result = applyLinkAction(action);
+        if (result.updatedBody !== undefined) {
+          currentBody = result.updatedBody;
+        }
+        if (result.newFiles) {
+          Object.assign(newFiles, result.newFiles);
+        }
+      }
+    }
+
+    const newContent = joinFrontmatter(parts, currentBody);
+    const change = buildMarkdownFileChange(filePath, raw, newContent);
+    if (change) {
+      changes.push(change);
+    }
+  }
+
+  return {
+    changes,
+    newFiles,
+    summary: `Processed ${totalMatched} link(s) across ${changes.length} file(s).`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Public runner
+// ---------------------------------------------------------------------------
+
+export async function runRuleSpec(
+  spec: RuleSpec,
+  ctx: RuleContext,
+): Promise<{ changes: FileChange[]; summary: string }> {
+  const { vaultPath } = ctx;
+  const { query } = spec;
+
+  const filePaths = await resolveEffectiveSourcePaths(
+    spec,
+    vaultPath,
+    ctx.onlyGlob,
+  );
+
+  if (query.type === "link") {
+    const result = await runLinkQuerySpec(spec, filePaths, ctx);
+    // Stage new files so they appear in dry-run diffs.
+    const allChanges: FileChange[] = [
+      ...result.changes,
+      ...Object.entries(result.newFiles).map(([path, content]) => ({
+        path,
+        content,
+      })),
+    ];
+    return { changes: allChanges, summary: result.summary };
+  }
+
+  // Default: task query
+  return runTaskQuerySpec(spec, filePaths, ctx);
 }
