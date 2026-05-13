@@ -63,11 +63,12 @@ Add `ensureAudioTranscripts` after the existing task rules so it does not interf
 ```ts
 // Suggested order
 export const ruleSpecs: RuleSpec[] = [
-  stampCompletionDateSpec,
-  completedTaskRolloverSpec,
-  incompleteTaskAlertSpec,
   normalizeTodayLiteralSpec,
+  stampDoneSpec,
+  completedTaskRolloverSpec,
+  removeEphemeralOverdueTasksSpec,
   ensureAudioTranscriptsSpec, // ← append here
+  incompleteTaskAlertSpec,
 ];
 ```
 

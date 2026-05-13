@@ -21,7 +21,7 @@ Source audio: [[foo.m4a]]
 ```
 
 Replace `<job-id>` with the actual generated job ID (e.g. a UUID or timestamp-prefixed random string).
-Replace `[[foo.m4a]]` with a wikilink pointing at the audio file (always wikilink style regardless of source embed type).
+Replace `[[foo.m4a]]` with a wikilink pointing at the audio file 
 
 ---
 

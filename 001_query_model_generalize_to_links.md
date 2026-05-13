@@ -12,7 +12,7 @@ Extend the declarative query model so that rule specs can target Markdown links 
 
 ```ts
 // Current types.ts (simplified)
-export type TaskQuery = { type: "task" /* task predicates */ };
+export type TaskQuery = { type: "tasks" /* task predicates */ };
 export type Query = TaskQuery;
 ```
 
