@@ -49,7 +49,10 @@ describe("transcription runtime", () => {
     );
     const pendingFiles = await fs.readdir(join(stateDir, "pending"));
     expect(pendingFiles).toHaveLength(1);
-    const pendingFile = pendingFiles[0] ?? "";
+    const pendingFile = pendingFiles[0];
+    if (!pendingFile) {
+      throw new Error("expected a pending transcription job");
+    }
     const pendingJob = await fs.readFile(
       join(stateDir, "pending", pendingFile),
       "utf-8",

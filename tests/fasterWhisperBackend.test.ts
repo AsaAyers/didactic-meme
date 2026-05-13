@@ -39,11 +39,12 @@ process.stdin.on("data", (chunk) => {
     buffer = buffer.slice(newlineIndex + 1);
     if (!line) continue;
     const payload = JSON.parse(line);
+    const fileName = payload.audioPath.split("/").pop() ?? "unknown";
     calls += 1;
     process.stdout.write(
       JSON.stringify({
         type: "result",
-        text: \`call-\${calls}:\${payload.audioPath.split("/").pop()}\`,
+        text: \`call-\${calls}:\${fileName}\`,
       }) + "\\n",
     );
   }
@@ -82,10 +83,11 @@ process.stdin.on("data", (chunk) => {
     buffer = buffer.slice(newlineIndex + 1);
     if (!line) continue;
     const payload = JSON.parse(line);
+    const fileName = payload.audioPath.split("/").pop() ?? "unknown";
     process.stdout.write(
       JSON.stringify({
         type: "error",
-        error: \`cannot transcribe \${payload.audioPath.split("/").pop()}\`,
+        error: \`cannot transcribe \${fileName}\`,
       }) + "\\n",
     );
   }

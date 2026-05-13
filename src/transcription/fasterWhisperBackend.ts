@@ -52,12 +52,10 @@ export function createFasterWhisperBackend(
   let stdoutBuffer = "";
   let stderrBuffer = "";
   const readyState: {
-    resolve: () => void;
-    reject: (reason: Error) => void;
+    resolve?: () => void;
+    reject?: (reason: Error) => void;
     settled: boolean;
   } = {
-    resolve: () => {},
-    reject: () => {},
     settled: false,
   };
   const ready = new Promise<void>((resolve, reject) => {
@@ -92,7 +90,7 @@ export function createFasterWhisperBackend(
   function handleMessage(message: BackendMessage): void {
     if (message.type === "ready") {
       isReady = true;
-      readyState.resolve();
+      readyState.resolve?.();
       return;
     }
 
@@ -127,7 +125,7 @@ export function createFasterWhisperBackend(
         const message =
           err instanceof Error ? err.message : "Invalid backend JSON";
         if (!isReady) {
-          readyState.reject(new Error(message));
+          readyState.reject?.(new Error(message));
         }
         rejectPending(message);
       }
@@ -141,7 +139,7 @@ export function createFasterWhisperBackend(
 
   child.on("error", (err) => {
     if (!isReady) {
-      readyState.reject(err);
+      readyState.reject?.(err);
     }
     rejectPending(err.message);
   });
@@ -154,7 +152,7 @@ export function createFasterWhisperBackend(
         ? `faster-whisper backend exited via signal ${signal}${suffix}`
         : `faster-whisper backend exited with code ${code ?? "unknown"}${suffix}`;
     if (!isReady) {
-      readyState.reject(new Error(reason));
+      readyState.reject?.(new Error(reason));
     }
     rejectPending(reason);
   });
