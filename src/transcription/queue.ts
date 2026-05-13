@@ -8,13 +8,19 @@ function queuePath(stateDir: string, dir: (typeof QUEUE_DIRS)[number]): string {
   return join(stateDir, dir);
 }
 
-function jobPath(stateDir: string, dir: (typeof QUEUE_DIRS)[number], id: string) {
+function jobPath(
+  stateDir: string,
+  dir: (typeof QUEUE_DIRS)[number],
+  id: string,
+) {
   return join(queuePath(stateDir, dir), `${id}.json`);
 }
 
 async function ensureQueueDirs(stateDir: string): Promise<void> {
   await Promise.all(
-    QUEUE_DIRS.map((dir) => fs.mkdir(queuePath(stateDir, dir), { recursive: true })),
+    QUEUE_DIRS.map((dir) =>
+      fs.mkdir(queuePath(stateDir, dir), { recursive: true }),
+    ),
   );
 }
 
@@ -30,7 +36,9 @@ export async function enqueue(
   );
 }
 
-export async function claimNext(stateDir: string): Promise<TranscriptionJob | null> {
+export async function claimNext(
+  stateDir: string,
+): Promise<TranscriptionJob | null> {
   await ensureQueueDirs(stateDir);
   const pendingPath = queuePath(stateDir, "pending");
   const files = (await fs.readdir(pendingPath))
