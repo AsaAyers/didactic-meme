@@ -1,20 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   ALERT_RULE,
-  FAST_PATH_RULES,
+  FAST_PATH_RULE_NAMES,
   selectWatchRuleSets,
   createStopAll,
 } from "../src/engine/watchMode.js";
 
 describe("selectWatchRuleSets", () => {
   it('returns all non-alert rules for normal debounce when selectedRuleNames is "all"', () => {
-    const allRules = [ALERT_RULE, ...FAST_PATH_RULES, "stampDone"];
+    const allRules = [ALERT_RULE, ...FAST_PATH_RULE_NAMES, "stampDone"];
 
     const result = selectWatchRuleSets("all", allRules);
 
-    expect(result.fastPathRuleNames).toEqual([...FAST_PATH_RULES]);
+    expect(result.fastPathRuleNames).toEqual([...FAST_PATH_RULE_NAMES]);
     expect(result.allFileChangeRuleNames).toEqual([
-      ...FAST_PATH_RULES,
+      ...FAST_PATH_RULE_NAMES,
       "stampDone",
     ]);
   });
@@ -22,7 +22,7 @@ describe("selectWatchRuleSets", () => {
   it("returns empty fast-path rules when none are selected", () => {
     const result = selectWatchRuleSets(
       ["stampDone", ALERT_RULE],
-      [ALERT_RULE, ...FAST_PATH_RULES, "stampDone"],
+      [ALERT_RULE, ...FAST_PATH_RULE_NAMES, "stampDone"],
     );
 
     expect(result.fastPathRuleNames).toEqual([]);
@@ -31,12 +31,12 @@ describe("selectWatchRuleSets", () => {
 
   it("keeps normal file-change rules including fast-path rules", () => {
     const result = selectWatchRuleSets(
-      [...FAST_PATH_RULES],
-      [ALERT_RULE, ...FAST_PATH_RULES, "stampDone"],
+      [...FAST_PATH_RULE_NAMES],
+      [ALERT_RULE, ...FAST_PATH_RULE_NAMES, "stampDone"],
     );
 
-    expect(result.fastPathRuleNames).toEqual([...FAST_PATH_RULES]);
-    expect(result.allFileChangeRuleNames).toEqual([...FAST_PATH_RULES]);
+    expect(result.fastPathRuleNames).toEqual([...FAST_PATH_RULE_NAMES]);
+    expect(result.allFileChangeRuleNames).toEqual([...FAST_PATH_RULE_NAMES]);
   });
 });
 

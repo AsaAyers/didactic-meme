@@ -188,8 +188,8 @@ if (init) {
         const stopFastPath =
           fastPathRuleNames.length > 0
             ? startVaultWatcher(
-              vaultPath,
-              async (relPaths) => {
+                vaultPath,
+                async (relPaths) => {
                   const targetPaths = getNonConfigPaths(relPaths);
                   if (targetPaths.length === 0) return;
                   console.log(

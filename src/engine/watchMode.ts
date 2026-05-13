@@ -1,5 +1,5 @@
 export const ALERT_RULE = "incompleteTaskAlert";
-export const FAST_PATH_RULES = ["ensureAudioTranscripts"];
+export const FAST_PATH_RULE_NAMES = ["ensureAudioTranscripts"];
 export const FAST_PATH_DEBOUNCE_MS = 1_000;
 
 export function selectWatchRuleSets(
@@ -11,7 +11,7 @@ export function selectWatchRuleSets(
 } {
   const selectedNames =
     selectedRuleNames === "all" ? availableRuleNames : selectedRuleNames;
-  const fastPathRuleSet = new Set<string>(FAST_PATH_RULES);
+  const fastPathRuleSet = new Set<string>(FAST_PATH_RULE_NAMES);
 
   return {
     // Scheduled alert runs separately; all other selected rules run on the
