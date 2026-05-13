@@ -86,7 +86,10 @@ export function extractMarkdownLinks(body: string): MarkdownLink[] {
  * Returns `true` when the given `MarkdownLink` satisfies all non-undefined
  * fields of `query`.
  */
-export function matchesLinkQuery(link: MarkdownLink, query: LinkQuery): boolean {
+export function matchesLinkQuery(
+  link: MarkdownLink,
+  query: LinkQuery,
+): boolean {
   if (query.embed !== undefined && link.embed !== query.embed) return false;
   if (query.extension !== undefined && !link.target.endsWith(query.extension))
     return false;
