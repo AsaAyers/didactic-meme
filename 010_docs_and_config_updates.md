@@ -25,11 +25,11 @@ Document that a transcript embed is inserted into the source note immediately be
 
 ### Async Processing
 
-Document that transcription runs in the background; the rule engine enqueues a job and moves on.  The transcript file will be updated once the worker completes.
+Document that transcription runs in the background; the rule engine enqueues a job and moves on. The transcript file will be updated once the worker completes.
 
 ### Existing Transcript — No-Op
 
-Document that if `<basename>.transcript.md` already exists the rule does not overwrite it.  Only the transcript embed in the source note is inserted if missing.
+Document that if `<basename>.transcript.md` already exists the rule does not overwrite it. Only the transcript embed in the source note is inserted if missing.
 
 ### Missing Audio File — Skip
 
@@ -47,15 +47,13 @@ Point users to `007_docker_compose_gpu_transcriber.md` (or the relevant README s
 
 ## Configuration
 
-The rule uses the **existing per-rule `sources` model** — no special transcript configuration is needed for v1.  To restrict the rule to a specific folder, configure its `sources` in `.didatic-meme.json`:
+The rule uses the **existing per-rule `sources` model** — no special transcript configuration is needed for v1. To restrict the rule to a specific folder, configure its `sources` in `.didatic-meme.json`:
 
 ```json
 {
   "rules": {
     "ensureAudioTranscripts": {
-      "sources": [
-        { "type": "glob", "pattern": "daily/**/*.md" }
-      ]
+      "sources": [{ "type": "glob", "pattern": "daily/**/*.md" }]
     }
   }
 }
@@ -76,9 +74,9 @@ In dry-run mode (`--dry-run`), the rule:
 
 Add `ensureAudioTranscripts` to the rule list in `README.md`:
 
-| Rule | What it does |
-|---|---|
-| … | … |
+| Rule                     | What it does                                                                                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| …                        | …                                                                                                                                                                                   |
 | `ensureAudioTranscripts` | For each embedded `.m4a` audio file, creates a sibling `.transcript.md` placeholder and enqueues async GPU transcription. Inserts a mirrored transcript embed into the source note. |
 
 ---

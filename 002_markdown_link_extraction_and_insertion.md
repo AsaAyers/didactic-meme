@@ -58,7 +58,7 @@ All helpers are exported from `src/markdown/links.ts`.
 
 ### `extractMarkdownLinks(body: string): MarkdownLink[]`
 
-Scans the body line-by-line and returns every wikilink embed and standard markdown embed found.  Returns results in document order.
+Scans the body line-by-line and returns every wikilink embed and standard markdown embed found. Returns results in document order.
 
 ### `matchesLinkQuery(link: MarkdownLink, query: LinkQuery): boolean`
 
@@ -77,19 +77,19 @@ Strips the audio extension and appends `.transcript.md`.
 
 Produces an embed string that mirrors the style of the source audio embed:
 
-| Source embed | Generated transcript embed |
-|---|---|
-| `![[rec.m4a]]` | `![[rec.transcript.md]]` |
-| `![](rec.m4a)` | `![](rec.transcript.md)` |
+| Source embed          | Generated transcript embed                       |
+| --------------------- | ------------------------------------------------ |
+| `![[rec.m4a]]`        | `![[rec.transcript.md]]`                         |
+| `![](rec.m4a)`        | `![](rec.transcript.md)`                         |
 | `![My note](rec.m4a)` | `![](rec.transcript.md)` (alt text not mirrored) |
 
 ### `hasEmbedAnywhere(body: string, rawEmbed: string): boolean`
 
-Returns `true` if `rawEmbed` appears verbatim anywhere in `body`.  Used to avoid inserting a duplicate embed.
+Returns `true` if `rawEmbed` appears verbatim anywhere in `body`. Used to avoid inserting a duplicate embed.
 
 ### `insertEmbedBelowLine(body: string, lineIndex: number, rawEmbed: string): string`
 
-Inserts `rawEmbed` as a new line immediately after line `lineIndex` (zero-based).  Uses **line-oriented string manipulation** — do not use AST mutation for this operation.
+Inserts `rawEmbed` as a new line immediately after line `lineIndex` (zero-based). Uses **line-oriented string manipulation** — do not use AST mutation for this operation.
 
 ---
 

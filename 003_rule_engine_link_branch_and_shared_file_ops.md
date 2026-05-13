@@ -8,7 +8,7 @@ Extend `src/engine/ruleSpecRunner.ts` to handle `LinkQuery` specs while extracti
 
 ## Current Situation
 
-`runRuleSpec` is task-centric.  It resolves source paths, loads each file, splits frontmatter, runs task predicates, applies task actions, and assembles a `FileChange`.  All of this logic is currently inlined in one function body, making it hard to reuse for the link branch without copy-paste.
+`runRuleSpec` is task-centric. It resolves source paths, loads each file, splits frontmatter, runs task predicates, applies task actions, and assembles a `FileChange`. All of this logic is currently inlined in one function body, making it hard to reuse for the link branch without copy-paste.
 
 ---
 
@@ -22,13 +22,13 @@ Extend `src/engine/ruleSpecRunner.ts` to handle `LinkQuery` specs while extracti
 
 Before adding the link branch, extract the following clearly named helpers (module-private or exported as needed):
 
-| Helper | Responsibility |
-|---|---|
-| `resolveEffectiveSourcePaths(spec, vaultPath, options)` | Apply glob source rules and `--only` filter; return absolute file paths. |
-| `loadMarkdownSourceFile(filePath)` | Read file from disk (or staged queue), split into frontmatter + body. |
-| `buildMarkdownFileChange(filePath, originalContent, newContent)` | Produce a `FileChange` only when content has actually changed. |
-| `runTaskQuerySpec(spec, files, ctx)` | Existing task-branch logic, now isolated. |
-| `runLinkQuerySpec(spec, files, ctx)` | New link-branch logic (see below). |
+| Helper                                                           | Responsibility                                                           |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `resolveEffectiveSourcePaths(spec, vaultPath, options)`          | Apply glob source rules and `--only` filter; return absolute file paths. |
+| `loadMarkdownSourceFile(filePath)`                               | Read file from disk (or staged queue), split into frontmatter + body.    |
+| `buildMarkdownFileChange(filePath, originalContent, newContent)` | Produce a `FileChange` only when content has actually changed.           |
+| `runTaskQuerySpec(spec, files, ctx)`                             | Existing task-branch logic, now isolated.                                |
+| `runLinkQuerySpec(spec, files, ctx)`                             | New link-branch logic (see below).                                       |
 
 > **Do not duplicate** source resolution, file loading, frontmatter splitting, or change assembly between the two branches.
 

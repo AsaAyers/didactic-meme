@@ -2,7 +2,7 @@
 
 ## Goal
 
-Create `src/rules/ensureAudioTranscripts.ts` and register it in `src/rules/index.ts`.  This rule detects embedded `.m4a` files, inserts a mirrored transcript embed in the source note, creates a placeholder transcript file, and enqueues a transcription job.
+Create `src/rules/ensureAudioTranscripts.ts` and register it in `src/rules/index.ts`. This rule detects embedded `.m4a` files, inserts a mirrored transcript embed in the source note, creates a placeholder transcript file, and enqueues a transcription job.
 
 ---
 
@@ -45,12 +45,12 @@ For each audio embed matched by the query:
 
 ## Transcript Embed Insertion
 
-Scan the **whole file body** before inserting to avoid duplicates (`hasEmbedAnywhere`).  Insert immediately after the audio embed line (`insertEmbedBelowLine`).
+Scan the **whole file body** before inserting to avoid duplicates (`hasEmbedAnywhere`). Insert immediately after the audio embed line (`insertEmbedBelowLine`).
 
 ### Style mirroring examples
 
-| Audio embed in note | Inserted transcript embed |
-|---|---|
+| Audio embed in note                       | Inserted transcript embed                           |
+| ----------------------------------------- | --------------------------------------------------- |
 | `![[recordings/2024-01-15 12.34.56.m4a]]` | `![[recordings/2024-01-15 12.34.56.transcript.md]]` |
 | `![](recordings/2024-01-15 12.34.56.m4a)` | `![](recordings/2024-01-15 12.34.56.transcript.md)` |
 
@@ -67,7 +67,7 @@ export const ruleSpecs: RuleSpec[] = [
   completedTaskRolloverSpec,
   incompleteTaskAlertSpec,
   normalizeTodayLiteralSpec,
-  ensureAudioTranscriptsSpec,   // ← append here
+  ensureAudioTranscriptsSpec, // ← append here
 ];
 ```
 

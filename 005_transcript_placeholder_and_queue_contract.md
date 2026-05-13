@@ -59,7 +59,7 @@ Source audio: [[foo.m4a]]
 <transcript text here>
 ```
 
-> Always **replace** the placeholder file in full rather than appending to it.  This keeps the file clean and snapshot-friendly.
+> Always **replace** the placeholder file in full rather than appending to it. This keeps the file clean and snapshot-friendly.
 
 ---
 

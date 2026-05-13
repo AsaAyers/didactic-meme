@@ -8,11 +8,11 @@ Extend the declarative query model so that rule specs can target Markdown links 
 
 ## Current Limitation
 
-`TaskQuery` (and the `Query` union that wraps it) only knows about GFM task-list items.  The rule engine's `runRuleSpec` therefore has no way to select links or embeds from a file body.
+`TaskQuery` (and the `Query` union that wraps it) only knows about GFM task-list items. The rule engine's `runRuleSpec` therefore has no way to select links or embeds from a file body.
 
 ```ts
 // Current types.ts (simplified)
-export type TaskQuery = { type: "task"; /* task predicates */ };
+export type TaskQuery = { type: "task" /* task predicates */ };
 export type Query = TaskQuery;
 ```
 
@@ -52,7 +52,7 @@ This matches every embedded `.m4a` wikilink or markdown embed found in the scann
 
 ## Constraints
 
-- **Task query is unchanged.**  Existing rules continue to work with no modifications.
+- **Task query is unchanged.** Existing rules continue to work with no modifications.
 - **Link-specific actions** (`link.ensureSiblingTranscript`, `link.requestTranscription`, etc.) will be added in task 003 rather than forcing premature unification with task actions.
 - The `LinkQuery` type lives alongside `TaskQuery` in `src/rules/types.ts`.
 

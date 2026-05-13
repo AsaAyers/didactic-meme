@@ -8,7 +8,7 @@ Add focused unit tests for logic that the E2E vault run does not adequately exer
 
 ## Guiding Principle
 
-The E2E vault scenarios (task 008) are the primary regression safety net.  Only add unit tests for behaviour that the vault run cannot conveniently catch — such as edge cases in pure helper functions, queue atomicity under error conditions, and format string correctness.
+The E2E vault scenarios (task 008) are the primary regression safety net. Only add unit tests for behaviour that the vault run cannot conveniently catch — such as edge cases in pure helper functions, queue atomicity under error conditions, and format string correctness.
 
 Do **not** write unit tests that duplicate what a vault snapshot already catches (e.g. "wikilink embed is inserted below audio line" — the E2E snapshot verifies this end-to-end).
 

@@ -8,11 +8,11 @@ Implement the filesystem queue and the async background worker that picks up tra
 
 ## Suggested Module Layout
 
-| File | Responsibility |
-|---|---|
-| `src/transcription/types.ts` | Shared types: `TranscriptionJob`, `TranscriberBackend`, `WorkerOptions`. |
-| `src/transcription/queue.ts` | Filesystem queue: `enqueue`, `claimNext`, `markDone`, `markFailed`. |
-| `src/transcription/worker.ts` | Main worker loop: polls queue, calls backend, writes transcript file. |
+| File                          | Responsibility                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| `src/transcription/types.ts`  | Shared types: `TranscriptionJob`, `TranscriberBackend`, `WorkerOptions`.          |
+| `src/transcription/queue.ts`  | Filesystem queue: `enqueue`, `claimNext`, `markDone`, `markFailed`.               |
+| `src/transcription/worker.ts` | Main worker loop: polls queue, calls backend, writes transcript file.             |
 | `src/transcription/format.ts` | Pure functions: `buildPlaceholder`, `buildSuccessContent`, `buildFailureContent`. |
 
 ---
