@@ -70,11 +70,63 @@ export function createFileDebouncer(
 }
 
 /**
+ * Creates a vault-wide debouncer that batches all changed files into one run.
+ *
+ * Each call to `notify(relPath, eventType)` adds `relPath` to a pending set and
+ * resets a single timer shared by the whole vault. After `debounceMs`
+ * milliseconds of inactivity, `onProcess` is invoked once with all changed
+ * files since the previous run.
+ */
+export function createGlobalDebouncer(
+  debounceMs: number,
+  onProcess: (relPaths: string[]) => Promise<void>,
+): {
+  notify: (relPath: string, eventType: string) => void;
+  dispose: () => void;
+} {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const pending = new Set<string>();
+
+  const notify = (relPath: string, eventType: string): void => {
+    console.log(`[watch] ${eventType}: ${relPath}`);
+    pending.add(relPath);
+
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+
+    timer = setTimeout(() => {
+      timer = undefined;
+      const relPaths = [...pending].sort();
+      pending.clear();
+      console.log(`[watch] Processing after idle: ${relPaths.join(", ")}`);
+      onProcess(relPaths).catch((err: unknown) => {
+        console.error(
+          `[watch] Error processing files:`,
+          (err as Error).message,
+        );
+      });
+    }, debounceMs);
+  };
+
+  const dispose = (): void => {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+    pending.clear();
+  };
+
+  return { notify, dispose };
+}
+
+/**
  * Start watching the vault directory for Markdown file changes.
  *
  * Uses Node.js's native `fs.watch()` with `recursive: true` — no polling.
- * Each changed `.md` file is debounced independently; only files that have
- * been idle for `debounce` milliseconds trigger a `onProcess` call.
+ * All changed `.md` files are debounced as a single vault-wide batch.
+ * `onProcess` fires once after `debounce` milliseconds of vault inactivity and
+ * receives the deduplicated set of changed files.
  *
  * @param vaultPath  Absolute path to the vault root to watch.
  * @param onProcess  Async callback invoked with the relative path of a
@@ -85,12 +137,12 @@ export function createFileDebouncer(
  */
 export function startVaultWatcher(
   vaultPath: string,
-  onProcess: (relPath: string) => Promise<void>,
+  onProcess: (relPaths: string[]) => Promise<void>,
   opts: WatcherOptions = {},
 ): () => void {
   const debounceMs = opts.debounce ?? 60_000;
   const extraFiles = new Set(opts.additionalFiles ?? []);
-  const debouncer = createFileDebouncer(debounceMs, onProcess);
+  const debouncer = createGlobalDebouncer(debounceMs, onProcess);
 
   const watcher = watch(
     vaultPath,

@@ -2,6 +2,12 @@
 import { runAllRules, runInitPass } from "./engine/runner.js";
 import { startVaultWatcher } from "./engine/watcher.js";
 import { createAlertScheduler } from "./engine/scheduler.js";
+import {
+  ALERT_RULE,
+  FAST_PATH_DEBOUNCE_MS,
+  selectWatchRuleSets,
+  createStopAll,
+} from "./engine/watchMode.js";
 import { HELP_TEXT } from "./helpText.js";
 import { ruleSpecs } from "./rules/index.js";
 import { loadConfig, CONFIG_FILENAME } from "./config.js";
@@ -122,22 +128,20 @@ if (init) {
         console.log(`Press Ctrl+C to stop.`);
         console.log("");
 
-        // The name of the alert rule that must only fire on schedule.
-        const ALERT_RULE = "incompleteTaskAlert";
-
-        // Compute the rule names to run on file-change events: every selected
-        // rule except incompleteTaskAlert (which runs on schedule only).
-        const fileChangeRuleNames: string[] = (
-          selectedRuleNames === "all"
-            ? ruleSpecs.map((s) => s.name)
-            : selectedRuleNames
-        ).filter((n) => n !== ALERT_RULE);
+        // Compute rule names for normal file-change processing and fast-path.
+        const { allFileChangeRuleNames, fastPathRuleNames } =
+          selectWatchRuleSets(
+            selectedRuleNames,
+            ruleSpecs.map((s) => s.name),
+          );
+        const getNonConfigPaths = (relPaths: string[]): string[] =>
+          relPaths.filter((p) => p !== CONFIG_FILENAME);
 
         const stop = startVaultWatcher(
           vaultPath,
-          async (relPath) => {
-            // Config file changed — reload it and update the live schedule.
-            if (relPath === CONFIG_FILENAME) {
+          async (relPaths) => {
+            const configChanged = relPaths.includes(CONFIG_FILENAME);
+            if (configChanged) {
               console.log(`[watch] Config changed, reloading...`);
               try {
                 const newConfig = await loadConfig(vaultPath, ruleSpecs);
@@ -157,24 +161,56 @@ if (init) {
                   (err as Error).message,
                 );
               }
-              return;
             }
 
-            console.log(`[watch] Running rules for: ${relPath}`);
-            if (fileChangeRuleNames.length > 0) {
-              await runAllRules({
-                vaultPath,
-                today: new Date(),
-                dryRun,
-                verbose,
-                env: process.env,
-                selectedRuleNames: fileChangeRuleNames,
-                onlyGlob: relPath,
-              });
+            const targetPaths = getNonConfigPaths(relPaths);
+            if (targetPaths.length === 0) return;
+
+            console.log(`[watch] Running rules for: ${targetPaths.join(", ")}`);
+            if (allFileChangeRuleNames.length > 0) {
+              // Keep this sequential: runAllRules mutates shared vault files.
+              for (const relPath of targetPaths) {
+                await runAllRules({
+                  vaultPath,
+                  today: new Date(),
+                  dryRun,
+                  verbose,
+                  env: process.env,
+                  selectedRuleNames: allFileChangeRuleNames,
+                  onlyGlob: relPath,
+                });
+              }
             }
           },
           { debounce, additionalFiles: [CONFIG_FILENAME] },
         );
+
+        const stopFastPath =
+          fastPathRuleNames.length > 0
+            ? startVaultWatcher(
+                vaultPath,
+                async (relPaths) => {
+                  const targetPaths = getNonConfigPaths(relPaths);
+                  if (targetPaths.length === 0) return;
+                  console.log(
+                    `[watch] Running fast-path rules for: ${targetPaths.join(", ")}`,
+                  );
+                  // Keep this sequential: runAllRules mutates shared vault files.
+                  for (const relPath of targetPaths) {
+                    await runAllRules({
+                      vaultPath,
+                      today: new Date(),
+                      dryRun,
+                      verbose,
+                      env: process.env,
+                      selectedRuleNames: fastPathRuleNames,
+                      onlyGlob: relPath,
+                    });
+                  }
+                },
+                { debounce: FAST_PATH_DEBOUNCE_MS },
+              )
+            : () => undefined;
 
         // Run incompleteTaskAlert (and its transitive deps) on schedule only.
         const stopScheduler = createAlertScheduler(
@@ -192,10 +228,11 @@ if (init) {
           },
         );
 
+        const stopAll = createStopAll([stop, stopFastPath, stopScheduler]);
+
         process.on("SIGINT", () => {
           console.log("\n[watch] Stopping watcher...");
-          stop();
-          stopScheduler();
+          stopAll();
           process.exit(0);
         });
       })

@@ -32,8 +32,7 @@ const WORKER_ONLY_EXPECTED_OUTPUTS = new Set([
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 
 const CREATED_DIRS: string[] = [];
-const deterministicJobIdFactory = (): string =>
-  `${TODAY.getTime().toString(36)}-test-job-001`;
+const deterministicJobIdFactory = (): string => `mopf7ts0-test-job-001`;
 
 async function createTempDir(prefix: string): Promise<string> {
   const dir = await fs.mkdtemp(join(tmpdir(), prefix));
