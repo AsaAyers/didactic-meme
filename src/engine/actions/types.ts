@@ -1,5 +1,11 @@
 import type { TranscriptionJob } from "../../rules/types.js";
 
+export type LinkActionContext = {
+  vaultPath: string;
+  sourceNotePath: string;
+  today: Date;
+};
+
 export type ActionOutcome = {
   /** Modified (or unchanged) task text. */
   text: string;

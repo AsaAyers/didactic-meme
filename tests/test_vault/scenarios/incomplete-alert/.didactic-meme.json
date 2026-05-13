@@ -49,6 +49,14 @@
         }
       ],
       "alertUrl": "http://localhost:8080/alert"
+    },
+    "ensureAudioTranscripts": {
+      "sources": [
+        {
+          "type": "glob",
+          "pattern": "**/*.md"
+        }
+      ]
     }
   }
 }

@@ -56,6 +56,7 @@ describe("HELP_TEXT", () => {
     expect(HELP_TEXT).toContain("normalizeTodayLiteral");
     expect(HELP_TEXT).toContain("stampDone");
     expect(HELP_TEXT).toContain("completedTaskRollover");
+    expect(HELP_TEXT).toContain("ensureAudioTranscripts");
     expect(HELP_TEXT).toContain("incompleteTaskAlert");
   });
 

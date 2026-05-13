@@ -24,7 +24,7 @@ import { applyReplaceFieldDateValue } from "./actions/replaceFieldDateValue.js";
 import { applyRequestTranscription } from "./actions/requestTranscription.js";
 import { applyRollover } from "./actions/rollover.js";
 import { applySetFieldDateIfMissing } from "./actions/setFieldDateIfMissing.js";
-import type { ActionOutcome } from "./actions/types.js";
+import type { ActionOutcome, LinkActionContext } from "./actions/types.js";
 import { unreachable } from "../unreachable.js";
 import type {
   Action,
@@ -187,6 +187,10 @@ function buildMarkdownFileChange(
   return { path: filePath, content: newContent };
 }
 
+function countLines(text: string): number {
+  return (text.match(/\n/g)?.length ?? 0) + 1;
+}
+
 // ---------------------------------------------------------------------------
 // Predicate evaluation
 // ---------------------------------------------------------------------------
@@ -243,6 +247,7 @@ function applyAction(
   action: Action,
   today: Date,
   link?: MarkdownLink,
+  linkCtx?: LinkActionContext,
 ): ActionOutcome {
   switch (action.type) {
     case "task.setFieldDateIfMissing":
@@ -258,9 +263,9 @@ function applyAction(
     case "custom":
       return applyCustom(taskText, action);
     case "link.ensureSiblingTranscript":
-      return applyEnsureSiblingTranscript(taskText, action, link);
+      return applyEnsureSiblingTranscript(taskText, action, link, linkCtx);
     case "link.requestTranscription":
-      return applyRequestTranscription(taskText, action, link);
+      return applyRequestTranscription(taskText, action, link, linkCtx);
     default:
       return unreachable(action);
   }
@@ -362,6 +367,7 @@ async function runActions(
   const changes: FileChange[] = [];
   let totalTasksModified = 0;
   let totalLinksMatched = 0;
+  let totalTranscriptionJobs = 0;
   const allSelectedTasks: Task[] = [];
 
   for (const result of queryResults) {
@@ -419,17 +425,38 @@ async function runActions(
       const { filePath, raw, parts, matchedLinks } = result;
       totalLinksMatched += matchedLinks.length;
       let currentBody = parts.body;
+      let lineOffset = 0;
 
       for (const link of matchedLinks) {
         for (const action of actions) {
-          const outcome = applyAction(currentBody, action, ctx.today, link);
+          const currentLink: MarkdownLink = {
+            ...link,
+            lineIndex: link.lineIndex + lineOffset,
+          };
+          const linkCtx: LinkActionContext = {
+            vaultPath: ctx.vaultPath,
+            sourceNotePath: filePath,
+            today: ctx.today,
+          };
+          const beforeBody = currentBody;
+          const outcome = applyAction(
+            currentBody,
+            action,
+            ctx.today,
+            currentLink,
+            linkCtx,
+          );
           if (outcome.updatedBody !== undefined) {
             currentBody = outcome.updatedBody;
+            lineOffset += countLines(currentBody) - countLines(beforeBody);
           }
           if (outcome.newFiles) {
             for (const [path, content] of Object.entries(outcome.newFiles)) {
               changes.push({ path, content });
             }
+          }
+          if (outcome.transcriptionJobs) {
+            totalTranscriptionJobs += outcome.transcriptionJobs.length;
           }
         }
       }
@@ -460,7 +487,9 @@ async function runActions(
 
   const summary =
     totalLinksMatched > 0
-      ? `Processed ${totalLinksMatched} link(s) across ${changes.length} file(s).`
+      ? totalTranscriptionJobs > 0
+        ? `Processed ${totalLinksMatched} link(s) and enqueued ${totalTranscriptionJobs} transcription job(s) across ${changes.length} file(s).`
+        : `Processed ${totalLinksMatched} link(s) across ${changes.length} file(s).`
       : `Modified ${totalTasksModified} task(s) across ${changes.length} file(s).`;
 
   return { changes, summary };
