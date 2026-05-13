@@ -519,9 +519,7 @@ async function runTaskQuerySpec(
  * plan 004 — they return empty results here so the framework compiles and the
  * existing tests stay green).
  */
-function applyLinkAction(
-  action: Action,
-): LinkActionResult {
+function applyLinkAction(action: Action): LinkActionResult {
   switch (action.type) {
     case "link.ensureSiblingTranscript":
     case "link.requestTranscription":
