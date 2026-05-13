@@ -56,7 +56,9 @@ describe("transcription runtime", () => {
     expect(noteContent).toContain("![[audio/clip.transcript.md]]");
     expect(transcriptContent).toContain("Status: pending");
     expect(pendingFiles).toHaveLength(1);
-    expect(pendingJob).toContain(`"audioPath": "${join(vaultDir, "audio", "clip.m4a")}"`);
+    expect(pendingJob).toContain(
+      `"audioPath": "${join(vaultDir, "audio", "clip.m4a")}"`,
+    );
   });
 
   it("defaults the state directory to a vault sibling outside the vault", () => {

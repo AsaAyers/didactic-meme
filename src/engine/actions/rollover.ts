@@ -4,7 +4,11 @@ import {
   removeInlineField,
   setInlineField,
 } from "../../markdown/inlineFields.js";
-import { computeNextDue, parseDateStr, parseRepeat } from "../../rules/scheduleUtils.js";
+import {
+  computeNextDue,
+  parseDateStr,
+  parseRepeat,
+} from "../../rules/scheduleUtils.js";
 import type { RolloverAction } from "../../rules/types.js";
 import { formatDate } from "./dateHelpers.js";
 import type { ActionOutcome } from "./types.js";

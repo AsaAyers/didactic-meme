@@ -166,10 +166,10 @@ Set `debounce` to the number of milliseconds the file must be idle before rules 
 
 ## Environment Variables
 
-| Variable     | Required | Default                        | Description                                        |
-| ------------ | -------- | ------------------------------ | -------------------------------------------------- |
-| `VAULT_PATH` | **Yes**  | —                              | Absolute path to the Obsidian vault root           |
-| `STATE_DIR`  | No       | sibling `.didactic-meme-state` | Filesystem queue root for transcription job state  |
+| Variable     | Required | Default                        | Description                                       |
+| ------------ | -------- | ------------------------------ | ------------------------------------------------- |
+| `VAULT_PATH` | **Yes**  | —                              | Absolute path to the Obsidian vault root          |
+| `STATE_DIR`  | No       | sibling `.didactic-meme-state` | Filesystem queue root for transcription job state |
 
 ## Docker / Docker Compose
 
