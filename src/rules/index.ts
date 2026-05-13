@@ -3,6 +3,7 @@ import { completedTaskRolloverSpec } from "./completedTaskRollover.js";
 import { incompleteTaskAlertSpec } from "./incompleteTaskAlert.js";
 import { normalizeTodayLiteralSpec } from "./normalizeTodayLiteral.js";
 import { removeEphemeralOverdueTasksSpec } from "./removeEphemeralOverdueTasks.js";
+import { ensureAudioTranscriptsSpec } from "./ensureAudioTranscripts.js";
 import type { RuleSpec } from "./types.js";
 
 /**
@@ -16,5 +17,6 @@ export const ruleSpecs: RuleSpec[] = [
   stampDoneSpec,
   completedTaskRolloverSpec,
   removeEphemeralOverdueTasksSpec,
+  ensureAudioTranscriptsSpec,
   incompleteTaskAlertSpec,
 ];

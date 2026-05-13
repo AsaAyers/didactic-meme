@@ -25,9 +25,11 @@
 import { describe, it, expect } from "vitest";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { tmpdir } from "node:os";
 import { promises as fs } from "node:fs";
 import { runRuleSpec } from "../src/engine/ruleSpecRunner.js";
 import { selectRuleSpecs, sortRuleSpecs } from "../src/engine/runner.js";
+import { ensureAudioTranscriptsSpec } from "../src/rules/ensureAudioTranscripts.js";
 import type { RuleContext, RuleSpec, LinkQuery } from "../src/rules/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -35,6 +37,11 @@ const SCENARIOS = join(__dirname, "test_vault", "scenarios");
 
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 const TODAY_STR = "2026-05-03";
+const TRANSCRIPT_PLACEHOLDER = `# Transcript
+
+Status: pending
+Job: 
+`;
 
 /** Build a context that reads directly from disk (no transform queue). */
 function makeCtx(vaultPath: string): RuleContext {
@@ -502,6 +509,149 @@ describe("ruleSpecRunner — nested list preservation on task modification", () 
 
     // No extra blank line must be inserted before the nested list.
     expect(content).not.toMatch(/\n\n\s*1\. Nested/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ensureAudioTranscripts
+// (Not covered by the current E2E vault scenarios)
+// ---------------------------------------------------------------------------
+
+describe("ruleSpecRunner — ensureAudioTranscripts", () => {
+  async function withTempVault(
+    run: (vaultPath: string) => Promise<void>,
+  ): Promise<void> {
+    const vaultPath = await fs.mkdtemp(join(tmpdir(), "didactic-meme-link-"));
+    try {
+      await run(vaultPath);
+    } finally {
+      await fs.rm(vaultPath, { recursive: true, force: true });
+    }
+  }
+
+  it("inserts transcript embed, creates placeholder transcript, and enqueues one job when transcript is missing", async () => {
+    await withTempVault(async (vaultPath) => {
+      const notePath = join(vaultPath, "daily.md");
+      const audioPath = join(vaultPath, "audio", "clip.m4a");
+      const transcriptPath = join(vaultPath, "audio", "clip.transcript.md");
+
+      await fs.mkdir(join(vaultPath, "audio"), { recursive: true });
+      await fs.writeFile(
+        notePath,
+        "# Daily\n\n![[audio/clip.m4a]]\n\nAfter recording.",
+        "utf-8",
+      );
+      await fs.writeFile(audioPath, "audio-bytes", "utf-8");
+
+      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+
+      expect(result.changes).toHaveLength(2);
+      const noteChange = result.changes.find((c) => c.path === notePath);
+      const transcriptChange = result.changes.find((c) => c.path === transcriptPath);
+      expect(noteChange?.content).toContain(
+        "![[audio/clip.m4a]]\n![[audio/clip.transcript.md]]",
+      );
+      expect(transcriptChange?.content).toBe(TRANSCRIPT_PLACEHOLDER);
+      expect(result.summary).toContain("enqueued 1 transcription job(s)");
+    });
+  });
+
+  it("does not insert duplicate transcript embed when it already appears elsewhere in the file body", async () => {
+    await withTempVault(async (vaultPath) => {
+      const notePath = join(vaultPath, "daily.md");
+      const audioPath = join(vaultPath, "audio", "clip.m4a");
+      const transcriptPath = join(vaultPath, "audio", "clip.transcript.md");
+
+      await fs.mkdir(join(vaultPath, "audio"), { recursive: true });
+      await fs.writeFile(
+        notePath,
+        "![[audio/clip.m4a]]\n\nNotes...\n\n![[audio/clip.transcript.md]]",
+        "utf-8",
+      );
+      await fs.writeFile(audioPath, "audio-bytes", "utf-8");
+
+      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+
+      expect(result.changes).toHaveLength(1);
+      expect(result.changes[0]?.path).toBe(transcriptPath);
+      expect(result.changes[0]?.content).toBe(TRANSCRIPT_PLACEHOLDER);
+    });
+  });
+
+  it("inserts transcript embeds immediately below each matched audio line when multiple embeds are present", async () => {
+    await withTempVault(async (vaultPath) => {
+      const notePath = join(vaultPath, "daily.md");
+      await fs.mkdir(join(vaultPath, "audio"), { recursive: true });
+      await fs.writeFile(
+        notePath,
+        "![[audio/one.m4a]]\nParagraph\n![[audio/two.m4a]]",
+        "utf-8",
+      );
+      await fs.writeFile(join(vaultPath, "audio", "one.m4a"), "one", "utf-8");
+      await fs.writeFile(join(vaultPath, "audio", "two.m4a"), "two", "utf-8");
+
+      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+      const noteChange = result.changes.find((c) => c.path === notePath);
+
+      expect(noteChange?.content).toContain(
+        "![[audio/one.m4a]]\n![[audio/one.transcript.md]]\nParagraph\n![[audio/two.m4a]]\n![[audio/two.transcript.md]]",
+      );
+      expect(result.summary).toContain("enqueued 2 transcription job(s)");
+    });
+  });
+
+  it("inserts transcript embed but does not create a file or enqueue a job when sibling transcript already exists", async () => {
+    await withTempVault(async (vaultPath) => {
+      const notePath = join(vaultPath, "daily.md");
+      const audioPath = join(vaultPath, "audio", "clip.m4a");
+      const transcriptPath = join(vaultPath, "audio", "clip.transcript.md");
+
+      await fs.mkdir(join(vaultPath, "audio"), { recursive: true });
+      await fs.writeFile(notePath, "![[audio/clip.m4a]]", "utf-8");
+      await fs.writeFile(audioPath, "audio-bytes", "utf-8");
+      await fs.writeFile(transcriptPath, "# Existing transcript", "utf-8");
+
+      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+
+      expect(result.changes).toHaveLength(1);
+      expect(result.changes[0]?.path).toBe(notePath);
+      expect(result.changes[0]?.content).toContain("![[audio/clip.transcript.md]]");
+      expect(result.summary).toContain("enqueued 0 transcription job(s)");
+    });
+  });
+
+  it("skips links whose resolved audio path escapes the vault root", async () => {
+    await withTempVault(async (vaultPath) => {
+      const notePath = join(vaultPath, "daily.md");
+      const outsideAudioPath = join(dirname(vaultPath), "outside.m4a");
+
+      await fs.writeFile(notePath, "![[../outside.m4a]]", "utf-8");
+      await fs.writeFile(outsideAudioPath, "audio-bytes", "utf-8");
+
+      try {
+        const result = await runRuleSpec(
+          ensureAudioTranscriptsSpec,
+          makeCtx(vaultPath),
+        );
+        expect(result.changes).toHaveLength(0);
+      } finally {
+        await fs.rm(outsideAudioPath, { force: true });
+      }
+    });
+  });
+
+  it("skips links when the audio file is missing", async () => {
+    await withTempVault(async (vaultPath) => {
+      await fs.writeFile(
+        join(vaultPath, "daily.md"),
+        "![[audio/missing.m4a]]",
+        "utf-8",
+      );
+
+      const result = await runRuleSpec(ensureAudioTranscriptsSpec, makeCtx(vaultPath));
+      expect(result.changes).toHaveLength(0);
+      expect(result.summary).toContain("enqueued 0 transcription job(s)");
+    });
   });
 });
 
