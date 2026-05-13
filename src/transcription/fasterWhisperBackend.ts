@@ -51,11 +51,30 @@ export function createFasterWhisperBackend(
 
   let stdoutBuffer = "";
   let stderrBuffer = "";
-  let readyResolve!: () => void;
-  let readyReject!: (reason: Error) => void;
+  const readyState: {
+    resolve: () => void;
+    reject: (reason: Error) => void;
+    settled: boolean;
+  } = {
+    resolve: () => {},
+    reject: () => {},
+    settled: false,
+  };
   const ready = new Promise<void>((resolve, reject) => {
-    readyResolve = resolve;
-    readyReject = reject;
+    readyState.resolve = () => {
+      if (readyState.settled) {
+        return;
+      }
+      readyState.settled = true;
+      resolve();
+    };
+    readyState.reject = (reason: Error) => {
+      if (readyState.settled) {
+        return;
+      }
+      readyState.settled = true;
+      reject(reason);
+    };
   });
   let isReady = false;
   let pending:
@@ -73,7 +92,7 @@ export function createFasterWhisperBackend(
   function handleMessage(message: BackendMessage): void {
     if (message.type === "ready") {
       isReady = true;
-      readyResolve();
+      readyState.resolve();
       return;
     }
 
@@ -108,7 +127,7 @@ export function createFasterWhisperBackend(
         const message =
           err instanceof Error ? err.message : "Invalid backend JSON";
         if (!isReady) {
-          readyReject(new Error(message));
+          readyState.reject(new Error(message));
         }
         rejectPending(message);
       }
@@ -122,7 +141,7 @@ export function createFasterWhisperBackend(
 
   child.on("error", (err) => {
     if (!isReady) {
-      readyReject(err);
+      readyState.reject(err);
     }
     rejectPending(err.message);
   });
@@ -135,7 +154,7 @@ export function createFasterWhisperBackend(
         ? `faster-whisper backend exited via signal ${signal}${suffix}`
         : `faster-whisper backend exited with code ${code ?? "unknown"}${suffix}`;
     if (!isReady) {
-      readyReject(new Error(reason));
+      readyState.reject(new Error(reason));
     }
     rejectPending(reason);
   });
