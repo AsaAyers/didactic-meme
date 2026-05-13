@@ -29,7 +29,7 @@ export function applyRequestTranscription(
   const createdAtMs = ctx.today.getTime();
   const createdAt = ctx.today.toISOString();
   const job: TranscriptionJob = {
-    id: buildJobId(createdAtMs),
+    id: ctx.jobIdFactory?.(ctx.today) ?? buildJobId(createdAtMs),
     audioPath: transcript.audioPath,
     transcriptPath: transcript.transcriptPath,
     sourceNotePath: ctx.sourceNotePath,

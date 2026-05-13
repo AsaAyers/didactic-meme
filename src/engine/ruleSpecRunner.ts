@@ -443,6 +443,7 @@ async function runActions(
             vaultPath: ctx.vaultPath,
             sourceNotePath: filePath,
             today: ctx.today,
+            jobIdFactory: ctx.jobIdFactory,
           };
           const beforeBody = currentBody;
           const outcome = applyAction(

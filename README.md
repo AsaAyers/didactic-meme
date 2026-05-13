@@ -87,6 +87,9 @@ On first run, `didactic-meme` creates a `.didactic-meme.json` file in your vault
     "removeEphemeralOverdueTasks": {
       "sources": [{ "type": "glob", "pattern": "**/*.md" }],
     },
+    "ensureAudioTranscripts": {
+      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
+    },
     "incompleteTaskAlert": {
       "sources": [
         {
@@ -431,6 +434,15 @@ rules must complete before it, and the runner performs a stable topological
 sort so the order is correct regardless of how rules are listed in the
 registry.
 
+| Rule                     | What it does |
+| ------------------------ | ------------ |
+| `normalizeTodayLiteral`  | Replaces `today` / `yesterday` / `tomorrow` inline date literals with ISO dates. |
+| `stampDone`              | Adds `done:YYYY-MM-DD` to newly completed tasks that do not already have one. |
+| `completedTaskRollover`  | Clones recurring completed tasks forward to their next cycle. |
+| `removeEphemeralOverdueTasks` | Removes unchecked overdue tasks marked `ephemeral`. |
+| `ensureAudioTranscripts` | For each embedded `.m4a`, inserts a mirrored transcript embed, creates a sibling `.transcript.md` placeholder when needed, and enqueues async transcription. |
+| `incompleteTaskAlert`    | Groups incomplete tasks and optionally posts them to a configured alert endpoint. |
+
 ### Rule 1 – Normalize Today Literal
 
 **Source:** `src/rules/normalizeTodayLiteral.ts`
@@ -498,6 +510,79 @@ Removes **unchecked** tasks that carry an `ephemeral` field, have a `due:` date,
 If today is 2026-05-11 and the task is still unchecked, it is silently deleted on the next pipeline run.
 
 **Dependencies:** `normalizeTodayLiteral`
+
+### ensureAudioTranscripts
+
+**Source:** `src/rules/ensureAudioTranscripts.ts`
+
+Scans configured markdown files for embedded `.m4a` audio files and supports
+both embed forms:
+
+- Obsidian wikilink embeds: `![[recordings/2024-01-15 12.34.56.m4a]]`
+- Standard Markdown embeds: `![](recordings/2024-01-15 12.34.56.m4a)`
+
+For each matching audio embed, the rule derives a sibling transcript file in
+the same directory (`<basename>.transcript.md`) and inserts a transcript embed
+immediately below the audio line, mirroring the original embed style:
+
+- `![[recordings/foo.m4a]]` → `![[recordings/foo.transcript.md]]`
+- `![](recordings/foo.m4a)` → `![](recordings/foo.transcript.md)`
+
+If the transcript file does **not** already exist, the rule creates a pending
+placeholder and enqueues a background transcription job. The main rule engine
+does not wait for transcription to finish; the worker updates the transcript
+file asynchronously once processing succeeds or fails.
+
+If the sibling transcript file already exists, the rule leaves that file
+untouched and only inserts the transcript embed into the source note when it is
+missing. If the referenced audio file is missing, or the resolved path escapes
+the vault root, the embed is skipped without error.
+
+On worker failure the transcript file is replaced with a failure note:
+
+```markdown
+# Transcript
+
+Status: failed
+Job: <job-id>
+Source audio: [[recordings/foo.m4a]]
+
+> Transcription failed.
+
+## Error
+
+<error message>
+```
+
+#### Restricting the rule to part of the vault
+
+The rule uses the normal per-rule `sources` config model. For example, to limit
+it to `daily/**/*.md`:
+
+```json
+{
+  "rules": {
+    "ensureAudioTranscripts": {
+      "sources": [{ "type": "glob", "pattern": "daily/**/*.md" }]
+    }
+  }
+}
+```
+
+#### Dry-run behavior
+
+With `--dry-run`, `ensureAudioTranscripts`:
+
+1. Shows the diff for transcript-embed insertion in the source note.
+2. Shows the placeholder transcript file content that would be created.
+3. Does not write any files.
+4. Does not enqueue any jobs.
+
+To run the background GPU worker that fulfills queued jobs, start the Docker
+Compose stack described above with `docker compose up --build` (see the Docker /
+Docker Compose section for details).
+
+**Dependencies:** none
 
 ## Project Structure
 

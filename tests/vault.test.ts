@@ -1,29 +1,20 @@
 /**
- * End-to-end snapshot test for the test vault.
+ * End-to-end snapshot tests for the committed test vault.
  *
- * Every `.md` file in `tests/test_vault/` must have a companion
- * `.md.expected` file that describes the exact content the full rule
- * pipeline should produce for that file.  Files whose content is unchanged
- * by the pipeline have a `.md.expected` that is identical to their source.
- *
- * This test:
- *   1. Runs `runAllRules` in dry-run mode against the entire vault.
- *   2. Walks every `.md` file and resolves the expected output (staged change
- *      when the pipeline modifies the file, or the on-disk content otherwise).
- *   3. Asserts that the resolved output matches the corresponding `.md.expected`.
- *   4. Fails if any `.md` file is missing its `.md.expected` counterpart.
- *
- * To update a snapshot after an intentional change, edit the relevant
- * `.md.expected` file.  The pair of files serves as readable documentation:
- * a reader can open any scenario directory and immediately see what the
- * pipeline does to it.
+ * Every `.md.expected` file under `tests/test_vault/` documents the exact output
+ * the pipeline should produce for the corresponding `.md` path. For existing
+ * files we compare against the staged dry-run output (or the on-disk source when
+ * unchanged). For generated transcript files we compare against staged writes
+ * even when the `.md` input file does not yet exist on disk.
  */
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { promises as fs } from "node:fs";
-import { walkMarkdownFiles } from "../src/engine/io.js";
 import { runAllRules } from "../src/engine/runner.js";
+import { walkMarkdownFiles } from "../src/engine/io.js";
+import { startWorker } from "../src/transcription/worker.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_VAULT = join(__dirname, "test_vault");
@@ -31,40 +22,85 @@ const TEST_VAULT = join(__dirname, "test_vault");
 // Pin the date so the test produces the same output regardless of when it runs.
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
 
+const CREATED_DIRS: string[] = [];
+
+async function createTempDir(prefix: string): Promise<string> {
+  const dir = await fs.mkdtemp(join(tmpdir(), prefix));
+  CREATED_DIRS.push(dir);
+  return dir;
+}
+
+function createDeterministicJobIdFactory(): (createdAt: Date) => string {
+  return (createdAt: Date) => `${createdAt.getTime().toString(36)}-test-job-001`;
+}
+
+async function walkExpectedFiles(dir: string): Promise<string[]> {
+  const expectedFiles: string[] = [];
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  entries.sort((a, b) => a.name.localeCompare(b.name));
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory() && !entry.name.startsWith(".")) {
+      expectedFiles.push(...(await walkExpectedFiles(fullPath)));
+    } else if (entry.isFile() && entry.name.endsWith(".md.expected")) {
+      expectedFiles.push(fullPath);
+    }
+  }
+
+  return expectedFiles;
+}
+
+async function readOptionalFile(path: string): Promise<string | undefined> {
+  try {
+    return await fs.readFile(path, "utf-8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw err;
+  }
+}
+
+afterEach(async () => {
+  await Promise.all(
+    CREATED_DIRS.splice(0).map((dir) =>
+      fs.rm(dir, { recursive: true, force: true }),
+    ),
+  );
+});
+
 describe("test vault — .md.expected snapshots", () => {
-  it("every .md file matches its .md.expected counterpart", async () => {
+  it("matches every committed .md.expected snapshot in dry-run mode", async () => {
     const { changes } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
       dryRun: true,
       env: {},
+      jobIdFactory: createDeterministicJobIdFactory(),
     });
 
-    // Map from absolute file path → content produced by the pipeline.
     const staged = new Map(changes.map((c) => [c.path, c.content]));
-
-    const mdFiles = await walkMarkdownFiles(TEST_VAULT);
-
+    const expectedFiles = await walkExpectedFiles(TEST_VAULT);
     const failures: string[] = [];
 
-    for (const mdPath of mdFiles) {
-      const expectedPath = `${mdPath}.expected`;
-      const relPath = relative(TEST_VAULT, mdPath);
+    for (const expectedPath of expectedFiles) {
+      const actualPath = expectedPath.slice(0, -".expected".length);
+      const relPath = relative(TEST_VAULT, actualPath);
 
-      // Every .md file must have a .md.expected counterpart.
-      let expectedContent: string;
-      try {
-        expectedContent = await fs.readFile(expectedPath, "utf-8");
-      } catch {
-        failures.push(`${relPath}: missing .md.expected file`);
+      if (
+        relPath ===
+        "scenarios/audio-embed-transcription-failure/recordings/2024-01-15 12.34.56.transcript.md"
+      ) {
         continue;
       }
 
-      // Resolve the actual output: use the staged version if the pipeline
-      // modified the file, otherwise fall back to the on-disk content.
-      const actualContent = staged.has(mdPath)
-        ? staged.get(mdPath)!
-        : await fs.readFile(mdPath, "utf-8");
+      const expectedContent = await fs.readFile(expectedPath, "utf-8");
+      const actualContent =
+        staged.get(actualPath) ?? (await readOptionalFile(actualPath));
+
+      if (actualContent === undefined) {
+        failures.push(`${relPath}: expected output file was not produced`);
+        continue;
+      }
 
       if (actualContent !== expectedContent) {
         failures.push(`${relPath}: output does not match .md.expected`);
@@ -74,7 +110,7 @@ describe("test vault — .md.expected snapshots", () => {
     expect(failures, failures.join("\n")).toEqual([]);
   });
 
-  it("does not modify any file on disk (dry-run guard)", async () => {
+  it("does not modify any committed markdown file on disk in dry-run mode", async () => {
     const mdFiles = await walkMarkdownFiles(TEST_VAULT);
     const before = new Map(
       await Promise.all(
@@ -87,6 +123,7 @@ describe("test vault — .md.expected snapshots", () => {
       today: TODAY,
       dryRun: true,
       env: {},
+      jobIdFactory: createDeterministicJobIdFactory(),
     });
 
     for (const [p, content] of before) {
@@ -96,5 +133,61 @@ describe("test vault — .md.expected snapshots", () => {
         `${relative(TEST_VAULT, p)} was modified on disk in dry-run mode`,
       ).toBe(content);
     }
+  });
+
+  it("uses the fake worker backend for the transcription failure scenario", async () => {
+    const scenarioName = "audio-embed-transcription-failure";
+    const sourceScenario = join(TEST_VAULT, "scenarios", scenarioName);
+    const vaultPath = await createTempDir("didactic-meme-vault-");
+    const stateDir = await createTempDir("didactic-meme-state-");
+    let shouldContinue = true;
+
+    await fs.cp(sourceScenario, vaultPath, { recursive: true });
+
+    await runAllRules({
+      vaultPath,
+      today: TODAY,
+      dryRun: false,
+      env: { STATE_DIR: stateDir },
+      selectedRuleNames: ["ensureAudioTranscripts"],
+      jobIdFactory: () => "mop07pc0-test-job-001",
+    });
+
+    await startWorker({
+      stateDir,
+      backend: {
+        async transcribe(audioPath: string) {
+          throw new Error(`Fake backend failed for ${relative(vaultPath, audioPath)}`);
+        },
+      },
+      pollIntervalMs: 1,
+      shouldContinue: () => {
+        if (shouldContinue) {
+          shouldContinue = false;
+          return true;
+        }
+        return false;
+      },
+      sleep: async () => Promise.resolve(),
+    });
+
+    const expectedFiles = await walkExpectedFiles(sourceScenario);
+    const failures: string[] = [];
+
+    for (const expectedPath of expectedFiles) {
+      const relPath = relative(sourceScenario, expectedPath).slice(
+        0,
+        -".expected".length,
+      );
+      const actualPath = join(vaultPath, relPath);
+      const expectedContent = await fs.readFile(expectedPath, "utf-8");
+      const actualContent = await readOptionalFile(actualPath);
+
+      if (actualContent !== expectedContent) {
+        failures.push(`${relPath}: output does not match .md.expected`);
+      }
+    }
+
+    expect(failures, failures.join("\n")).toEqual([]);
   });
 });
