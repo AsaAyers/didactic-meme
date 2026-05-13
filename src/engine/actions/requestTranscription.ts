@@ -7,12 +7,8 @@ import { buildPlaceholder } from "../../transcription/format.js";
 import type { TranscriptionJob } from "../../transcription/types.js";
 
 function buildJobId(createdAtMs: number): string {
-  const randomSuffix = randomUUID();
-  return `${createdAtMs.toString(36)}-${randomSuffix}`;
-}
-
-function toWikilink(target: string): string {
-  return `[[${target}]]`;
+  const uuid = randomUUID();
+  return `${createdAtMs.toString(36)}-${uuid}`;
 }
 
 export function applyRequestTranscription(
@@ -45,7 +41,7 @@ export function applyRequestTranscription(
     newFiles: {
       [transcript.transcriptPath]: buildPlaceholder(
         job.id,
-        toWikilink(link.target),
+        `[[${link.target}]]`,
       ),
     },
     transcriptionJobs: [job],
