@@ -97,8 +97,7 @@ async function main(): Promise<void> {
 
 if (
   process.argv[1] &&
-  fileURLToPath(import.meta.url) ===
-    fileURLToPath(new URL(process.argv[1], "file:"))
+  fileURLToPath(import.meta.url) === process.argv[1]
 ) {
   main().catch((err: unknown) => {
     console.error("Fatal transcription worker error:", (err as Error).message);

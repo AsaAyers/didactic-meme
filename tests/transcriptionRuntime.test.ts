@@ -48,14 +48,15 @@ describe("transcription runtime", () => {
       "utf-8",
     );
     const pendingFiles = await fs.readdir(join(stateDir, "pending"));
+    expect(pendingFiles).toHaveLength(1);
+    const pendingFile = pendingFiles[0] ?? "";
     const pendingJob = await fs.readFile(
-      join(stateDir, "pending", pendingFiles[0]!),
+      join(stateDir, "pending", pendingFile),
       "utf-8",
     );
 
     expect(noteContent).toContain("![[audio/clip.transcript.md]]");
     expect(transcriptContent).toContain("Status: pending");
-    expect(pendingFiles).toHaveLength(1);
     expect(pendingJob).toContain(
       `"audioPath": "${join(vaultDir, "audio", "clip.m4a")}"`,
     );
