@@ -1,0 +1,11 @@
+# Transcript
+
+Status: failed
+Job: mop07pc0-test-job-001
+Source audio: [[recordings/2024-01-15 12.34.56.m4a]]
+
+> Transcription failed.
+
+## Error
+
+Fake backend failed for recordings/2024-01-15 12.34.56.m4a

@@ -6,6 +6,7 @@ export type RuleContext = {
   vaultPath: string;
   today: Date;
   dryRun: boolean;
+  jobIdFactory: (createdAt: Date) => string;
   /**
    * When true, emit rule-progress logs and the run summary to the console
    * even during dry-run mode.  Defaults to false.

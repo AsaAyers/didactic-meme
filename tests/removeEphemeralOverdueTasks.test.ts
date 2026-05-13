@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promises as fs } from "node:fs";
 import { runRuleSpec } from "../src/engine/ruleSpecRunner.js";
+import { buildJobId } from "../src/engine/actions/requestTranscription.js";
 import { removeEphemeralOverdueTasksSpec } from "../src/rules/removeEphemeralOverdueTasks.js";
 import type { RuleContext } from "../src/rules/types.js";
 
@@ -27,6 +28,7 @@ function makeCtx(vaultPath: string): RuleContext {
     vaultPath,
     today: TODAY,
     dryRun: false,
+    jobIdFactory: buildJobId,
     env: {},
     readFile: (path: string) => fs.readFile(path, "utf-8").catch(() => ""),
   };

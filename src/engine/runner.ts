@@ -8,6 +8,7 @@ import { stampDoneUnknownSpec } from "../rules/stampDone.js";
 import { walkMarkdownFiles } from "./io.js";
 import { FileWriteManager } from "./io.js";
 import { runRuleSpec } from "./ruleSpecRunner.js";
+import { buildJobId } from "./actions/requestTranscription.js";
 import { enqueue } from "../transcription/queue.js";
 import { resolveStateDir } from "../transcription/runtime.js";
 import type { RuleContext, RuleSpec } from "../rules/types.js";
@@ -129,7 +130,9 @@ export function selectRuleSpecs(
  *                 `report`  — everything printed to console during the run.
  */
 export async function runAllRules(
-  baseCtx: Omit<RuleContext, "readFile">,
+  baseCtx: Omit<RuleContext, "readFile" | "jobIdFactory"> & {
+    jobIdFactory?: RuleContext["jobIdFactory"];
+  },
 ): Promise<{
   changes: Array<{ path: string; content: string }>;
   report: string;
@@ -148,6 +151,7 @@ export async function runAllRules(
 
   const ctx: RuleContext = {
     ...baseCtx,
+    jobIdFactory: baseCtx.jobIdFactory ?? buildJobId,
     readFile: (p: string) => queue.read(p),
     log,
   };
@@ -390,6 +394,7 @@ export async function runInitPass(
     vaultPath,
     today: new Date(), // required by RuleContext; not used because stampDoneUnknownSpec uses value:'unknown'
     dryRun: false, // dry-run is handled for the whole init pass below
+    jobIdFactory: buildJobId,
     env: {},
     readFile: stampReadFile,
   });

@@ -27,6 +27,29 @@ const WIKILINK_EMBED_RE = /!\[\[([^\]|#^]+?)\]\]/g;
 // Matches ![alt](target) (standard markdown image/audio embed)
 const MD_EMBED_RE = /!\[([^\]]*?)\]\(([^)]+?)\)/g;
 
+function parseFenceMarker(
+  line: string,
+): { char: "`" | "~"; length: number } | undefined {
+  const match = line.match(/^ {0,3}(`{3,}|~{3,})/);
+  if (!match) return undefined;
+  const marker = match[1]!;
+  const firstChar = marker[0];
+  if (firstChar !== "`" && firstChar !== "~") return undefined;
+  return { char: firstChar, length: marker.length };
+}
+
+function closesFence(
+  line: string,
+  fence: { char: "`" | "~"; length: number },
+): boolean {
+  const trimmed = line.trimStart();
+  let markerLength = 0;
+  while (trimmed[markerLength] === fence.char) {
+    markerLength++;
+  }
+  return markerLength >= fence.length;
+}
+
 /**
  * Scans `body` line-by-line and returns every wikilink embed and standard
  * markdown embed found, in document order.
@@ -34,9 +57,22 @@ const MD_EMBED_RE = /!\[([^\]]*?)\]\(([^)]+?)\)/g;
 export function extractMarkdownLinks(body: string): MarkdownLink[] {
   const lines = body.split("\n");
   const results: MarkdownLink[] = [];
+  let activeFence: { char: "`" | "~"; length: number } | undefined;
 
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex]!;
+    if (activeFence) {
+      if (closesFence(line, activeFence)) {
+        activeFence = undefined;
+      }
+      continue;
+    }
+
+    const fence = parseFenceMarker(line);
+    if (fence) {
+      activeFence = fence;
+      continue;
+    }
 
     // Reset lastIndex before each use since we reuse the regex instances.
     WIKILINK_EMBED_RE.lastIndex = 0;

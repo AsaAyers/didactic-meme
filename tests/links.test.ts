@@ -87,6 +87,29 @@ describe("extractMarkdownLinks", () => {
     expect(links[1]?.target).toBe("b.m4a");
   });
 
+  it("ignores embeds inside fenced code blocks", () => {
+    const body = [
+      "```md",
+      "![[audio/inside.m4a]]",
+      "![](audio/inside-too.m4a)",
+      "```",
+      "",
+      "![[audio/outside.m4a]]",
+    ].join("\n");
+    const links = extractMarkdownLinks(body);
+    expect(links).toHaveLength(1);
+    expect(links[0]?.target).toBe("audio/outside.m4a");
+  });
+
+  it("extracts mixed wikilink and markdown embeds from the same file", () => {
+    const body = ["![[audio/a.m4a]]", "![clip](audio/b.m4a)"].join("\n");
+    const links = extractMarkdownLinks(body);
+    expect(links.map((link) => link.target)).toEqual([
+      "audio/a.m4a",
+      "audio/b.m4a",
+    ]);
+  });
+
   it("does not match wikilinks with aliases (|) or heading refs (#)", () => {
     const links = extractMarkdownLinks("![[foo|alias]] ![[foo#section]]");
     expect(links).toHaveLength(0);
@@ -131,6 +154,13 @@ describe("matchesLinkQuery", () => {
     expect(matchesLinkQuery(audioEmbed, q)).toBe(false);
   });
 
+  it("treats extension matching as exact and case-sensitive", () => {
+    const q: LinkQuery = { type: "link", extension: ".m4a" };
+    expect(matchesLinkQuery({ ...audioEmbed, target: "REC.M4A" }, q)).toBe(
+      false,
+    );
+  });
+
   it("matches when both embed and extension filters match", () => {
     const q: LinkQuery = { type: "link", embed: true, extension: ".m4a" };
     expect(matchesLinkQuery(audioEmbed, q)).toBe(true);
@@ -154,6 +184,12 @@ describe("deriveTranscriptTarget", () => {
   it("preserves directory path", () => {
     expect(deriveTranscriptTarget("recordings/2024-01-15.m4a")).toBe(
       "recordings/2024-01-15.transcript.md",
+    );
+  });
+
+  it("preserves spaces in the source path", () => {
+    expect(deriveTranscriptTarget("recordings/2024-01-15 12.34.56.m4a")).toBe(
+      "recordings/2024-01-15 12.34.56.transcript.md",
     );
   });
 
@@ -206,6 +242,14 @@ describe("hasEmbedAnywhere", () => {
 
   it("returns false when embed is not present in body", () => {
     expect(hasEmbedAnywhere("some text", "![[t.md]]")).toBe(false);
+  });
+
+  it("does not treat a longer embed target as a match", () => {
+    expect(hasEmbedAnywhere("![[t.mdx]]", "![[t.md]]")).toBe(false);
+  });
+
+  it("finds an embed in the middle of a line", () => {
+    expect(hasEmbedAnywhere("before ![[t.md]] after", "![[t.md]]")).toBe(true);
   });
 });
 
