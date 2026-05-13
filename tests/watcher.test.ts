@@ -6,7 +6,10 @@
  * wall-clock time is needed.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createFileDebouncer } from "../src/engine/watcher.js";
+import {
+  createFileDebouncer,
+  createGlobalDebouncer,
+} from "../src/engine/watcher.js";
 
 describe("createFileDebouncer", () => {
   beforeEach(() => {
@@ -216,5 +219,61 @@ describe("createFileDebouncer", () => {
 
     await vi.advanceTimersByTimeAsync(1000);
     expect(processed).toHaveLength(0);
+  });
+});
+
+describe("createGlobalDebouncer", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("runs once for multiple files changed within the debounce window", async () => {
+    const processed: string[][] = [];
+    const { notify, dispose } = createGlobalDebouncer(1000, async (paths) => {
+      processed.push(paths);
+    });
+
+    notify("notes/a.md", "change");
+    await vi.advanceTimersByTimeAsync(500);
+    notify("notes/b.md", "change");
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(processed).toEqual([["notes/a.md", "notes/b.md"]]);
+    dispose();
+  });
+
+  it("resets a single vault-wide timer across different files", async () => {
+    const processed: string[][] = [];
+    const { notify, dispose } = createGlobalDebouncer(1000, async (paths) => {
+      processed.push(paths);
+    });
+
+    notify("notes/a.md", "change");
+    await vi.advanceTimersByTimeAsync(900);
+    notify("notes/b.md", "change");
+    await vi.advanceTimersByTimeAsync(999);
+    expect(processed).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(processed).toEqual([["notes/a.md", "notes/b.md"]]);
+    dispose();
+  });
+
+  it("deduplicates repeated changes for the same file within a batch", async () => {
+    const processed: string[][] = [];
+    const { notify, dispose } = createGlobalDebouncer(1000, async (paths) => {
+      processed.push(paths);
+    });
+
+    notify("notes/a.md", "change");
+    notify("notes/a.md", "rename");
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(processed).toEqual([["notes/a.md"]]);
+    dispose();
   });
 });

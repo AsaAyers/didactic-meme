@@ -29,9 +29,10 @@ Options:
                            run in full dependency order; only the set of files each
                            rule processes is narrowed to the overlap with <glob>.
   --watch                  Watch vault markdown files for changes and automatically
-                           run the selected rules on each changed file after a
-                           debounce period (default 60 s).  Uses a native filesystem
-                           watcher (no polling).  Not compatible with --init.
+                           run selected rules after the vault has been idle for
+                           the debounce period (default 60 s).  Only changed files
+                           are processed. Uses a native filesystem watcher (no polling).
+                           Not compatible with --init.
                            The debounce duration is configurable via the vault config:
                              { "watch": { "debounce": 5000 } }
   --init                   Normalize vault formatting and stamp done:unknown

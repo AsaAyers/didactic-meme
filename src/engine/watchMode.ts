@@ -1,22 +1,24 @@
 export const ALERT_RULE = "incompleteTaskAlert";
-export const FAST_PATH_RULE = "ensureAudioTranscripts";
+export const FAST_PATH_RULES = ["ensureAudioTranscripts"] as const;
 export const FAST_PATH_DEBOUNCE_MS = 1_000;
 
 export function selectWatchRuleSets(
   selectedRuleNames: string[] | "all",
   availableRuleNames: string[],
 ): {
-  fileChangeRuleNames: string[];
-  enableFastPath: boolean;
+  allFileChangeRuleNames: string[];
+  fastPathRuleNames: string[];
 } {
   const selectedNames =
     selectedRuleNames === "all" ? availableRuleNames : selectedRuleNames;
+  const fastPathRuleSet = new Set<string>(FAST_PATH_RULES);
 
   return {
-    fileChangeRuleNames: selectedNames.filter(
-      (n) => n !== ALERT_RULE && n !== FAST_PATH_RULE,
-    ),
-    enableFastPath: selectedNames.includes(FAST_PATH_RULE),
+    // Scheduled alert runs separately; all other selected rules run on the
+    // normal debounce window.
+    allFileChangeRuleNames: selectedNames.filter((n) => n !== ALERT_RULE),
+    // Fast-path is a fixed (non-configurable) subset of rules.
+    fastPathRuleNames: selectedNames.filter((n) => fastPathRuleSet.has(n)),
   };
 }
 

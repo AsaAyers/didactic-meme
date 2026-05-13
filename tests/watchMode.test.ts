@@ -1,39 +1,39 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   ALERT_RULE,
-  FAST_PATH_RULE,
+  FAST_PATH_RULES,
   selectWatchRuleSets,
   createStopAll,
 } from "../src/engine/watchMode.js";
 
 describe("selectWatchRuleSets", () => {
-  it('enables fast path when selectedRuleNames is "all"', () => {
-    const allRules = [ALERT_RULE, FAST_PATH_RULE, "stampDone"];
+  it('returns all non-alert rules for normal debounce when selectedRuleNames is "all"', () => {
+    const allRules = [ALERT_RULE, ...FAST_PATH_RULES, "stampDone"];
 
     const result = selectWatchRuleSets("all", allRules);
 
-    expect(result.enableFastPath).toBe(true);
-    expect(result.fileChangeRuleNames).toEqual(["stampDone"]);
+    expect(result.fastPathRuleNames).toEqual([...FAST_PATH_RULES]);
+    expect(result.allFileChangeRuleNames).toEqual([...FAST_PATH_RULES, "stampDone"]);
   });
 
-  it("excludes only alert rule when fast-path rule is not selected", () => {
+  it("returns empty fast-path rules when none are selected", () => {
     const result = selectWatchRuleSets(
       ["stampDone", ALERT_RULE],
-      [ALERT_RULE, FAST_PATH_RULE, "stampDone"],
+      [ALERT_RULE, ...FAST_PATH_RULES, "stampDone"],
     );
 
-    expect(result.enableFastPath).toBe(false);
-    expect(result.fileChangeRuleNames).toEqual(["stampDone"]);
+    expect(result.fastPathRuleNames).toEqual([]);
+    expect(result.allFileChangeRuleNames).toEqual(["stampDone"]);
   });
 
-  it("keeps normal file-change rules empty when only fast-path rule is selected", () => {
+  it("keeps normal file-change rules including fast-path rules", () => {
     const result = selectWatchRuleSets(
-      [FAST_PATH_RULE],
-      [ALERT_RULE, FAST_PATH_RULE, "stampDone"],
+      [...FAST_PATH_RULES],
+      [ALERT_RULE, ...FAST_PATH_RULES, "stampDone"],
     );
 
-    expect(result.enableFastPath).toBe(true);
-    expect(result.fileChangeRuleNames).toEqual([]);
+    expect(result.fastPathRuleNames).toEqual([...FAST_PATH_RULES]);
+    expect(result.allFileChangeRuleNames).toEqual([...FAST_PATH_RULES]);
   });
 });
 

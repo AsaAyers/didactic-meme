@@ -4,7 +4,6 @@ import { startVaultWatcher } from "./engine/watcher.js";
 import { createAlertScheduler } from "./engine/scheduler.js";
 import {
   ALERT_RULE,
-  FAST_PATH_RULE,
   FAST_PATH_DEBOUNCE_MS,
   selectWatchRuleSets,
   createStopAll,
@@ -130,16 +129,16 @@ if (init) {
         console.log("");
 
         // Compute rule names for normal file-change processing and fast-path.
-        const { fileChangeRuleNames, enableFastPath } = selectWatchRuleSets(
+        const { allFileChangeRuleNames, fastPathRuleNames } = selectWatchRuleSets(
           selectedRuleNames,
           ruleSpecs.map((s) => s.name),
         );
 
         const stop = startVaultWatcher(
           vaultPath,
-          async (relPath) => {
-            // Config file changed — reload it and update the live schedule.
-            if (relPath === CONFIG_FILENAME) {
+          async (relPaths) => {
+            const includesConfig = relPaths.includes(CONFIG_FILENAME);
+            if (includesConfig) {
               console.log(`[watch] Config changed, reloading...`);
               try {
                 const newConfig = await loadConfig(vaultPath, ruleSpecs);
@@ -159,40 +158,49 @@ if (init) {
                   (err as Error).message,
                 );
               }
-              return;
             }
 
-            console.log(`[watch] Running rules for: ${relPath}`);
-            if (fileChangeRuleNames.length > 0) {
-              await runAllRules({
-                vaultPath,
-                today: new Date(),
-                dryRun,
-                verbose,
-                env: process.env,
-                selectedRuleNames: fileChangeRuleNames,
-                onlyGlob: relPath,
-              });
-            }
-          },
-          { debounce, additionalFiles: [CONFIG_FILENAME] },
-        );
+            const targetPaths = relPaths.filter((p) => p !== CONFIG_FILENAME);
+            if (targetPaths.length === 0) return;
 
-        const stopFastPath = enableFastPath
-          ? startVaultWatcher(
-              vaultPath,
-              async (relPath) => {
-                if (relPath === CONFIG_FILENAME) return;
-                console.log(`[watch] Running fast-path rule for: ${relPath}`);
+            console.log(`[watch] Running rules for: ${targetPaths.join(", ")}`);
+            if (allFileChangeRuleNames.length > 0) {
+              for (const relPath of targetPaths) {
                 await runAllRules({
                   vaultPath,
                   today: new Date(),
                   dryRun,
                   verbose,
                   env: process.env,
-                  selectedRuleNames: [FAST_PATH_RULE],
+                  selectedRuleNames: allFileChangeRuleNames,
                   onlyGlob: relPath,
                 });
+              }
+            }
+          },
+          { debounce, additionalFiles: [CONFIG_FILENAME] },
+        );
+
+        const stopFastPath = fastPathRuleNames.length > 0
+          ? startVaultWatcher(
+              vaultPath,
+              async (relPaths) => {
+                const targetPaths = relPaths.filter((p) => p !== CONFIG_FILENAME);
+                if (targetPaths.length === 0) return;
+                console.log(
+                  `[watch] Running fast-path rules for: ${targetPaths.join(", ")}`,
+                );
+                for (const relPath of targetPaths) {
+                  await runAllRules({
+                    vaultPath,
+                    today: new Date(),
+                    dryRun,
+                    verbose,
+                    env: process.env,
+                    selectedRuleNames: fastPathRuleNames,
+                    onlyGlob: relPath,
+                  });
+                }
               },
               { debounce: FAST_PATH_DEBOUNCE_MS },
             )
