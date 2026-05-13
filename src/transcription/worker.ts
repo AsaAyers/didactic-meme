@@ -95,10 +95,7 @@ async function main(): Promise<void> {
   await startWorker({ stateDir, backend });
 }
 
-if (
-  process.argv[1] &&
-  fileURLToPath(import.meta.url) === process.argv[1]
-) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   main().catch((err: unknown) => {
     console.error("Fatal transcription worker error:", (err as Error).message);
     process.exit(1);
