@@ -33,7 +33,9 @@ function parseFenceMarker(
   const match = line.match(/^ {0,3}(`{3,}|~{3,})/);
   if (!match) return undefined;
   const marker = match[1]!;
-  return { char: marker[0] as "`" | "~", length: marker.length };
+  const firstChar = marker[0];
+  if (firstChar !== "`" && firstChar !== "~") return undefined;
+  return { char: firstChar, length: marker.length };
 }
 
 function closesFence(

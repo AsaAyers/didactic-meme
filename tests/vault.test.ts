@@ -18,6 +18,15 @@ import { startWorker } from "../src/transcription/worker.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_VAULT = join(__dirname, "test_vault");
+const WORKER_PHASE_ONLY_EXPECTED_OUTPUTS = new Set([
+  join(
+    TEST_VAULT,
+    "scenarios",
+    "audio-embed-transcription-failure",
+    "recordings",
+    "2024-01-15 12.34.56.transcript.md",
+  ),
+]);
 
 // Pin the date so the test produces the same output regardless of when it runs.
 const TODAY = new Date(2026, 4, 3); // 2026-05-03
@@ -31,7 +40,8 @@ async function createTempDir(prefix: string): Promise<string> {
 }
 
 function createDeterministicJobIdFactory(): (createdAt: Date) => string {
-  return (createdAt: Date) => `${createdAt.getTime().toString(36)}-test-job-001`;
+  return (createdAt: Date) =>
+    `${createdAt.getTime().toString(36)}-test-job-001`;
 }
 
 async function walkExpectedFiles(dir: string): Promise<string[]> {
@@ -86,10 +96,7 @@ describe("test vault — .md.expected snapshots", () => {
       const actualPath = expectedPath.slice(0, -".expected".length);
       const relPath = relative(TEST_VAULT, actualPath);
 
-      if (
-        relPath ===
-        "scenarios/audio-embed-transcription-failure/recordings/2024-01-15 12.34.56.transcript.md"
-      ) {
+      if (WORKER_PHASE_ONLY_EXPECTED_OUTPUTS.has(actualPath)) {
         continue;
       }
 
@@ -157,7 +164,9 @@ describe("test vault — .md.expected snapshots", () => {
       stateDir,
       backend: {
         async transcribe(audioPath: string) {
-          throw new Error(`Fake backend failed for ${relative(vaultPath, audioPath)}`);
+          throw new Error(
+            `Fake backend failed for ${relative(vaultPath, audioPath)}`,
+          );
         },
       },
       pollIntervalMs: 1,

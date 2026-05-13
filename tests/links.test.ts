@@ -156,9 +156,9 @@ describe("matchesLinkQuery", () => {
 
   it("treats extension matching as exact and case-sensitive", () => {
     const q: LinkQuery = { type: "link", extension: ".m4a" };
-    expect(
-      matchesLinkQuery({ ...audioEmbed, target: "REC.M4A" }, q),
-    ).toBe(false);
+    expect(matchesLinkQuery({ ...audioEmbed, target: "REC.M4A" }, q)).toBe(
+      false,
+    );
   });
 
   it("matches when both embed and extension filters match", () => {
@@ -188,9 +188,9 @@ describe("deriveTranscriptTarget", () => {
   });
 
   it("preserves spaces in the source path", () => {
-    expect(
-      deriveTranscriptTarget("recordings/2024-01-15 12.34.56.m4a"),
-    ).toBe("recordings/2024-01-15 12.34.56.transcript.md");
+    expect(deriveTranscriptTarget("recordings/2024-01-15 12.34.56.m4a")).toBe(
+      "recordings/2024-01-15 12.34.56.transcript.md",
+    );
   });
 
   it("handles filename with no extension", () => {

@@ -434,14 +434,14 @@ rules must complete before it, and the runner performs a stable topological
 sort so the order is correct regardless of how rules are listed in the
 registry.
 
-| Rule                     | What it does |
-| ------------------------ | ------------ |
-| `normalizeTodayLiteral`  | Replaces `today` / `yesterday` / `tomorrow` inline date literals with ISO dates. |
-| `stampDone`              | Adds `done:YYYY-MM-DD` to newly completed tasks that do not already have one. |
-| `completedTaskRollover`  | Clones recurring completed tasks forward to their next cycle. |
-| `removeEphemeralOverdueTasks` | Removes unchecked overdue tasks marked `ephemeral`. |
-| `ensureAudioTranscripts` | For each embedded `.m4a`, inserts a mirrored transcript embed, creates a sibling `.transcript.md` placeholder when needed, and enqueues async transcription. |
-| `incompleteTaskAlert`    | Groups incomplete tasks and optionally posts them to a configured alert endpoint. |
+| Rule                          | What it does                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `normalizeTodayLiteral`       | Replaces `today` / `yesterday` / `tomorrow` inline date literals with ISO dates.                                                                             |
+| `stampDone`                   | Adds `done:YYYY-MM-DD` to newly completed tasks that do not already have one.                                                                                |
+| `completedTaskRollover`       | Clones recurring completed tasks forward to their next cycle.                                                                                                |
+| `removeEphemeralOverdueTasks` | Removes unchecked overdue tasks marked `ephemeral`.                                                                                                          |
+| `ensureAudioTranscripts`      | For each embedded `.m4a`, inserts a mirrored transcript embed, creates a sibling `.transcript.md` placeholder when needed, and enqueues async transcription. |
+| `incompleteTaskAlert`         | Groups incomplete tasks and optionally posts them to a configured alert endpoint.                                                                            |
 
 ### Rule 1 – Normalize Today Literal
 
