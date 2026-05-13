@@ -477,7 +477,14 @@ async function runQuery(
             evaluatePredicate(t, query.predicate!, ctx.today),
           )
         : allTasks;
-      results.push({ type: "tasks", filePath, raw, parts, tree, selectedTasks });
+      results.push({
+        type: "tasks",
+        filePath,
+        raw,
+        parts,
+        tree,
+        selectedTasks,
+      });
     } else {
       // link query
       const links = extractMarkdownLinks(parts.body);
@@ -579,7 +586,9 @@ async function runActions(
             currentBody = actionResult.updatedBody;
           }
           if (actionResult.newFiles) {
-            for (const [path, content] of Object.entries(actionResult.newFiles)) {
+            for (const [path, content] of Object.entries(
+              actionResult.newFiles,
+            )) {
               changes.push({ path, content });
             }
           }
