@@ -18,7 +18,7 @@ import { startWorker } from "../src/transcription/worker.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_VAULT = join(__dirname, "test_vault");
-const WORKER_PHASE_ONLY_EXPECTED_OUTPUTS = new Set([
+const WORKER_ONLY_EXPECTED_OUTPUTS = new Set([
   join(
     TEST_VAULT,
     "scenarios",
@@ -96,7 +96,7 @@ describe("test vault — .md.expected snapshots", () => {
       const actualPath = expectedPath.slice(0, -".expected".length);
       const relPath = relative(TEST_VAULT, actualPath);
 
-      if (WORKER_PHASE_ONLY_EXPECTED_OUTPUTS.has(actualPath)) {
+      if (WORKER_ONLY_EXPECTED_OUTPUTS.has(actualPath)) {
         continue;
       }
 
@@ -147,6 +147,12 @@ describe("test vault — .md.expected snapshots", () => {
     const sourceScenario = join(TEST_VAULT, "scenarios", scenarioName);
     const vaultPath = await createTempDir("didactic-meme-vault-");
     const stateDir = await createTempDir("didactic-meme-state-");
+    const expectedAudioPath = join(
+      vaultPath,
+      "recordings",
+      "2024-01-15 12.34.56.m4a",
+    );
+    const transcribedAudioPaths: string[] = [];
     let shouldContinue = true;
 
     await fs.cp(sourceScenario, vaultPath, { recursive: true });
@@ -164,6 +170,7 @@ describe("test vault — .md.expected snapshots", () => {
       stateDir,
       backend: {
         async transcribe(audioPath: string) {
+          transcribedAudioPaths.push(audioPath);
           throw new Error(
             `Fake backend failed for ${relative(vaultPath, audioPath)}`,
           );
@@ -179,6 +186,8 @@ describe("test vault — .md.expected snapshots", () => {
       },
       sleep: async () => Promise.resolve(),
     });
+
+    expect(transcribedAudioPaths).toEqual([expectedAudioPath]);
 
     const expectedFiles = await walkExpectedFiles(sourceScenario);
     const failures: string[] = [];
