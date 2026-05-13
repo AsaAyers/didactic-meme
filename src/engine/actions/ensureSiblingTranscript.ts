@@ -6,12 +6,6 @@ import {
   resolveTranscriptContext,
 } from "./linkTranscriptionContext.js";
 
-const TRANSCRIPT_PLACEHOLDER = `# Transcript
-
-Status: pending
-Job: 
-`;
-
 export function applyEnsureSiblingTranscript(
   taskText: string,
   action: EnsureSiblingTranscriptAction,
@@ -35,8 +29,5 @@ export function applyEnsureSiblingTranscript(
   return {
     text: taskText,
     ...(updatedBody ? { updatedBody } : {}),
-    newFiles: {
-      [transcript.transcriptPath]: TRANSCRIPT_PLACEHOLDER,
-    },
   };
 }
