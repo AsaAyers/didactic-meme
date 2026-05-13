@@ -521,7 +521,9 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
   async function withTempVault(
     run: (vaultPath: string) => Promise<void>,
   ): Promise<void> {
-    const vaultPath = await fs.mkdtemp(join(tmpdir(), "didactic-meme-link-"));
+    const vaultPath = await fs.mkdtemp(
+      join(tmpdir(), "didactic-meme-transcript-"),
+    );
     try {
       await run(vaultPath);
     } finally {
@@ -632,7 +634,7 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
       expect(result.changes[0]?.content).toContain(
         "![[audio/clip.transcript.md]]",
       );
-      expect(result.summary).toContain("enqueued 0 transcription job(s)");
+      expect(result.summary).toBe("Processed 1 link(s) across 1 file(s).");
     });
   });
 
@@ -669,7 +671,7 @@ describe("ruleSpecRunner — ensureAudioTranscripts", () => {
         makeCtx(vaultPath),
       );
       expect(result.changes).toHaveLength(0);
-      expect(result.summary).toContain("enqueued 0 transcription job(s)");
+      expect(result.summary).toBe("Processed 1 link(s) across 0 file(s).");
     });
   });
 });

@@ -11,7 +11,9 @@ function buildJobId(
   createdAt: string,
 ): string {
   const digest = createHash("sha1")
-    .update(`${sourceNotePath}|${link.target}|${transcriptPath}|${link.lineIndex}`)
+    .update(
+      `${sourceNotePath}|${link.target}|${transcriptPath}|${link.lineIndex}`,
+    )
     .digest("hex")
     .slice(0, 12);
   return `${Date.parse(createdAt).toString(36)}-${digest}`;
@@ -24,8 +26,11 @@ export function applyRequestTranscription(
   ctx?: LinkActionContext,
 ): ActionOutcome {
   void action;
+  if (!link || !ctx) {
+    return { text: taskText };
+  }
   const transcript = resolveTranscriptContext(link, ctx);
-  if (!transcript || transcript.transcriptExists || !ctx) {
+  if (!transcript || transcript.transcriptExists) {
     return { text: taskText };
   }
   const createdAt = ctx.today.toISOString();
@@ -34,12 +39,7 @@ export function applyRequestTranscription(
     text: taskText,
     transcriptionJobs: [
       {
-        id: buildJobId(
-          link!,
-          transcript.transcriptPath,
-          ctx.sourceNotePath,
-          createdAt,
-        ),
+        id: buildJobId(link, transcript.transcriptPath, ctx.sourceNotePath, createdAt),
         audioPath: transcript.audioPath,
         transcriptPath: transcript.transcriptPath,
         sourceNotePath: ctx.sourceNotePath,

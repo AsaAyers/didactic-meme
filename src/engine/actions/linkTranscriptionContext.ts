@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import {
   basename,
   dirname,
@@ -24,7 +24,9 @@ export type ResolvedTranscriptContext = {
 };
 
 function isWithinVault(vaultPath: string, filePath: string): boolean {
-  const rel = relative(vaultPath, filePath);
+  const vaultRealPath = realpathSync(vaultPath);
+  const fileRealPath = realpathSync(filePath);
+  const rel = relative(vaultRealPath, fileRealPath);
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
@@ -35,8 +37,8 @@ export function resolveTranscriptContext(
   if (!link || !ctx) return undefined;
 
   const audioPath = resolve(dirname(ctx.sourceNotePath), link.target);
-  if (!isWithinVault(ctx.vaultPath, audioPath)) return undefined;
   if (!existsSync(audioPath)) return undefined;
+  if (!isWithinVault(ctx.vaultPath, audioPath)) return undefined;
 
   const transcriptTarget = deriveTranscriptTarget(link.target);
   const transcriptEmbed = buildMirroredTranscriptEmbed(link, transcriptTarget);
