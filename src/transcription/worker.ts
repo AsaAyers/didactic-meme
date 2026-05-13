@@ -1,4 +1,3 @@
-import { basename } from "node:path";
 import { promises as fs } from "node:fs";
 import { buildFailureContent, buildSuccessContent } from "./format.js";
 import { claimNext, markDone, markFailed } from "./queue.js";
@@ -6,8 +5,18 @@ import type { TranscriptionJob, WorkerOptions } from "./types.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
 
-function toAudioWikilink(audioPath: string): string {
-  return `[[${basename(audioPath)}]]`;
+async function readSourceAudioWikilink(
+  transcriptPath: string,
+  audioPath: string,
+): Promise<string> {
+  try {
+    const current = await fs.readFile(transcriptPath, "utf-8");
+    const match = current.match(/^Source audio: (.+)$/m);
+    if (match?.[1]) return match[1].trim();
+  } catch {
+    // Fall through to absolute-path wikilink fallback.
+  }
+  return `[[${audioPath}]]`;
 }
 
 async function recoverStaleProcessingJobs(stateDir: string): Promise<void> {
@@ -55,15 +64,15 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
         continue;
       }
 
+      const sourceAudioWikilink = await readSourceAudioWikilink(
+        job.transcriptPath,
+        job.audioPath,
+      );
       try {
         const transcriptText = await options.backend.transcribe(job.audioPath);
         await fs.writeFile(
           job.transcriptPath,
-          buildSuccessContent(
-            job.id,
-            toAudioWikilink(job.audioPath),
-            transcriptText,
-          ),
+          buildSuccessContent(job.id, sourceAudioWikilink, transcriptText),
           "utf-8",
         );
         await markDone(options.stateDir, job.id);
@@ -71,7 +80,7 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
         const message = err instanceof Error ? err.message : String(err);
         await fs.writeFile(
           job.transcriptPath,
-          buildFailureContent(job.id, toAudioWikilink(job.audioPath), message),
+          buildFailureContent(job.id, sourceAudioWikilink, message),
           "utf-8",
         );
         await markFailed(options.stateDir, job.id, message);
