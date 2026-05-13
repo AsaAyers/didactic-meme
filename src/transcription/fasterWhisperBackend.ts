@@ -123,7 +123,9 @@ export function createFasterWhisperBackend(
         handleMessage(JSON.parse(line) as BackendMessage);
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Invalid backend JSON";
+          err instanceof Error
+            ? `Failed to parse backend message: ${err.message}`
+            : "Failed to parse backend message";
         if (!isReady) {
           readyState.reject?.(new Error(message));
         }

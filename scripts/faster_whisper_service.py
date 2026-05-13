@@ -33,7 +33,7 @@ def read_requests(model: WhisperModel) -> None:
                 if segment.text.strip()
             )
             print(json.dumps({"type": "result", "text": text}), flush=True)
-        except Exception as err:  # pragma: no cover - exercised via Node tests
+        except Exception as err:
             print(
                 json.dumps({"type": "error", "error": str(err)}),
                 flush=True,
