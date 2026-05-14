@@ -5,9 +5,8 @@ import remarkStringify, { type Options as RemarkStringifyOptions } from "remark-
 import matter from "gray-matter";
 import { visit, SKIP } from "unist-util-visit";
 
-type AstNode = { type: string };
-type Text = AstNode & { type: "text"; value: string };
-type Parent = AstNode & { children: AstNode[] };
+type Text = { type: "text"; value: string };
+type Parent = { children: unknown[] };
 const createParseProcessor = () => unified().use(remarkParse).use(remarkGfm);
 type Root = ReturnType<ReturnType<typeof createParseProcessor>["parse"]>;
 type Handlers = NonNullable<RemarkStringifyOptions["handlers"]>;

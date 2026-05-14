@@ -17,6 +17,9 @@
 import { describe, it, expect } from "vitest";
 import { parseMarkdown, stringifyMarkdown } from "../src/markdown/parse.js";
 
+type Root = ReturnType<typeof parseMarkdown>;
+type Paragraph = Extract<Root["children"][number], { type: "paragraph" }>;
+
 function roundTrip(content: string): string {
   return stringifyMarkdown(parseMarkdown(content));
 }
@@ -99,7 +102,7 @@ describe("round-trip: asterisks in non-emphasis contexts", () => {
     // The output representation may differ slightly but the rendered semantics
     // must be identical: the * characters must not form an emphasis node.
     const tree = parseMarkdown(out);
-    const para = tree.children[0] as { children: Array<{ type: string }> };
+    const para = tree.children[0] as Paragraph;
     // All children must be text — no emphasis node.
     for (const child of para.children) {
       expect(child.type).toBe("text");
