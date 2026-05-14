@@ -15,6 +15,17 @@ export type Task = {
   sourcePath: string;
 };
 
+function isWikiLinkNode(node: unknown): node is WikiLinkNode {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "type" in node &&
+    "value" in node &&
+    (node as { type: unknown }).type === "wikiLink" &&
+    typeof (node as { value: unknown }).value === "string"
+  );
+}
+
 function getListItemText(item: ListItem): string {
   const parts: string[] = [];
   for (const child of item.children) {
@@ -24,9 +35,14 @@ function getListItemText(item: ListItem): string {
           parts.push((inline as Text).value);
           continue;
         }
-        const wikiLink = inline as unknown as WikiLinkNode;
-        if (wikiLink.type === "wikiLink") {
-          parts.push(`[[${wikiLink.value}]]`);
+        const inlineNode: unknown = inline;
+        if (isWikiLinkNode(inlineNode)) {
+          const alias = inlineNode.data?.alias;
+          if (alias && alias !== inlineNode.value) {
+            parts.push(`[[${inlineNode.value}|${alias}]]`);
+          } else {
+            parts.push(`[[${inlineNode.value}]]`);
+          }
         }
       }
     }
