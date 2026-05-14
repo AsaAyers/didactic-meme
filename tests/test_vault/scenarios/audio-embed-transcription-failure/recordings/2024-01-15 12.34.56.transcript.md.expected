@@ -1,11 +1,10 @@
 ---
-status: failed
+status: failedTranscription
 jobId: mopf7ts0-test-job-001
 ---
 Source audio: [[recordings/2024-01-15 12.34.56.m4a]]
 
-> Transcription failed.
-
+> Transcription failed during audio processing.
 ## Error
 
 Fake backend failed for recordings/2024-01-15 12.34.56.m4a

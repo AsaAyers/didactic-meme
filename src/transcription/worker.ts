@@ -95,19 +95,19 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
 
         if (process.env.OLLAMA_HOST) {
           transcriptResult = await processTranscript(transcriptText);
-
-          await fs.writeFile(
-            job.transcriptPath,
-            formatTranscriptFile({
-              jobId: job.id,
-              sourceAudioWikilink,
-              transcriptText,
-              transcriptResult,
-              status: "done",
-            }),
-            "utf-8",
-          );
         }
+
+        await fs.writeFile(
+          job.transcriptPath,
+          formatTranscriptFile({
+            jobId: job.id,
+            sourceAudioWikilink,
+            transcriptText,
+            transcriptResult,
+            status: "done",
+          }),
+          "utf-8",
+        );
         await markDone(options.stateDir, job.id);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

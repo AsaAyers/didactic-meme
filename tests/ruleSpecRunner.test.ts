@@ -47,7 +47,7 @@ function expectPendingTranscriptPlaceholder(
   expect(content).toContain("> Transcription is pending.");
   expect(content).toContain(`Source audio: [[${expectedAudioTarget}]]`);
 
-  const jobMatch = content.match(/^Job: ([a-z0-9-]+)$/m);
+  const jobMatch = content.match(/^jobId: ([a-z0-9-]+)$/m);
   expect(jobMatch).not.toBeNull();
   expect(jobMatch?.[1]).toMatch(/^[a-z0-9-]+$/);
 }
