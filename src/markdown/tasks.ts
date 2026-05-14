@@ -1,16 +1,11 @@
 import { visit } from "unist-util-visit";
+import type { parseMarkdown } from "./parse.js";
 
-type AstNode = { type: string; [key: string]: unknown };
-type Text = AstNode & { type: "text"; value: string };
-type Paragraph = AstNode & { type: "paragraph"; children: AstNode[] };
-type ListItem = AstNode & {
-  type: "listItem";
-  checked?: boolean | null;
-  spread?: boolean;
-  children: AstNode[];
-};
-type List = AstNode & { type: "list"; children: ListItem[] };
-type Root = AstNode & { type: "root"; children: AstNode[] };
+type Root = ReturnType<typeof parseMarkdown>;
+type List = Extract<Root["children"][number], { type: "list" }>;
+type ListItem = List["children"][number];
+type Paragraph = Extract<ListItem["children"][number], { type: "paragraph" }>;
+type Text = Extract<Paragraph["children"][number], { type: "text" }>;
 
 export type Task = {
   text: string;

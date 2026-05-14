@@ -1,15 +1,16 @@
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import remarkStringify from "remark-stringify";
+import remarkStringify, { type Options as RemarkStringifyOptions } from "remark-stringify";
 import matter from "gray-matter";
 import { visit, SKIP } from "unist-util-visit";
 
-type AstNode = { type: string; [key: string]: unknown };
+type AstNode = { type: string };
 type Text = AstNode & { type: "text"; value: string };
 type Parent = AstNode & { children: AstNode[] };
-type Root = Parent & { type: "root" };
-type Handlers = Record<string, unknown>;
+const createParseProcessor = () => unified().use(remarkParse).use(remarkGfm);
+type Root = ReturnType<ReturnType<typeof createParseProcessor>["parse"]>;
+type Handlers = NonNullable<RemarkStringifyOptions["handlers"]>;
 
 // ---------------------------------------------------------------------------
 // Wikilink support
@@ -462,8 +463,8 @@ const customHandlers = {
 // ---------------------------------------------------------------------------
 
 export function parseMarkdown(content: string): Root {
-  const processor = unified().use(remarkParse).use(remarkGfm);
-  return processor.parse(content) as unknown as Root;
+  const processor = createParseProcessor();
+  return processor.parse(content);
 }
 
 export function stringifyMarkdown(tree: Root): string {
@@ -476,7 +477,7 @@ export function stringifyMarkdown(tree: Root): string {
     rule: "-",
     handlers: customHandlers,
   });
-  return processor.stringify(tree as never);
+  return processor.stringify(tree);
 }
 
 export function parseFrontmatter(raw: string): {

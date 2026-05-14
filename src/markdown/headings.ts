@@ -1,15 +1,15 @@
 import { parseMarkdown } from "./parse.js";
 
-type AstNode = { type: string; [key: string]: unknown };
-type Text = AstNode & { type: "text"; value: string };
-type Heading = AstNode & { type: "heading"; depth: number; children: AstNode[] };
-type Paragraph = AstNode & { type: "paragraph"; children: AstNode[] };
-type RootContent = { type: string };
-type Root = { children: RootContent[] };
+type Root = ReturnType<typeof parseMarkdown>;
+type RootContent = Root["children"][number];
+type Heading = Extract<RootContent, { type: "heading" }>;
+type Paragraph = Extract<RootContent, { type: "paragraph" }>;
+type Text = Extract<Heading["children"][number], { type: "text" }>;
 
 function getHeadingText(node: Heading): string {
-  const children = node.children as AstNode[];
-  return children.map((child) => (child.type === "text" ? (child as Text).value : "")).join("");
+  return node.children
+    .map((child) => (child.type === "text" ? (child as Text).value : ""))
+    .join("");
 }
 
 export function appendUnderHeading(
@@ -34,11 +34,7 @@ export function appendUnderHeading(
 
   // If heading not found, create it at end
   if (headingIdx === -1) {
-    const headingNode: Heading = {
-      type: "heading",
-      depth: 2,
-      children: [{ type: "text", value: headingText } as Text],
-    };
+    const headingNode = parseMarkdown(`## ${headingText}\n`).children[0] as Heading;
     tree.children.push(headingNode);
     headingIdx = tree.children.length - 1;
     headingLevel = 2;
@@ -67,24 +63,24 @@ export function appendUnderHeading(
   // Parse and collect nodes to append - parse together so consecutive list items merge into one list
   const combined = linesToAppend.join("\n");
   const parsed = parseMarkdown(combined);
-  const newNodes = [...(parsed.children as RootContent[])];
+  const newNodes: RootContent[] = [...parsed.children];
 
   // Insert new nodes at blockEnd position
   tree.children.splice(blockEnd, 0, ...newNodes);
 }
 
 function isEmptyNode(node: RootContent): boolean {
-    if (node.type === "paragraph") {
-      const para = node as Paragraph;
-      if (para.children.length === 0) return true;
-      const first = para.children[0] as AstNode;
-      if (
-        para.children.length === 1 &&
-        first.type === "text" &&
-        (first as Text).value.trim() === ""
-      ) {
-        return true;
-      }
+  if (node.type === "paragraph") {
+    const para = node as Paragraph;
+    if (para.children.length === 0) return true;
+    const first = para.children[0];
+    if (
+      para.children.length === 1 &&
+      first.type === "text" &&
+      (first as Text).value.trim() === ""
+    ) {
+      return true;
+    }
   }
   return false;
 }
