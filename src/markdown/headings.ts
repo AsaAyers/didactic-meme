@@ -77,11 +77,10 @@ function isEmptyNode(node: RootContent): boolean {
   if (node.type === "paragraph") {
     const para = node as Paragraph;
     if (para.children.length === 0) return true;
-    const first = para.children[0];
     if (
       para.children.length === 1 &&
-      first.type === "text" &&
-      (first as Text).value.trim() === ""
+      para.children[0].type === "text" &&
+      (para.children[0] as Text).value.trim() === ""
     ) {
       return true;
     }
