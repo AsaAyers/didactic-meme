@@ -206,6 +206,50 @@ describe("runAllRules — selectedRuleNames", () => {
     );
     expect(topLevelTodo).toBeUndefined();
   });
+
+  it("onlyGlob: array of paths processes all matching files in a single run", async () => {
+    // Simulate watch mode batching: pass an array of relative paths.
+    const { changes } = await runAllRules({
+      vaultPath: TEST_VAULT,
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      selectedRuleNames: ["normalizeTodayLiteral"],
+      onlyGlob: ["TODO.md"],
+    });
+    // The top-level TODO.md should appear — it matches the array entry.
+    const todoChange = changes.find((c) => c.path.endsWith("TODO.md"));
+    expect(todoChange).toBeDefined();
+    expect(todoChange!.content).toContain("due:2026-05-03");
+    // No file outside the array should appear.
+    for (const c of changes) {
+      expect(c.path).toMatch(/TODO\.md$/);
+    }
+  });
+
+  it("onlyGlob: array with multiple entries processes all matched files", async () => {
+    // Pass both the top-level TODO.md and a specific scenario glob.
+    const { changes } = await runAllRules({
+      vaultPath: TEST_VAULT,
+      today: TODAY,
+      dryRun: true,
+      env: {},
+      selectedRuleNames: ["normalizeTodayLiteral"],
+      onlyGlob: ["TODO.md", "scenarios/**"],
+    });
+    // TODO.md must be present.
+    const todoChange = changes.find(
+      (c) => c.path.endsWith("TODO.md") && !c.path.includes("/scenarios/"),
+    );
+    expect(todoChange).toBeDefined();
+    // All changes must match one of the two patterns.
+    for (const c of changes) {
+      const isTopLevelTodo =
+        c.path.endsWith("TODO.md") && !c.path.includes("/scenarios/");
+      const isUnderScenarios = c.path.includes("/scenarios/");
+      expect(isTopLevelTodo || isUnderScenarios).toBe(true);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -197,18 +197,15 @@ if (init) {
 
             console.log(`[watch] Running rules for: ${targetPaths.join(", ")}`);
             if (allFileChangeRuleNames.length > 0) {
-              // Keep this sequential: runAllRules mutates shared vault files.
-              for (const relPath of targetPaths) {
-                await runAllRules({
-                  vaultPath,
-                  today: new Date(),
-                  dryRun,
-                  verbose,
-                  env: process.env,
-                  selectedRuleNames: allFileChangeRuleNames,
-                  onlyGlob: relPath,
-                });
-              }
+              await runAllRules({
+                vaultPath,
+                today: new Date(),
+                dryRun,
+                verbose,
+                env: process.env,
+                selectedRuleNames: allFileChangeRuleNames,
+                onlyGlob: targetPaths,
+              });
             }
           },
           { debounce, additionalFiles: [CONFIG_FILENAME] },
@@ -224,18 +221,15 @@ if (init) {
                   console.log(
                     `[watch] Running fast-path rules for: ${targetPaths.join(", ")}`,
                   );
-                  // Keep this sequential: runAllRules mutates shared vault files.
-                  for (const relPath of targetPaths) {
-                    await runAllRules({
-                      vaultPath,
-                      today: new Date(),
-                      dryRun,
-                      verbose,
-                      env: process.env,
-                      selectedRuleNames: fastPathRuleNames,
-                      onlyGlob: relPath,
-                    });
-                  }
+                  await runAllRules({
+                    vaultPath,
+                    today: new Date(),
+                    dryRun,
+                    verbose,
+                    env: process.env,
+                    selectedRuleNames: fastPathRuleNames,
+                    onlyGlob: targetPaths,
+                  });
                 },
                 { debounce: FAST_PATH_DEBOUNCE_MS },
               )
