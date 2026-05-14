@@ -1,7 +1,11 @@
 import matter from "gray-matter";
 
+/** Matches a YAML frontmatter block at the start of a file. */
+const FRONTMATTER_RE = /^---\r?\n(?:[\s\S]*?\r?\n)?---(?:\r?\n|$)/;
+
 export type SplitFrontmatterResult = {
   data: Record<string, unknown>;
+  bodyPrefix: string;
   body: string;
 };
 
@@ -10,9 +14,30 @@ export type SplitFrontmatterResult = {
  * Files without frontmatter always return an empty object for `data`.
  */
 export function splitFrontmatter(raw: string): SplitFrontmatterResult {
+  const fmMatch = FRONTMATTER_RE.exec(raw);
+  if (!fmMatch) {
+    return { data: {}, bodyPrefix: "", body: raw };
+  }
+  const frontmatter = fmMatch[0];
+  const rest = raw.slice(frontmatter.length);
+  if (rest.startsWith("\r\n")) {
+    return {
+      data: matter(raw).data as Record<string, unknown>,
+      bodyPrefix: "\r\n",
+      body: rest.slice(2),
+    };
+  }
+  if (rest.startsWith("\n")) {
+    return {
+      data: matter(raw).data as Record<string, unknown>,
+      bodyPrefix: "\n",
+      body: rest.slice(1),
+    };
+  }
   const parsed = matter(raw);
   return {
     data: parsed.data as Record<string, unknown>,
+    bodyPrefix: "",
     body: parsed.content,
   };
 }
@@ -22,5 +47,10 @@ export function joinFrontmatter(
   body: string,
 ): string {
   if (Object.keys(parts.data).length === 0) return body;
-  return matter.stringify(body, parts.data);
+  const serialized = matter.stringify("", parts.data);
+  const frontmatterBlock = serialized.endsWith("\n\n")
+    ? serialized.slice(0, -1)
+    : serialized;
+  if (body.length === 0) return frontmatterBlock;
+  return `${frontmatterBlock}${parts.bodyPrefix}${body}`;
 }
