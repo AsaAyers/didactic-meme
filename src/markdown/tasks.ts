@@ -1,5 +1,11 @@
 import { visit } from "unist-util-visit";
-import type { Root, ListItem, Paragraph, Text } from "mdast";
+import type { WikiLinkNode, parseMarkdown } from "./parse.js";
+
+type Root = ReturnType<typeof parseMarkdown>;
+type List = Extract<Root["children"][number], { type: "list" }>;
+type ListItem = List["children"][number];
+type Paragraph = Extract<ListItem["children"][number], { type: "paragraph" }>;
+type Text = Extract<Paragraph["children"][number], { type: "text" }>;
 
 export type Task = {
   text: string;
@@ -9,6 +15,12 @@ export type Task = {
   sourcePath: string;
 };
 
+function isWikiLinkNode(node: unknown): node is WikiLinkNode {
+  if (typeof node !== "object" || node === null) return false;
+  if (!("type" in node) || !("value" in node)) return false;
+  return node.type === "wikiLink" && typeof node.value === "string";
+}
+
 function getListItemText(item: ListItem): string {
   const parts: string[] = [];
   for (const child of item.children) {
@@ -16,6 +28,16 @@ function getListItemText(item: ListItem): string {
       for (const inline of (child as Paragraph).children) {
         if (inline.type === "text") {
           parts.push((inline as Text).value);
+          continue;
+        }
+        const inlineNode: unknown = inline;
+        if (isWikiLinkNode(inlineNode)) {
+          const alias = inlineNode.data?.alias;
+          if (alias && alias !== inlineNode.value) {
+            parts.push(`[[${inlineNode.value}|${alias}]]`);
+          } else {
+            parts.push(`[[${inlineNode.value}]]`);
+          }
         }
       }
     }
@@ -48,7 +70,7 @@ export function extractTasks(tree: Root, sourcePath: string): Task[] {
 export function removeTask(tree: Root, taskText: string): boolean {
   let found = false;
   visit(tree, "list", (listNode) => {
-    const list = listNode as import("mdast").List;
+    const list = listNode as List;
     const idx = list.children.findIndex((item) => {
       if (item.checked === null || item.checked === undefined) return false;
       return getListItemText(item) === taskText;
@@ -92,7 +114,7 @@ export function insertTaskAfter(
 ): boolean {
   let inserted = false;
   visit(tree, "list", (listNode) => {
-    const list = listNode as import("mdast").List;
+    const list = listNode as List;
     const idx = list.children.findIndex((item) => {
       if (item.checked === null || item.checked === undefined) return false;
       return getListItemText(item) === afterText;

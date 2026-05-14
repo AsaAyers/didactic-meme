@@ -1,5 +1,10 @@
-import type { Root, Heading, Text, Paragraph, RootContent } from "mdast";
 import { parseMarkdown } from "./parse.js";
+
+type Root = ReturnType<typeof parseMarkdown>;
+type RootContent = Root["children"][number];
+type Heading = Extract<RootContent, { type: "heading" }>;
+type Paragraph = Extract<RootContent, { type: "paragraph" }>;
+type Text = Extract<Heading["children"][number], { type: "text" }>;
 
 function getHeadingText(node: Heading): string {
   return node.children
