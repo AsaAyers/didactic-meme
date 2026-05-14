@@ -28,7 +28,7 @@ interface ObsidianEmbedNode {
   value: string;
 }
 
-interface WikiLinkNode {
+export interface WikiLinkNode {
   type: "wikiLink";
   value: string;
   data?: {

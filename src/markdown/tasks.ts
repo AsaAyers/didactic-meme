@@ -1,5 +1,5 @@
 import { visit } from "unist-util-visit";
-import type { parseMarkdown } from "./parse.js";
+import type { WikiLinkNode, parseMarkdown } from "./parse.js";
 
 type Root = ReturnType<typeof parseMarkdown>;
 type List = Extract<Root["children"][number], { type: "list" }>;
@@ -24,8 +24,8 @@ function getListItemText(item: ListItem): string {
           parts.push((inline as Text).value);
           continue;
         }
-        const wikiLink = inline as { type: string; value?: unknown };
-        if (wikiLink.type === "wikiLink" && typeof wikiLink.value === "string") {
+        const wikiLink = inline as unknown as WikiLinkNode;
+        if (wikiLink.type === "wikiLink") {
           parts.push(`[[${wikiLink.value}]]`);
         }
       }
