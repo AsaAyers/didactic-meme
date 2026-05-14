@@ -5,7 +5,24 @@
  * vitest's fake-timer infrastructure so no real wall-clock time is needed.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createAlertScheduler } from "../src/engine/scheduler.js";
+import {
+  createAlertScheduler,
+  normalizeAlertSchedule,
+} from "../src/engine/scheduler.js";
+
+describe("normalizeAlertSchedule", () => {
+  it("normalizes single-digit values and deduplicates entries", () => {
+    const result = normalizeAlertSchedule(["9:5", "09:05", " 09:5 "]);
+    expect(result.valid).toEqual(["09:05"]);
+    expect(result.invalid).toEqual([]);
+  });
+
+  it("returns invalid entries separately", () => {
+    const result = normalizeAlertSchedule(["08:00", "25:00", "abc"]);
+    expect(result.valid).toEqual(["08:00"]);
+    expect(result.invalid).toEqual(["25:00", "abc"]);
+  });
+});
 
 describe("createAlertScheduler", () => {
   beforeEach(() => {
@@ -57,6 +74,21 @@ describe("createAlertScheduler", () => {
     stop();
   });
 
+  it("fires immediately on startup when current time matches", () => {
+    vi.setSystemTime(new Date(2026, 4, 7, 8, 0, 0)); // 08:00:00
+    const alerts: string[] = [];
+    const stop = createAlertScheduler(
+      () => ["08:00"],
+      async () => {
+        alerts.push("fired");
+      },
+      1_000,
+    );
+
+    expect(alerts).toHaveLength(1);
+    stop();
+  });
+
   it("does not fire when the current time does not match the schedule", async () => {
     vi.setSystemTime(new Date(2026, 4, 7, 9, 30, 0)); // 09:30
     const alerts: string[] = [];
@@ -71,6 +103,23 @@ describe("createAlertScheduler", () => {
     await vi.advanceTimersByTimeAsync(1_000);
     expect(alerts).toHaveLength(0);
 
+    stop();
+  });
+
+  it("matches schedule entries with single-digit hour/minute formatting", async () => {
+    vi.setSystemTime(new Date(2026, 4, 7, 9, 5, 0)); // 09:05
+    const alerts: string[] = [];
+    const stop = createAlertScheduler(
+      () => ["9:5"],
+      async () => {
+        alerts.push("fired");
+      },
+      1_000,
+    );
+
+    expect(alerts).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(alerts).toHaveLength(1);
     stop();
   });
 
@@ -166,18 +215,18 @@ describe("createAlertScheduler", () => {
   // stop() cancels the interval
   // ---------------------------------------------------------------------------
 
-  it("stop function cancels the interval so onAlert is never called", async () => {
+  it("stop function cancels interval ticks after startup check", async () => {
     vi.setSystemTime(new Date(2026, 4, 7, 8, 0, 0));
     const alerts: string[] = [];
     const stop = createAlertScheduler(
-      () => ["08:00"],
+      () => ["08:01"],
       async () => {
         alerts.push("fired");
       },
       1_000,
     );
 
-    // Cancel before the first tick.
+    // Cancel before the first interval tick reaches 08:01.
     stop();
     await vi.advanceTimersByTimeAsync(1_000);
     expect(alerts).toHaveLength(0);

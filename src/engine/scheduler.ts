@@ -19,6 +19,39 @@
  * @param intervalMs   Check period in milliseconds. Defaults to 60 000 (1 min).
  * @returns            A stop function — call it to cancel the interval.
  */
+export function normalizeAlertSchedule(
+  schedule: string[],
+): { valid: string[]; invalid: string[] } {
+  const valid = new Set<string>();
+  const invalid: string[] = [];
+
+  for (const value of schedule) {
+    const match = /^\s*(\d{1,2}):(\d{1,2})\s*$/.exec(value);
+    if (!match) {
+      invalid.push(value);
+      continue;
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (
+      !Number.isInteger(hours) ||
+      !Number.isInteger(minutes) ||
+      hours < 0 ||
+      hours > 23 ||
+      minutes < 0 ||
+      minutes > 59
+    ) {
+      invalid.push(value);
+      continue;
+    }
+    valid.add(
+      `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`,
+    );
+  }
+
+  return { valid: [...valid], invalid };
+}
+
 export function createAlertScheduler(
   getSchedule: () => string[],
   onAlert: () => Promise<void>,
@@ -29,7 +62,7 @@ export function createAlertScheduler(
   let lastFiredKey = "";
 
   const check = (): void => {
-    const schedule = getSchedule();
+    const schedule = normalizeAlertSchedule(getSchedule()).valid;
     if (schedule.length === 0) return;
 
     const now = new Date();
@@ -56,6 +89,7 @@ export function createAlertScheduler(
     }
   };
 
+  check();
   const timer = setInterval(check, intervalMs);
 
   return (): void => {

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { runAllRules, runInitPass } from "./engine/runner.js";
 import { startVaultWatcher } from "./engine/watcher.js";
-import { createAlertScheduler } from "./engine/scheduler.js";
+import {
+  createAlertScheduler,
+  normalizeAlertSchedule,
+} from "./engine/scheduler.js";
 import {
   ALERT_RULE,
   FAST_PATH_DEBOUNCE_MS,
@@ -112,7 +115,10 @@ if (init) {
       .then(async (config) => {
         const debounce = config.watch?.debounce ?? 60_000;
         // Mutable so the scheduler picks up changes when the config is reloaded.
-        let alertSchedule: string[] = config.watch?.alertSchedule ?? [];
+        const initialSchedule = normalizeAlertSchedule(
+          config.watch?.alertSchedule ?? [],
+        );
+        let alertSchedule: string[] = initialSchedule.valid;
 
         console.log(`Mode: watch${dryRun ? " (dry run)" : ""}`);
         console.log(`Debounce: ${debounce}ms`);
@@ -121,6 +127,11 @@ if (init) {
         } else {
           console.log(
             `Alert schedule: (none configured — alert will not fire)`,
+          );
+        }
+        if (initialSchedule.invalid.length > 0) {
+          console.warn(
+            `[watch] Ignoring invalid alert schedule entries: ${initialSchedule.invalid.join(", ")}`,
           );
         }
         console.log("");
@@ -155,7 +166,10 @@ if (init) {
               console.log(`[watch] Config changed, reloading...`);
               try {
                 const newConfig = await loadConfig(vaultPath, ruleSpecs);
-                alertSchedule = newConfig.watch?.alertSchedule ?? [];
+                const normalized = normalizeAlertSchedule(
+                  newConfig.watch?.alertSchedule ?? [],
+                );
+                alertSchedule = normalized.valid;
                 if (alertSchedule.length > 0) {
                   console.log(
                     `[watch] Alert schedule updated: ${alertSchedule.join(", ")}`,
@@ -163,6 +177,11 @@ if (init) {
                 } else {
                   console.log(
                     `[watch] Alert schedule updated: (none — alert will not fire)`,
+                  );
+                }
+                if (normalized.invalid.length > 0) {
+                  console.warn(
+                    `[watch] Ignoring invalid alert schedule entries: ${normalized.invalid.join(", ")}`,
                   );
                 }
               } catch (err) {

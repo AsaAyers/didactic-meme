@@ -57,7 +57,20 @@ const httpAlert: CustomAction = {
       Title: "Incomplete Tasks",
     };
     if (alertToken) headers["Authorization"] = `Bearer ${alertToken}`;
-    await fetch(alertUrl, { method: "POST", headers, body: content });
+    const response = await fetch(alertUrl, {
+      method: "POST",
+      headers,
+      body: content,
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      const bodySummary = body.trim();
+      const bodySuffix =
+        bodySummary.length > 0 ? ` — ${bodySummary.slice(0, 200)}` : "";
+      throw new Error(
+        `incompleteTaskAlert HTTP ${response.status} ${response.statusText}${bodySuffix}`,
+      );
+    }
   },
 };
 
