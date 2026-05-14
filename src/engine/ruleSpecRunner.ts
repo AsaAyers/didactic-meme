@@ -188,6 +188,22 @@ function buildMarkdownFileChange(
   return { path: filePath, content: newContent };
 }
 
+/**
+ * Maintain a single staged change per path.
+ * Some paths are emitted earlier from task/link actions and then updated again
+ * after custom actions mutate frontmatter objects.
+ * The staged change set is typically small (rule-local markdown files), so a
+ * linear lookup keeps this simple without measurable overhead.
+ */
+function upsertFileChange(changes: FileChange[], change: FileChange): void {
+  const existingIndex = changes.findIndex((c) => c.path === change.path);
+  if (existingIndex >= 0) {
+    changes[existingIndex] = change;
+    return;
+  }
+  changes.push(change);
+}
+
 function countLines(text: string): number {
   return (text.match(/\n/g)?.length ?? 0) + 1;
 }
@@ -283,6 +299,7 @@ type TaskQueryResult = {
   parts: SplitFrontmatterResult;
   tree: ReturnType<typeof parseMarkdown>;
   selectedTasks: Task[];
+  currentBody: string;
 };
 
 type LinkQueryResult = {
@@ -291,6 +308,7 @@ type LinkQueryResult = {
   raw: string;
   parts: SplitFrontmatterResult;
   matchedLinks: MarkdownLink[];
+  currentBody: string;
 };
 
 type QueryResult = TaskQueryResult | LinkQueryResult;
@@ -331,13 +349,21 @@ async function runQuery(
         parts,
         tree,
         selectedTasks,
+        currentBody: parts.body,
       });
     } else {
       // link query
       const links = extractMarkdownLinks(parts.body);
       const matchedLinks = links.filter((l) => matchesLinkQuery(l, query));
       if (matchedLinks.length > 0) {
-        results.push({ type: "links", filePath, raw, parts, matchedLinks });
+        results.push({
+          type: "links",
+          filePath,
+          raw,
+          parts,
+          matchedLinks,
+          currentBody: parts.body,
+        });
       }
     }
   }
@@ -417,10 +443,11 @@ async function runActions(
       }
 
       if (modified > 0) {
-        const newContent = joinFrontmatter(parts, stringifyMarkdown(tree));
+        result.currentBody = stringifyMarkdown(tree);
+        const newContent = joinFrontmatter(parts, result.currentBody);
         const change = buildMarkdownFileChange(filePath, raw, newContent);
         if (change) {
-          changes.push(change);
+          upsertFileChange(changes, change);
           totalTasksModified += modified;
         }
       }
@@ -430,7 +457,7 @@ async function runActions(
       // link result
       const { filePath, raw, parts, matchedLinks } = result;
       totalLinksMatched += matchedLinks.length;
-      let currentBody = parts.body;
+      let currentBody = result.currentBody;
       let lineOffset = 0;
 
       for (const link of matchedLinks) {
@@ -469,10 +496,11 @@ async function runActions(
         }
       }
 
+      result.currentBody = currentBody;
       const newContent = joinFrontmatter(parts, currentBody);
       const change = buildMarkdownFileChange(filePath, raw, newContent);
       if (change) {
-        changes.push(change);
+        upsertFileChange(changes, change);
       }
     }
   }
@@ -484,11 +512,22 @@ async function runActions(
       if (action.type === "custom") {
         await action.run({
           tasks: allSelectedTasks,
+          files: queryResults.map((result) => ({
+            path: result.filePath,
+            frontmatter: result.parts.data,
+          })),
           dryRun: ctx.dryRun,
           config: ctx.config,
           readFile: ctx.readFile,
           log: logFn,
         });
+      }
+    }
+    for (const result of queryResults) {
+      const newContent = joinFrontmatter(result.parts, result.currentBody);
+      const change = buildMarkdownFileChange(result.filePath, result.raw, newContent);
+      if (change) {
+        upsertFileChange(changes, change);
       }
     }
   }
