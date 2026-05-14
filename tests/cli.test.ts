@@ -209,19 +209,21 @@ describe("runAllRules — selectedRuleNames", () => {
 
   it("onlyGlob: array of paths processes all matching files in a single run", async () => {
     // Simulate watch mode batching: pass an array of relative paths.
+    // Include a non-existent path alongside a real one to verify that
+    // non-matching entries produce no output while matching ones still work.
     const { changes } = await runAllRules({
       vaultPath: TEST_VAULT,
       today: TODAY,
       dryRun: true,
       env: {},
       selectedRuleNames: ["normalizeTodayLiteral"],
-      onlyGlob: ["TODO.md"],
+      onlyGlob: ["TODO.md", "nonexistent-file-that-matches-nothing.md"],
     });
-    // The top-level TODO.md should appear — it matches the array entry.
+    // The top-level TODO.md should appear — it matches the first array entry.
     const todoChange = changes.find((c) => c.path.endsWith("TODO.md"));
     expect(todoChange).toBeDefined();
     expect(todoChange!.content).toContain("due:2026-05-03");
-    // No file outside the array should appear.
+    // No file outside the array should appear (the second entry matched nothing).
     for (const c of changes) {
       expect(c.path).toMatch(/TODO\.md$/);
     }
