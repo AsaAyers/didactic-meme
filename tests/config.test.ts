@@ -14,7 +14,9 @@ import { tmpdir } from "node:os";
 import {
   loadConfig,
   getDefaultConfig,
+  applyConfig,
   CONFIG_FILENAME,
+  DEFAULT_SOURCES,
 } from "../src/config.js";
 import type { RuleSpec } from "../src/rules/types.js";
 
@@ -64,19 +66,19 @@ describe("loadConfig", () => {
   it("creates the config file with all defaults when it does not exist", async () => {
     const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
 
-    // Returned value equals the defaults.
-    expect(config).toEqual({ rules: getDefaultConfig([SPEC_A, SPEC_B]) });
+    // Returned value has top-level sources and empty per-rule entries.
+    expect(config).toEqual({
+      sources: DEFAULT_SOURCES,
+      rules: getDefaultConfig([SPEC_A, SPEC_B]),
+    });
 
-    // File was written to disk.
+    // File was written to disk with top-level sources and empty per-rule entries.
     const written = JSON.parse(await fs.readFile(configPath(), "utf-8"));
     expect(written).toEqual({
+      sources: [{ type: "glob", pattern: "**/*.md" }],
       rules: {
-        specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
-        specB: {
-          sources: [
-            { type: "glob", pattern: "notes/**/*.md", exclude: ["archive/**"] },
-          ],
-        },
+        specA: {},
+        specB: {},
       },
     });
   });
@@ -110,8 +112,8 @@ describe("loadConfig", () => {
 
     const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
 
-    // specB now has its default sources.
-    expect(config.rules.specB).toEqual({ sources: SPEC_B.sources });
+    // specB now has an empty rule entry (inherits top-level or spec sources).
+    expect(config.rules.specB).toEqual({});
 
     // The merged result was written back to disk.
     const written = JSON.parse(await fs.readFile(configPath(), "utf-8"));
@@ -220,6 +222,34 @@ describe("loadConfig", () => {
     expect(written.rules).toHaveProperty("specB");
   });
 
+  it("accepts a top-level 'sources' key and validates it", async () => {
+    const initial = {
+      sources: [{ type: "glob", pattern: "notes/**/*.md" }],
+      rules: {
+        specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+      },
+    };
+    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+
+    const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
+
+    expect(config.sources).toEqual([
+      { type: "glob", pattern: "notes/**/*.md" },
+    ]);
+  });
+
+  it("rejects an invalid top-level sources value via zod validation", async () => {
+    const bad = {
+      sources: "not-an-array",
+      rules: { specA: { sources: [{ type: "glob", pattern: "**/*.md" }] } },
+    };
+    await fs.writeFile(configPath(), JSON.stringify(bad), "utf-8");
+
+    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
+      CONFIG_FILENAME,
+    );
+  });
+
   it("rejects legacy top-level rule keys outside the rules object", async () => {
     const bad = {
       watch: { debounce: 3000 },
@@ -234,15 +264,51 @@ describe("loadConfig", () => {
 });
 
 describe("getDefaultConfig", () => {
-  it("maps each spec to its default sources", () => {
+  it("maps each spec to an empty rule config (sources come from top-level)", () => {
     const config = getDefaultConfig([SPEC_A, SPEC_B]);
     expect(config).toEqual({
-      specA: { sources: SPEC_A.sources },
-      specB: { sources: SPEC_B.sources },
+      specA: {},
+      specB: {},
     });
   });
 
   it("returns an empty object for an empty spec list", () => {
     expect(getDefaultConfig([])).toEqual({});
+  });
+});
+
+describe("applyConfig", () => {
+  it("uses per-rule sources when present (highest priority)", () => {
+    const ruleSources = [{ type: "glob" as const, pattern: "custom/**/*.md" }];
+    const config = {
+      sources: [{ type: "glob" as const, pattern: "top-level/**/*.md" }],
+      rules: { specA: { sources: ruleSources } },
+    };
+    const [result] = applyConfig([SPEC_A], config);
+    expect(result.sources).toEqual(ruleSources);
+  });
+
+  it("falls back to top-level sources when rule has no sources", () => {
+    const topSources = [{ type: "glob" as const, pattern: "top-level/**/*.md" }];
+    const config = {
+      sources: topSources,
+      rules: { specA: {} },
+    };
+    const [result] = applyConfig([SPEC_A], config);
+    expect(result.sources).toEqual(topSources);
+  });
+
+  it("falls back to spec built-in sources when neither rule nor top-level sources are set", () => {
+    const config = {
+      rules: { specA: {} },
+    };
+    const [result] = applyConfig([SPEC_A], config);
+    expect(result.sources).toEqual(SPEC_A.sources);
+  });
+
+  it("returns the spec unchanged when it has no config entry", () => {
+    const config = { rules: {} };
+    const [result] = applyConfig([SPEC_A], config);
+    expect(result).toBe(SPEC_A);
   });
 });
