@@ -4,8 +4,12 @@ import remarkGfm from "remark-gfm";
 import remarkStringify from "remark-stringify";
 import matter from "gray-matter";
 import { visit, SKIP } from "unist-util-visit";
-import type { Root, Parent, Text } from "mdast";
-import type { Handlers } from "mdast-util-to-markdown";
+
+type AstNode = { type: string; [key: string]: unknown };
+type Text = AstNode & { type: "text"; value: string };
+type Parent = AstNode & { children: AstNode[] };
+type Root = Parent & { type: "root" };
+type Handlers = Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
 // Wikilink support
@@ -298,7 +302,7 @@ function protectInertAsterisks(tree: Root): void {
 // ---------------------------------------------------------------------------
 
 /**
- * The default mdast-util-to-markdown unsafe rule
+ * The default markdown stringifier unsafe rule
  *   `{ character: '&', after: '[#A-Za-z]', inConstruct: 'phrasing' }`
  * fires even inside `destinationRaw` because the enclosing `phrasing`
  * construct stays on the stack.  Since `&` needs no escaping inside the
@@ -439,7 +443,7 @@ linkHandler.peek = (node: any, _: any, state: any): string =>
   isAutolink(node, state) ? "<" : "[";
 
 // ---------------------------------------------------------------------------
-// mdast-util-to-markdown handlers
+// Markdown stringifier handlers
 // ---------------------------------------------------------------------------
 
 /** Emit custom nodes verbatim, without any escaping. */
@@ -459,7 +463,7 @@ const customHandlers = {
 
 export function parseMarkdown(content: string): Root {
   const processor = unified().use(remarkParse).use(remarkGfm);
-  return processor.parse(content) as Root;
+  return processor.parse(content) as unknown as Root;
 }
 
 export function stringifyMarkdown(tree: Root): string {
@@ -472,7 +476,7 @@ export function stringifyMarkdown(tree: Root): string {
     rule: "-",
     handlers: customHandlers,
   });
-  return processor.stringify(tree);
+  return processor.stringify(tree as never);
 }
 
 export function parseFrontmatter(raw: string): {

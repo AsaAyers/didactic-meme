@@ -99,7 +99,7 @@ describe("round-trip: asterisks in non-emphasis contexts", () => {
     // The output representation may differ slightly but the rendered semantics
     // must be identical: the * characters must not form an emphasis node.
     const tree = parseMarkdown(out);
-    const para = tree.children[0] as import("mdast").Paragraph;
+    const para = tree.children[0] as { children: Array<{ type: string }> };
     // All children must be text — no emphasis node.
     for (const child of para.children) {
       expect(child.type).toBe("text");

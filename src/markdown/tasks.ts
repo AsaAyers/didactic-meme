@@ -1,5 +1,16 @@
 import { visit } from "unist-util-visit";
-import type { Root, ListItem, Paragraph, Text } from "mdast";
+
+type AstNode = { type: string; [key: string]: unknown };
+type Text = AstNode & { type: "text"; value: string };
+type Paragraph = AstNode & { type: "paragraph"; children: AstNode[] };
+type ListItem = AstNode & {
+  type: "listItem";
+  checked?: boolean | null;
+  spread?: boolean;
+  children: AstNode[];
+};
+type List = AstNode & { type: "list"; children: ListItem[] };
+type Root = AstNode & { type: "root"; children: AstNode[] };
 
 export type Task = {
   text: string;
@@ -48,7 +59,7 @@ export function extractTasks(tree: Root, sourcePath: string): Task[] {
 export function removeTask(tree: Root, taskText: string): boolean {
   let found = false;
   visit(tree, "list", (listNode) => {
-    const list = listNode as import("mdast").List;
+    const list = listNode as List;
     const idx = list.children.findIndex((item) => {
       if (item.checked === null || item.checked === undefined) return false;
       return getListItemText(item) === taskText;
@@ -92,7 +103,7 @@ export function insertTaskAfter(
 ): boolean {
   let inserted = false;
   visit(tree, "list", (listNode) => {
-    const list = listNode as import("mdast").List;
+    const list = listNode as List;
     const idx = list.children.findIndex((item) => {
       if (item.checked === null || item.checked === undefined) return false;
       return getListItemText(item) === afterText;

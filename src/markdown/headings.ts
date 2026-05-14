@@ -1,10 +1,15 @@
-import type { Root, Heading, Text, Paragraph, RootContent } from "mdast";
 import { parseMarkdown } from "./parse.js";
 
+type AstNode = { type: string; [key: string]: unknown };
+type Text = AstNode & { type: "text"; value: string };
+type Heading = AstNode & { type: "heading"; depth: number; children: AstNode[] };
+type Paragraph = AstNode & { type: "paragraph"; children: AstNode[] };
+type RootContent = { type: string };
+type Root = { children: RootContent[] };
+
 function getHeadingText(node: Heading): string {
-  return node.children
-    .map((child) => (child.type === "text" ? (child as Text).value : ""))
-    .join("");
+  const children = node.children as AstNode[];
+  return children.map((child) => (child.type === "text" ? (child as Text).value : "")).join("");
 }
 
 export function appendUnderHeading(
@@ -62,23 +67,24 @@ export function appendUnderHeading(
   // Parse and collect nodes to append - parse together so consecutive list items merge into one list
   const combined = linesToAppend.join("\n");
   const parsed = parseMarkdown(combined);
-  const newNodes: RootContent[] = [...parsed.children];
+  const newNodes = [...(parsed.children as RootContent[])];
 
   // Insert new nodes at blockEnd position
   tree.children.splice(blockEnd, 0, ...newNodes);
 }
 
 function isEmptyNode(node: RootContent): boolean {
-  if (node.type === "paragraph") {
-    const para = node as Paragraph;
-    if (para.children.length === 0) return true;
-    if (
-      para.children.length === 1 &&
-      para.children[0].type === "text" &&
-      (para.children[0] as Text).value.trim() === ""
-    ) {
-      return true;
-    }
+    if (node.type === "paragraph") {
+      const para = node as Paragraph;
+      if (para.children.length === 0) return true;
+      const first = para.children[0] as AstNode;
+      if (
+        para.children.length === 1 &&
+        first.type === "text" &&
+        (first as Text).value.trim() === ""
+      ) {
+        return true;
+      }
   }
   return false;
 }
