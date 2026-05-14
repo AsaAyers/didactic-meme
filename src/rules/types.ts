@@ -180,6 +180,10 @@ export type CustomAction = {
   type: "custom";
   run: (args: {
     tasks: Task[];
+    files: Array<{
+      path: string;
+      frontmatter: Record<string, unknown>;
+    }>;
     dryRun: boolean;
     config?: Config;
     readFile: (path: string) => Promise<string>;

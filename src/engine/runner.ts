@@ -257,8 +257,8 @@ export async function runAllRules(
  * differs from the original.  No rule-driven transformations occur.
  *
  * Files with YAML frontmatter (`---\n…\n---`) are handled correctly: only
- * the body content is passed through the remark pipeline; the frontmatter
- * block is preserved verbatim.
+ * the body content is passed through the remark pipeline; frontmatter is
+ * parsed into structured data and then re-serialized.
  *
  * After the first normalization pass the function runs a second pass on the
  * normalized content to verify stability (idempotency).  If the second pass
@@ -281,7 +281,7 @@ export async function runAllRules(
 
 /**
  * Normalize a single file's raw content through the parse → stringify
- * pipeline, preserving any YAML frontmatter verbatim.
+ * pipeline, preserving structured YAML frontmatter data.
  */
 export function normalizeFileContent(raw: string): string {
   const parts = splitFrontmatter(raw);
