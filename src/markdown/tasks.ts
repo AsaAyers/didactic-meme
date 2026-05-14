@@ -22,6 +22,11 @@ function getListItemText(item: ListItem): string {
       for (const inline of (child as Paragraph).children) {
         if (inline.type === "text") {
           parts.push((inline as Text).value);
+          continue;
+        }
+        const wikiLink = inline as { type: string; value?: unknown };
+        if (wikiLink.type === "wikiLink" && typeof wikiLink.value === "string") {
+          parts.push(`[[${wikiLink.value}]]`);
         }
       }
     }

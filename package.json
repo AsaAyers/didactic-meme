@@ -25,6 +25,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",
+    "remark-wiki-link": "^2.0.1",
     "stringify": "^5.2.0",
     "tiny-invariant": "^1.3.3",
     "unified": "^11.0.5",

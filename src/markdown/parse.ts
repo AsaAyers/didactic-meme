@@ -1,47 +1,56 @@
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
+import remarkWikiLink from "remark-wiki-link";
 import remarkStringify, { type Options as RemarkStringifyOptions } from "remark-stringify";
 import matter from "gray-matter";
 import { visit, SKIP } from "unist-util-visit";
 
 type Text = { type: "text"; value: string };
 type Parent = { children: unknown[] };
-const createParseProcessor = () => unified().use(remarkParse).use(remarkGfm);
+const createParseProcessor = () =>
+  unified().use(remarkParse).use(remarkGfm).use(remarkWikiLink);
 type Root = ReturnType<ReturnType<typeof createParseProcessor>["parse"]>;
 type Handlers = NonNullable<RemarkStringifyOptions["handlers"]>;
 
 // ---------------------------------------------------------------------------
-// Wikilink support
+// Obsidian embed wikilink support
 // ---------------------------------------------------------------------------
 
 /**
- * Obsidian wikilink syntax: [[Page Name]] and ![[image.png]].
- * Remark treats these as plain text nodes but its default stringifier
- * escapes the `[` characters and `_` in filenames.  We protect wikilinks by
- * splitting text nodes that contain them into alternating `text` / `wikilink`
- * nodes before stringification so the raw value is emitted verbatim.
+ * `remark-wiki-link` handles standard Obsidian page links (`[[Page Name]]`)
+ * but not embed wikilinks (`![[image.png]]`). We preserve embeds verbatim by
+ * splitting text nodes containing embeds into `text` / `obsidianEmbed` nodes
+ * just before stringification.
  */
-interface WikilinkNode {
-  type: "wikilink";
+interface ObsidianEmbedNode {
+  type: "obsidianEmbed";
   value: string;
 }
 
-const WIKILINK_RE = /(!?\[\[(?:[^\][]|\][^\]])*\]\])/g;
+interface WikiLinkNode {
+  type: "wikiLink";
+  value: string;
+  data?: {
+    alias?: string;
+  };
+}
 
-function splitWikilinkText(value: string): Array<Text | WikilinkNode> {
-  const parts: Array<Text | WikilinkNode> = [];
+const OBSIDIAN_EMBED_RE = /(!\[\[(?:[^\][]|\][^\]])*\]\])/g;
+
+function splitObsidianEmbedText(value: string): Array<Text | ObsidianEmbedNode> {
+  const parts: Array<Text | ObsidianEmbedNode> = [];
   let lastIndex = 0;
-  WIKILINK_RE.lastIndex = 0;
+  OBSIDIAN_EMBED_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = WIKILINK_RE.exec(value)) !== null) {
+  while ((match = OBSIDIAN_EMBED_RE.exec(value)) !== null) {
     if (match.index > lastIndex) {
       parts.push({
         type: "text",
         value: value.slice(lastIndex, match.index),
       } as Text);
     }
-    parts.push({ type: "wikilink", value: match[1] } as WikilinkNode);
+    parts.push({ type: "obsidianEmbed", value: match[1] } as ObsidianEmbedNode);
     lastIndex = match.index + match[1].length;
   }
   if (lastIndex < value.length) {
@@ -51,21 +60,21 @@ function splitWikilinkText(value: string): Array<Text | WikilinkNode> {
 }
 
 /**
- * Walk the AST and replace text nodes containing wikilinks with a mix of
- * `text` and `wikilink` nodes so the stringify step emits them verbatim.
+ * Walk the AST and replace text nodes containing Obsidian embeds with a mix of
+ * `text` and `obsidianEmbed` nodes so the stringify step emits them verbatim.
  *
  * Mutates `tree` in place — call just before stringification.
  */
-function protectWikilinks(tree: Root): void {
+function protectObsidianEmbeds(tree: Root): void {
   visit(
     tree,
     "text",
     (node: Text, index: number | undefined, parent: Parent | undefined) => {
       if (!parent || index === undefined) return;
-      if (!node.value.includes("[[")) return;
-      const parts = splitWikilinkText(node.value);
+      if (!node.value.includes("![[")) return;
+      const parts = splitObsidianEmbedText(node.value);
       if (parts.length === 1 && parts[0].type === "text") return;
-      (parent.children as Array<Text | WikilinkNode>).splice(
+      (parent.children as Array<Text | ObsidianEmbedNode>).splice(
         index,
         1,
         ...parts,
@@ -449,7 +458,14 @@ linkHandler.peek = (node: any, _: any, state: any): string =>
 /** Emit custom nodes verbatim, without any escaping. */
 const customHandlers = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  wikilink: (node: any) => (node as WikilinkNode).value,
+  wikiLink: (node: any) => {
+    const wiki = node as WikiLinkNode;
+    const alias = wiki.data?.alias;
+    if (alias && alias !== wiki.value) return `[[${wiki.value}|${alias}]]`;
+    return `[[${wiki.value}]]`;
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  obsidianEmbed: (node: any) => (node as ObsidianEmbedNode).value,
   rawAsterisk: () => "*",
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   obsidianTag: (node: any) => (node as ObsidianTagNode).value,
@@ -467,10 +483,10 @@ export function parseMarkdown(content: string): Root {
 }
 
 export function stringifyMarkdown(tree: Root): string {
-  protectWikilinks(tree);
+  protectObsidianEmbeds(tree);
   protectObsidianTags(tree);
   protectInertAsterisks(tree);
-  const processor = unified().use(remarkGfm).use(remarkStringify, {
+  const processor = unified().use(remarkGfm).use(remarkWikiLink).use(remarkStringify, {
     bullet: "*",
     listItemIndent: "one",
     rule: "-",
