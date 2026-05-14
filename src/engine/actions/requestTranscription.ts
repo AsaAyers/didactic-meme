@@ -3,7 +3,7 @@ import type { MarkdownLink } from "../../markdown/links.js";
 import type { RequestTranscriptionAction } from "../../rules/types.js";
 import type { ActionOutcome, LinkActionContext } from "./types.js";
 import { resolveTranscriptContext } from "./linkTranscriptionContext.js";
-import { buildPlaceholder } from "../../transcription/format.js";
+import { formatTranscriptFile } from "../../transcription/format.js";
 import type { TranscriptionJob } from "../../transcription/types.js";
 
 export function buildJobId(createdAt: Date): string {
@@ -39,10 +39,11 @@ export function applyRequestTranscription(
   return {
     text: taskText,
     newFiles: {
-      [transcript.transcriptPath]: buildPlaceholder(
-        job.id,
-        `[[${link.target}]]`,
-      ),
+      [transcript.transcriptPath]: formatTranscriptFile({
+        jobId: job.id,
+        sourceAudioWikilink: `[[${link.target}]]`,
+        status: "pending",
+      }),
     },
     transcriptionJobs: [job],
   };

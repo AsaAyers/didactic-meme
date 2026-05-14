@@ -1,7 +1,7 @@
-# Transcript
-
-Status: failed
-Job: mopf7ts0-test-job-001
+---
+status: failed
+jobId: mopf7ts0-test-job-001
+---
 Source audio: [[recordings/2024-01-15 12.34.56.m4a]]
 
 > Transcription failed.

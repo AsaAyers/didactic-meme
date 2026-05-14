@@ -4,6 +4,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 const TranscriptTask = z.object({
   title: z.string().describe("Short imperative title for the task."),
+  complete: z.boolean().describe("Whether the task is already complete."),
   dueDate: z
     .string()
     .nullable()
@@ -65,14 +66,13 @@ export async function processTranscript(
       {
         role: "system",
         content: [
-          "You process transcripts of voice recordings.",
-          "Return only JSON matching the provided schema.",
-          "Do not wrap the result in Markdown.",
-          "Do not invent tasks, dates, or decisions.",
-          "If there are no tasks, return an empty tasks array.",
-          "Do not invent tasks from context. Only include tasks explicitly mentioned or clearly implied by the transcript.",
-          "Clean grammar and punctuation, but preserve the original meaning.",
-          "For filenames, use lowercase kebab-case and end with .md.",
+          "You are a highly accurate task extraction and summarization engine.",
+          "Your primary function is to analyze transcripts of voice recordings and identify all actionable tasks mentioned within the transcript.",
+          "Return ONLY JSON data conforming to the provided schema.  No introductory or concluding text, no Markdown formatting, and no extraneous information.",
+          "You MUST accurately identify all tasks, even if they are implied.  Do not invent tasks. Focus on extracting explicit mentions and clear implications from the text.",
+          "If no tasks are found, return an empty `tasks` array.",
+          "Maintain original grammar and punctuation, correcting only errors.  Do not rephrase or rewrite the transcript’s meaning.",
+          "File names should be lowercase kebab-case and end with .md.",
         ].join("\n"),
       },
       {

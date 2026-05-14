@@ -1,63 +1,82 @@
 import type { TranscriptResult } from "./processTranscript.js";
 
-export function buildPlaceholder(
-  jobId: string,
-  sourceAudioWikilink: string,
-): string {
-  return `# Transcript
+type Status =
+  | "pending"
+  | "removingDeadAir"
+  | "transcribing"
+  | "processingTranscript"
+  | "failedDeadAir"
+  | "failedTranscription"
+  | "done";
 
-Status: pending
-Job: ${jobId}
+type TranscriptionJob = {
+  jobId: string;
+  sourceAudioWikilink: string;
+  status: Status;
+  transcriptText?: string;
+  errorMessage?: string;
+  transcriptResult?: TranscriptResult;
+};
+
+export function formatTranscriptFile({
+  jobId,
+  sourceAudioWikilink,
+  status,
+  transcriptResult,
+  errorMessage,
+  transcriptText,
+}: TranscriptionJob) {
+  const frontmatter = `---
+status: ${status}
+jobId: ${jobId}${transcriptResult?.filename ? `\nfilename: "${transcriptResult.filename}"` : ""}
+---`;
+
+  const parts: string[] = [];
+
+  parts.push(`
 Source audio: ${sourceAudioWikilink}
+`);
 
-> Transcription is pending. This file will be updated when the job completes.
-`;
-}
+  switch (status) {
+    case "pending":
+      parts.push("> Transcription is pending.");
+      break;
+    case "removingDeadAir":
+      parts.push("> Removing dead air before final transcription.");
+      break;
+    case "failedDeadAir":
+      parts.push("> Dead air removal failed.");
+      break;
+    case "failedTranscription":
+      parts.push("> Transcription failed during audio processing.");
+      break;
+  }
 
-export function buildSuccessContent(
-  jobId: string,
-  sourceAudioWikilink: string,
-  transcriptText: string,
-  transcriptResult?: TranscriptResult,
-): string {
-  const llm = transcriptResult
-    ? `
-
-GeneratedFilename: "${transcriptResult.filename}"
-
-# Summary
-${transcriptResult.summary}
-
-# Tasks
-${transcriptResult.tasks.length > 0 ? transcriptResult.tasks.map((t) => `- [ ] ${t.title} - ${t.details}`).join("\n") : "No tasks identified."}
-  `
-    : "";
-
-  return `
-Status: done
-Job: ${jobId}
-Source audio: ${sourceAudioWikilink}
-
-# Transcript
-${transcriptResult?.cleanedTranscript ?? transcriptText}${llm}
-`;
-}
-
-export function buildFailureContent(
-  jobId: string,
-  sourceAudioWikilink: string,
-  errorMessage: string,
-): string {
-  return `# Transcript
-
-Status: failed
-Job: ${jobId}
-Source audio: ${sourceAudioWikilink}
-
-> Transcription failed.
-
-## Error
+  if (errorMessage) {
+    parts.push(`## Error
 
 ${errorMessage}
-`;
+`);
+  }
+
+  const transcriptContent =
+    transcriptResult?.cleanedTranscript ?? transcriptText ?? "";
+  if (transcriptContent) {
+    parts.push(`# Transcript\n\n${transcriptContent}`);
+  }
+
+  if (transcriptResult?.summary) {
+    parts.push(`# Summary\n\n${transcriptResult.summary}`);
+  }
+
+  if (transcriptResult && (transcriptResult?.tasks.length ?? 0) > 0) {
+    const tasks = transcriptResult.tasks.map(
+      (task) =>
+        `- [${task.complete ? "x" : " "}] ${task.title} ${task.dueDate ? "due:" + task.dueDate : ""} - ${task.details}`,
+    );
+
+    parts.push(`# Tasks\n\n${tasks.join("\n")}`);
+  }
+
+  return `${frontmatter}${parts.join("\n")}`;
 }
