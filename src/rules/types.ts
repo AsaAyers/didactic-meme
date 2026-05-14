@@ -180,6 +180,10 @@ export type CustomAction = {
   type: "custom";
   run: (args: {
     tasks: Task[];
+    /**
+     * Files that participated in this query. `frontmatter` is mutable and
+     * shared across custom actions in this run; edits are persisted to output.
+     */
     files: Array<{
       path: string;
       frontmatter: Record<string, unknown>;

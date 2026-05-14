@@ -188,6 +188,13 @@ function buildMarkdownFileChange(
   return { path: filePath, content: newContent };
 }
 
+/**
+ * Maintain a single staged change per path.
+ * Some paths are emitted earlier from task/link actions and then updated again
+ * after custom actions mutate frontmatter objects.
+ * The staged change set is typically small (rule-local markdown files), so a
+ * linear lookup keeps this simple without measurable overhead.
+ */
 function upsertFileChange(changes: FileChange[], change: FileChange): void {
   const existingIndex = changes.findIndex((c) => c.path === change.path);
   if (existingIndex >= 0) {
