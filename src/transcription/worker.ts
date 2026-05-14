@@ -6,6 +6,7 @@ import { buildFailureContent, buildSuccessContent } from "./format.js";
 import { claimNext, markDone, markFailed } from "./queue.js";
 import { resolveStateDir } from "./runtime.js";
 import type { TranscriptionJob, WorkerOptions } from "./types.js";
+import { processTranscript } from "./processTranscript.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
 
@@ -53,11 +54,27 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
       const sourceAudioWikilink = buildSourceAudioWikilink(job);
       try {
         const transcriptText = await options.backend.transcribe(job.audioPath);
+
         await fs.writeFile(
           job.transcriptPath,
           buildSuccessContent(job.id, sourceAudioWikilink, transcriptText),
           "utf-8",
         );
+
+        if (process.env.OLLAMA_HOST) {
+          const transcriptResults = await processTranscript(transcriptText);
+
+          await fs.writeFile(
+            job.transcriptPath,
+            buildSuccessContent(
+              job.id,
+              sourceAudioWikilink,
+              transcriptText,
+              transcriptResults,
+            ),
+            "utf-8",
+          );
+        }
         await markDone(options.stateDir, job.id);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

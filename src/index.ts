@@ -109,7 +109,7 @@ if (init) {
   if (watch) {
     // Watch mode: load config to read the debounce and schedule settings.
     loadConfig(vaultPath, ruleSpecs)
-      .then((config) => {
+      .then(async (config) => {
         const debounce = config.watch?.debounce ?? 60_000;
         // Mutable so the scheduler picks up changes when the config is reloaded.
         let alertSchedule: string[] = config.watch?.alertSchedule ?? [];
@@ -136,6 +136,16 @@ if (init) {
           );
         const getNonConfigPaths = (relPaths: string[]): string[] =>
           relPaths.filter((p) => p !== CONFIG_FILENAME);
+
+        console.log(`[watch] Running all rules on startup...`);
+        await runAllRules({
+          vaultPath,
+          today: new Date(),
+          dryRun,
+          verbose,
+          env: process.env,
+          selectedRuleNames: allFileChangeRuleNames,
+        });
 
         const stop = startVaultWatcher(
           vaultPath,

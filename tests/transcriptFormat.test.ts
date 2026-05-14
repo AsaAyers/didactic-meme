@@ -24,12 +24,12 @@ Source audio: [[audio/clip.m4a]]
       "[[audio/clip.m4a]]",
       "hello world",
     );
-    expect(content).toBe(`# Transcript
-
+    expect(content).toBe(`
 Status: done
 Job: abc123
 Source audio: [[audio/clip.m4a]]
 
+# Transcript
 hello world
 `);
   });

@@ -1,3 +1,5 @@
+import type { TranscriptResult } from "./processTranscript.js";
+
 export function buildPlaceholder(
   jobId: string,
   sourceAudioWikilink: string,
@@ -16,14 +18,28 @@ export function buildSuccessContent(
   jobId: string,
   sourceAudioWikilink: string,
   transcriptText: string,
+  transcriptResult?: TranscriptResult,
 ): string {
-  return `# Transcript
+  const llm = transcriptResult
+    ? `
 
+GeneratedFilename: "${transcriptResult.filename}"
+
+# Summary
+${transcriptResult.summary}
+
+# Tasks
+${transcriptResult.tasks.length > 0 ? transcriptResult.tasks.map((t) => `- [ ] ${t.title} - ${t.details}`).join("\n") : "No tasks identified."}
+  `
+    : "";
+
+  return `
 Status: done
 Job: ${jobId}
 Source audio: ${sourceAudioWikilink}
 
-${transcriptText}
+# Transcript
+${transcriptResult?.cleanedTranscript ?? transcriptText}${llm}
 `;
 }
 

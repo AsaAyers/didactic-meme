@@ -3,6 +3,7 @@ FROM node:22-bookworm AS builder
 WORKDIR /app
 
 COPY package*.json ./
+RUN npm install
 RUN npm ci
 
 COPY tsconfig.json ./
@@ -23,11 +24,6 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/dist ./dist
-COPY scripts/faster_whisper_service.py ./scripts/faster_whisper_service.py
 
 RUN pip3 install --no-cache-dir faster-whisper
 
@@ -41,4 +37,10 @@ ENV FASTER_WHISPER_COMPUTE_TYPE=float16
 ENV FASTER_WHISPER_DOWNLOAD_ROOT=/state/faster-whisper-cache
 ENV PYTHONUNBUFFERED=1
 
+COPY package*.json ./
+RUN npm install
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/dist ./dist
+COPY scripts/faster_whisper_service.py ./scripts/faster_whisper_service.py
 CMD ["node", "dist/transcription/worker.js"]
