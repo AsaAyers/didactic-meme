@@ -70,7 +70,7 @@ describe("transcription worker", () => {
       createdAt: "2026-05-13T00:00:00.000Z",
     });
 
-    expect(content).toContain("Status: done");
+    expect(content).toContain("status: done");
     expect(content).toContain("Source audio: [[audio/clip.m4a]]");
   });
 
@@ -90,7 +90,7 @@ describe("transcription worker", () => {
       createdAt: "2026-05-13T00:00:00.000Z",
     });
 
-    expect(content).toContain("Status: done");
+    expect(content).toContain("status: done");
     expect(content).toContain("Source audio: [[../audio/clip.m4a]]");
   });
 
@@ -114,7 +114,7 @@ describe("transcription worker", () => {
 
     const content = await runWorkerForSingleStateDir(stateDir, transcriptPath);
 
-    expect(content).toContain("Status: done");
+    expect(content).toContain("status: done");
     await expect(
       fs.stat(join(stateDir, "pending", `${job.id}.json`)),
     ).rejects.toThrow();

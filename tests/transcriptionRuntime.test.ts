@@ -57,7 +57,7 @@ describe("transcription runtime", () => {
     );
 
     expect(noteContent).toContain("![[audio/clip.transcript.md]]");
-    expect(transcriptContent).toContain("Status: pending");
+    expect(transcriptContent).toContain("status: pending");
     expect(pendingJob).toContain(
       `"audioPath": "${join(vaultDir, "audio", "clip.m4a")}"`,
     );

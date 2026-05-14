@@ -109,7 +109,7 @@ describe("test vault — .md.expected snapshots", () => {
 
       if (actualContent !== expectedContent) {
         failures.push(`${relPath}\n${actualContent}`);
-        toEqual.push(`${relPath}\n${expectedContent}`);
+        toEqual.push(expectedContent);
       }
     }
 
@@ -167,6 +167,7 @@ describe("test vault — .md.expected snapshots", () => {
 
     await startWorker({
       stateDir,
+      trimDeadAir: false,
       backend: {
         async transcribe(audioPath: string) {
           transcribedAudioPaths.push(audioPath);

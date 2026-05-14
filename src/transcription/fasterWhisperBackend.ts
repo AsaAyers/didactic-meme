@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import type { TranscriberBackend } from "./types.js";
+import invariant from "tiny-invariant";
 
 type FasterWhisperBackendOptions = {
   executablePath?: string;
@@ -79,6 +80,7 @@ export function createFasterWhisperBackend(
     | {
         resolve: (value: string) => void;
         reject: (reason: Error) => void;
+        promise?: Promise<string>;
       }
     | undefined;
 
@@ -162,16 +164,22 @@ export function createFasterWhisperBackend(
   return {
     async transcribe(audioPath: string): Promise<string> {
       await ready;
-      if (pending) {
-        throw new Error(
-          "faster-whisper backend is busy; concurrent transcription is not supported",
-        );
+      if (pending && pending.promise) {
+        // The promise needs to be wrapped and replaced, so that if 2 new items
+        // arrive while 1 is still processing, they will be processed in order
+        // rather than all resolving/rejecting with the same promise.
+        const t = Promise.resolve(pending.promise);
+        pending.promise = t;
+        await t;
       }
 
-      return new Promise<string>((resolve, reject) => {
+      const promise = new Promise<string>((resolve, reject) => {
         pending = { resolve, reject };
         child.stdin.write(`${JSON.stringify({ audioPath })}\n`, "utf-8");
       });
+      invariant(pending, "Missing pending after creating promise");
+      pending.promise = promise;
+      return promise;
     },
   };
 }

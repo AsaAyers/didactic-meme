@@ -43,14 +43,11 @@ function expectPendingTranscriptPlaceholder(
   content: string,
   expectedAudioTarget: string,
 ): void {
-  expect(content).toContain("# Transcript");
-  expect(content).toContain("Status: pending");
-  expect(content).toContain(
-    "> Transcription is pending. This file will be updated when the job completes.",
-  );
+  expect(content).toContain("status: pending");
+  expect(content).toContain("> Transcription is pending.");
   expect(content).toContain(`Source audio: [[${expectedAudioTarget}]]`);
 
-  const jobMatch = content.match(/^Job: ([a-z0-9-]+)$/m);
+  const jobMatch = content.match(/^jobId: ([a-z0-9-]+)$/m);
   expect(jobMatch).not.toBeNull();
   expect(jobMatch?.[1]).toMatch(/^[a-z0-9-]+$/);
 }
