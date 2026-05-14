@@ -66,12 +66,13 @@ On first run, `onyx-vellum` creates a `.onyx-vellum.json` file in your vault roo
 ```jsonc
 {
   // Optional watch-mode settings.
-  "watch": {
-    // Debounce duration in milliseconds (default: 60000 = 60 s).
-    "debounce": 60000,
-    // Optional scheduled run times (HH:MM local time) for incompleteTaskAlert.
-    "alertSchedule": ["09:00"],
-  },
+    "watch": {
+      // Debounce duration in milliseconds (default: 60000 = 60 s).
+      "debounce": 60000,
+      // Optional scheduled run times (local time) for incompleteTaskAlert.
+      // Entries are normalized to HH:MM (e.g. "9:5" -> "09:05").
+      "alertSchedule": ["09:00"],
+    },
 
   // Rule-specific settings and source overrides.
   "rules": {

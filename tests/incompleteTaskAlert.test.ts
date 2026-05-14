@@ -5,7 +5,7 @@
  * preview even when no markdown files are modified.  The preview must appear
  * in the returned `report` string regardless of whether ALERT_URL is set.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { promises as fs } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -137,5 +137,113 @@ describe("incompleteTaskAlert — dry-run preview", () => {
       expect(path).not.toMatch(/^[/\\]/); // must not start with / or \
       expect(path).not.toMatch(/^[A-Za-z]:\\/); // must not be an absolute Windows path
     }
+  });
+});
+
+describe("incompleteTaskAlert — HTTP delivery", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("posts alert content in non-dry-run mode", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("ok", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { report } = await runAllRules({
+      vaultPath: join(SCENARIOS, "incomplete-alert"),
+      today: TODAY,
+      dryRun: false,
+      env: {},
+      selectedRuleNames: ["incompleteTaskAlert"],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:8080/alert");
+    expect(init?.method).toBe("POST");
+    expect(init?.headers).toMatchObject({
+      "Content-Type": "text/plain",
+      Markdown: "yes",
+      Title: "Incomplete Tasks",
+    });
+    expect(typeof init?.body).toBe("string");
+    expect(String(init?.body)).toContain("## chores.md");
+    expect(String(init?.body)).toContain("## tasks.md");
+    expect(report).not.toContain("ERROR");
+  });
+
+  it("sends bearer auth when alertToken is configured", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("ok", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const tempVault = await fs.mkdtemp(
+      join(tmpdir(), "onyx-vellum-incomplete-alert-token-"),
+    );
+    try {
+      await fs.writeFile(join(tempVault, "tasks.md"), "* [ ] Do laundry\n", "utf-8");
+      await fs.writeFile(
+        join(tempVault, ".onyx-vellum.json"),
+        JSON.stringify(
+          {
+            rules: {
+              incompleteTaskAlert: {
+                sources: [{ type: "glob", pattern: "**/*.md" }],
+                alertUrl: "http://localhost:8080/alert",
+                alertToken: "test-token",
+              },
+            },
+          },
+          null,
+          2,
+        ) + "\n",
+        "utf-8",
+      );
+
+      await runAllRules({
+        vaultPath: tempVault,
+        today: TODAY,
+        dryRun: false,
+        env: {},
+        selectedRuleNames: ["incompleteTaskAlert"],
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, init] = fetchMock.mock.calls[0];
+      expect(init?.headers).toMatchObject({
+        Authorization: "Bearer test-token",
+      });
+    } finally {
+      await fs.rm(tempVault, { recursive: true, force: true });
+    }
+  });
+
+  it("reports an error when alert endpoint returns non-2xx", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response("server exploded", {
+          status: 500,
+          statusText: "Internal Server Error",
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { report } = await runAllRules({
+      vaultPath: join(SCENARIOS, "incomplete-alert"),
+      today: TODAY,
+      dryRun: false,
+      env: {},
+      selectedRuleNames: ["incompleteTaskAlert"],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(report).toContain("[incompleteTaskAlert] ERROR:");
+    expect(report).toContain("HTTP 500 Internal Server Error");
+    expect(report).toContain("server exploded");
   });
 });
