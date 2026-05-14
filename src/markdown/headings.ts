@@ -34,7 +34,11 @@ export function appendUnderHeading(
 
   // If heading not found, create it at end
   if (headingIdx === -1) {
-    const headingNode = parseMarkdown(`## ${headingText}\n`).children[0] as Heading;
+    const headingNode: Heading = {
+      type: "heading",
+      depth: 2,
+      children: [{ type: "text", value: headingText } as Text],
+    };
     tree.children.push(headingNode);
     headingIdx = tree.children.length - 1;
     headingLevel = 2;
