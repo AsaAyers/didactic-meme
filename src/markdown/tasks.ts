@@ -16,14 +16,9 @@ export type Task = {
 };
 
 function isWikiLinkNode(node: unknown): node is WikiLinkNode {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "type" in node &&
-    "value" in node &&
-    (node as { type: unknown }).type === "wikiLink" &&
-    typeof (node as { value: unknown }).value === "string"
-  );
+  if (typeof node !== "object" || node === null) return false;
+  if (!("type" in node) || !("value" in node)) return false;
+  return node.type === "wikiLink" && typeof node.value === "string";
 }
 
 function getListItemText(item: ListItem): string {
