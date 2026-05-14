@@ -11,7 +11,7 @@ export type TranscriberBackend = {
 };
 
 export type WorkerOptions = {
-  trimDeadAir: boolean;
+  trimDeadAir?: boolean;
   stateDir: string;
   backend: TranscriberBackend;
   pollIntervalMs?: number;
