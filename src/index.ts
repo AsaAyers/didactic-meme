@@ -32,8 +32,8 @@ if (
   console.error('  Example: onyx-vellum --dry-run --only "notes/**" all');
   process.exit(1);
 }
-const onlyGlob: string | undefined =
-  onlyIdx !== -1 ? args[onlyIdx + 1] : undefined;
+const onlyGlob: string[] | undefined =
+  onlyIdx !== -1 ? [args[onlyIdx + 1]] : undefined;
 
 // Positional arguments: rule names or "all" (everything that doesn't start with '--')
 const positional = args.filter((a) => !a.startsWith("-"));
@@ -97,7 +97,7 @@ if (init) {
 
   // Single shared entry-point for rule execution.  Closures in all parameters
   // so both the one-shot and watch paths use exactly the same runAllRules call.
-  const run = async (glob?: string): Promise<void> => {
+  const run = async (glob?: string[]): Promise<void> => {
     await runAllRules({
       vaultPath,
       today: new Date(),

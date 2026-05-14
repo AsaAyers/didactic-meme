@@ -164,7 +164,7 @@ describe("runAllRules — selectedRuleNames", () => {
       today: TODAY,
       dryRun: true,
       env: {},
-      onlyGlob: "TODO.md",
+      onlyGlob: ["TODO.md"],
     });
     // Only the top-level TODO.md should appear in the changes.
     for (const c of changes) {
@@ -180,7 +180,7 @@ describe("runAllRules — selectedRuleNames", () => {
       today: TODAY,
       dryRun: true,
       env: {},
-      onlyGlob: "TODO.md",
+      onlyGlob: ["TODO.md"],
     });
     const todoChange = changes.find((c) => c.path.endsWith("TODO.md"));
     expect(todoChange).toBeDefined();
@@ -194,7 +194,7 @@ describe("runAllRules — selectedRuleNames", () => {
       today: TODAY,
       dryRun: true,
       env: {},
-      onlyGlob: "scenarios/**",
+      onlyGlob: ["scenarios/**"],
     });
     // Every changed file must live under scenarios/.
     for (const c of changes) {
@@ -207,7 +207,7 @@ describe("runAllRules — selectedRuleNames", () => {
     expect(topLevelTodo).toBeUndefined();
   });
 
-  it("onlyGlob: array of paths processes all matching files in a single run", async () => {
+  it("onlyGlob: processes all matching files when given multiple patterns", async () => {
     // Simulate watch mode batching: pass an array of relative paths.
     // Include a non-existent path alongside a real one to verify that
     // non-matching entries produce no output while matching ones still work.
