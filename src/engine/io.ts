@@ -15,7 +15,7 @@ export async function walkMarkdownFiles(dir: string): Promise<string[]> {
       const fullPath = join(dir, name);
       if (entry.isDirectory() && !name.startsWith(".")) {
         results.push(...(await walkMarkdownFiles(fullPath)));
-      } else if (entry.isFile() && name.endsWith(".md")) {
+      } else if (entry.isFile() && name.endsWith(".md") && !name.startsWith(".")) {
         results.push(fullPath);
       }
     }

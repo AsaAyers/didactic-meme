@@ -6,9 +6,10 @@
  *
  * Shape:
  *   {
+ *     "sources": [ ...Source objects... ],  // optional top-level sources (default for all rules)
  *     "watch": { "debounce": 60000 },        // optional watch-mode settings
  *     "rules": {
- *       "<ruleName>": { "sources": [ ...Source objects... ] }
+ *       "<ruleName>": { "sources": [ ...Source objects... ] }  // optional per-rule override
  *     }
  *   }
  *
@@ -41,7 +42,7 @@ const zPathSource = z.object({
 export const zSource = z.discriminatedUnion("type", [zGlobSource, zPathSource]);
 
 const zRuleConfig = z.object({
-  sources: z.array(zSource),
+  sources: z.array(zSource).optional(),
   alertUrl: z.string().optional(),
   alertToken: z.string().optional(),
 });
@@ -59,11 +60,13 @@ const zWatchConfig = z.object({
 
 /**
  * Full config schema:
+ *   - optional top-level sources (default for all rules that don't specify their own)
  *   - optional watch config
  *   - required "rules" object keyed by rule name
  */
 export const zConfig = z
   .object({
+    sources: z.array(zSource).optional(),
     watch: zWatchConfig.optional(),
     rules: z.record(z.string(), zRuleConfig),
   })
@@ -89,14 +92,20 @@ export type Config = z.infer<typeof zConfig>;
 /** The file name of the vault-level config, relative to the vault root. */
 export const CONFIG_FILENAME = ".onyx-vellum.json";
 
+/** The default top-level sources used when creating a new config file. */
+export const DEFAULT_SOURCES: Array<z.infer<typeof zSource>> = [
+  { type: "glob", pattern: "**/*.md" },
+];
+
 /**
  * Build the default rule configs from an array of RuleSpecs.
- * Each entry uses the spec's own `sources` array as its default.
+ * Each entry is an empty config object — sources are supplied by the top-level
+ * `sources` array in the config so they don't need to be repeated per rule.
  * Returns a plain record (no `watch` key) so callers can iterate values as
  * `RuleConfig` without needing to handle the `WatchConfig` union member.
  */
 export function getDefaultConfig(specs: RuleSpec[]): Config["rules"] {
-  return Object.fromEntries(specs.map((s) => [s.name, { sources: s.sources }]));
+  return Object.fromEntries(specs.map((s) => [s.name, {}]));
 }
 
 /**
@@ -122,7 +131,7 @@ export async function loadConfig(
 ): Promise<Config> {
   const configPath = join(vaultPath, CONFIG_FILENAME);
   const defaults = getDefaultConfig(specs);
-  const defaultConfig: Config = { rules: defaults };
+  const defaultConfig: Config = { sources: DEFAULT_SOURCES, rules: defaults };
 
   let raw: string;
   try {
@@ -164,9 +173,9 @@ export async function loadConfig(
   // Merge in defaults for any rule not yet present in the file.
   let needsWrite = false;
   const merged: Config = { ...stored, rules: { ...stored.rules } };
-  for (const [name, defaultEntry] of Object.entries(defaults)) {
+  for (const [name] of Object.entries(defaults)) {
     if (!(name in merged.rules)) {
-      merged.rules[name] = defaultEntry;
+      merged.rules[name] = {};
       needsWrite = true;
     }
   }
@@ -183,14 +192,22 @@ export async function loadConfig(
 }
 
 /**
- * Apply a loaded Config to a set of RuleSpecs by replacing each spec's
- * `sources` array with the value from the config (when present).
+ * Apply a loaded Config to a set of RuleSpecs by resolving each spec's
+ * effective `sources` array using the following priority:
+ *   1. Per-rule `sources` from the config (highest priority).
+ *   2. Top-level `sources` from the config (shared default for all rules).
+ *   3. The spec's own built-in `sources` (fallback when neither is set).
  * Returns new spec objects; the originals are not mutated.
  */
 export function applyConfig(specs: RuleSpec[], config: Config): RuleSpec[] {
   return specs.map((spec) => {
     const entry = config.rules[spec.name];
-    if (!entry) return spec;
-    return { ...spec, sources: entry.sources };
+    if (entry?.sources !== undefined) {
+      return { ...spec, sources: entry.sources };
+    }
+    if (config.sources !== undefined) {
+      return { ...spec, sources: config.sources };
+    }
+    return spec;
   });
 }
