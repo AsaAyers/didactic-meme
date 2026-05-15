@@ -7,7 +7,7 @@ import { Task, removeTask } from "../markdown/tasks.js";
 import type { CustomAction, RuleSpec } from "./types.js";
 
 function ensureCheckedTaskLine(taskText: string): string {
-  const normalizedText = taskText.replace(/^\[[xX ]\]\s/, "");
+  const normalizedText = taskText.replace(/^\[[ xX]\] /, "");
   return new Task({
     text: normalizedText,
     checked: true,

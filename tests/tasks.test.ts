@@ -62,6 +62,14 @@ describe("extractTasks", () => {
     expect(tasks).toHaveLength(1);
     expect(tasks[0]?.tags).toEqual(["due", "sleep"]);
   });
+
+  it("does not treat URL schemes as inline-field tags", () => {
+    const tree = parseMarkdown("- [ ] Review docs https://example.com due:2026-05-03");
+    const tasks = extractTasks(tree, "test.md");
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.tags).toEqual(["due"]);
+  });
 });
 
 describe("Task model", () => {

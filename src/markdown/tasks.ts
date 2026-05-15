@@ -96,7 +96,9 @@ function extractTags(text: string): string[] {
     }
   }
 
-  const inlineFieldMatches = text.matchAll(/\b([a-zA-Z][\w-]*):\S+/g);
+  const inlineFieldMatches = text.matchAll(
+    /(?:^|\s)([a-zA-Z][\w-]*):(?!\/\/)\S+/g,
+  );
   for (const match of inlineFieldMatches) {
     const tag = match[1];
     if (tag && !seen.has(tag)) {
