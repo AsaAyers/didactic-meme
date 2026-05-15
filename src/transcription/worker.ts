@@ -2,11 +2,14 @@ import { promises as fs } from "node:fs";
 import path, { dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createFasterWhisperBackend } from "./fasterWhisperBackend.js";
-import { formatTranscriptFile } from "./format.js";
+import { formatTranscriptFile, type TranscriptionStatus } from "./format.js";
 import { claimNext, markDone, markFailed } from "./queue.js";
 import { resolveStateDir } from "./runtime.js";
 import type { TranscriptionJob, WorkerOptions } from "./types.js";
-import { processTranscript } from "./processTranscript.js";
+import {
+  processTranscript,
+  type TranscriptResult,
+} from "./processTranscript.js";
 import { trimDeadAir } from "./trimDeadAir.js";
 import os from "node:os";
 
@@ -54,74 +57,63 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
       }
 
       const sourceAudioWikilink = buildSourceAudioWikilink(job);
-      let transcriptText;
-      let transcriptResult;
-      try {
-        await fs.writeFile(
+      let transcriptText: string | undefined;
+      let transcriptResult: TranscriptResult | undefined;
+      let trimmedFile = job.audioPath;
+
+      const writeFile = (status: TranscriptionStatus, errorMessage?: string) =>
+        fs.writeFile(
           job.transcriptPath,
           formatTranscriptFile({
             jobId: job.id,
             sourceAudioWikilink,
+            trimmed: trimmedFile !== job.audioPath,
             transcriptText,
-            status: "removingDeadAir",
+            transcriptResult,
+            status,
+            errorMessage,
           }),
           "utf-8",
         );
 
-        let trimmedFile = job.audioPath;
+      try {
+        await writeFile("removingDeadAir");
+
         if (options.trimDeadAir) {
           trimmedFile = path.join(
             os.tmpdir(),
             `trimmed-${Math.random().toString(16).slice(2)}.m4a`,
           );
+
+          trimmedFile = path.join(
+            dirname(job.audioPath),
+            `trimmed-${path.basename(job.audioPath)}`,
+          );
+
+          await writeFile("trimDeadAir");
           await trimDeadAir({
             input: job.audioPath,
             output: trimmedFile,
+            thresholdDb: -40,
           });
         }
 
-        await fs.writeFile(
-          job.transcriptPath,
-          formatTranscriptFile({
-            jobId: job.id,
-            sourceAudioWikilink,
-            transcriptText,
-            status: "transcribing",
-          }),
-          "utf-8",
-        );
+        await writeFile("transcribing");
 
+        console.log({ trimmedFile });
         transcriptText = await options.backend.transcribe(trimmedFile);
 
         if (process.env.OLLAMA_HOST) {
           transcriptResult = await processTranscript(transcriptText);
         }
 
-        await fs.writeFile(
-          job.transcriptPath,
-          formatTranscriptFile({
-            jobId: job.id,
-            sourceAudioWikilink,
-            transcriptText,
-            transcriptResult,
-            status: "done",
-          }),
-          "utf-8",
-        );
+        await writeFile("done");
         await markDone(options.stateDir, job.id);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await fs.writeFile(
-          job.transcriptPath,
-          formatTranscriptFile({
-            jobId: job.id,
-            sourceAudioWikilink,
-            errorMessage: message,
-            status: transcriptText ? "failedDeadAir" : "failedTranscription",
-            transcriptText,
-            transcriptResult,
-          }),
-          "utf-8",
+        await writeFile(
+          transcriptText ? "failedDeadAir" : "failedTranscription",
+          message,
         );
         await markFailed(options.stateDir, job.id, message);
       }

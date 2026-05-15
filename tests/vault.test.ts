@@ -191,6 +191,7 @@ describe("test vault — .md.expected snapshots", () => {
 
     const expectedFiles = await walkExpectedFiles(sourceScenario);
     const failures: string[] = [];
+    const toEqual: string[] = [];
 
     for (const expectedPath of expectedFiles) {
       const relPath = relative(sourceScenario, expectedPath).slice(
@@ -202,10 +203,11 @@ describe("test vault — .md.expected snapshots", () => {
       const actualContent = await readOptionalFile(actualPath);
 
       if (actualContent !== expectedContent) {
-        failures.push(`${relPath}: output does not match .md.expected`);
+        failures.push(`${relPath}\n${actualContent}`);
+        toEqual.push(expectedContent);
       }
     }
 
-    expect(failures, failures.join("\n")).toEqual([]);
+    expect(failures).toEqual(toEqual);
   });
 });
