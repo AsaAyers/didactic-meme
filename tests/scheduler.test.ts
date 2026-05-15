@@ -262,8 +262,10 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
-      () => "America/Los_Angeles",
+      {
+        intervalMs: 1_000,
+        getTimezone: () => "America/Los_Angeles",
+      },
     );
 
     expect(alerts).toHaveLength(1);

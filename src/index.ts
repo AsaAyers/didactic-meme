@@ -255,8 +255,7 @@ if (init) {
               selectedRuleNames: [ALERT_RULE],
             });
           },
-          60_000,
-          () => timezone,
+          { getTimezone: () => timezone },
         );
 
         const stopAll = createStopAll([stop, stopFastPath, stopScheduler]);
@@ -281,7 +280,12 @@ if (init) {
 
     loadConfig(vaultPath, ruleSpecs)
       .then((config) => run(onlyGlob, config.timezone))
-      .catch(() => run(onlyGlob))
+      .catch((err: unknown) => {
+        console.warn(
+          `Warning: could not load vault config — ${(err as Error).message}. Using local server timezone.`,
+        );
+        return run(onlyGlob);
+      })
       .catch((err: unknown) => {
         console.error("Fatal error:", (err as Error).message);
         process.exit(1);
