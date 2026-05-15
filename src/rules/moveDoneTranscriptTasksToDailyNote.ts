@@ -6,24 +6,11 @@ import { parseMarkdown, stringifyMarkdown } from "../markdown/parse.js";
 import { removeTask } from "../markdown/tasks.js";
 import type { CustomAction, RuleSpec } from "./types.js";
 
-function isIsoDate(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await fs.access(path, fsConstants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function toCheckedTaskLine(taskText: string): string {
+function ensureCheckedTaskLine(taskText: string): string {
   return /^\[[xX ]\]\s/.test(taskText) ? `* ${taskText}` : `* [x] ${taskText}`;
 }
 
-const moveDoneTasksToDailyNote: CustomAction = {
+const moveDoneTranscriptTasksToDailyNoteAction: CustomAction = {
   type: "custom",
   run: async ({ tasks, vaultPath, config, readFile, stageChange }) => {
     const dailyNotesFolder =
@@ -35,14 +22,18 @@ const moveDoneTasksToDailyNote: CustomAction = {
 
     for (const task of tasks) {
       const done = getInlineField(task.text, "done");
-      if (!done || !isIsoDate(done)) continue;
+      if (!done || !/^\d{4}-\d{2}-\d{2}$/.test(done)) continue;
 
       const dailyNotePath = join(
         vaultPath,
         dailyNotesFolder,
         `${done}.md`,
       );
-      if (!(await pathExists(dailyNotePath))) continue;
+      try {
+        await fs.access(dailyNotePath, fsConstants.F_OK);
+      } catch {
+        continue;
+      }
 
       const transcriptPath = join(vaultPath, task.sourcePath);
       const existingTranscriptTasks = tasksByTranscript.get(transcriptPath) ?? [];
@@ -57,7 +48,7 @@ const moveDoneTasksToDailyNote: CustomAction = {
     for (const [dailyNotePath, movedTasks] of tasksByDailyNote) {
       const rawDailyNote = await readFile(dailyNotePath);
       const parts = splitFrontmatter(rawDailyNote);
-      const movedTaskLines = movedTasks.map(toCheckedTaskLine);
+      const movedTaskLines = movedTasks.map(ensureCheckedTaskLine);
       const needsLeadingNewline =
         parts.body.length > 0 && !parts.body.endsWith("\n");
       const nextBody =
@@ -98,5 +89,5 @@ export const moveDoneTranscriptTasksToDailyNoteSpec: RuleSpec = {
       predicates: [{ type: "checked" }, { type: "fieldExists", key: "done" }],
     },
   },
-  actions: [moveDoneTasksToDailyNote],
+  actions: [moveDoneTranscriptTasksToDailyNoteAction],
 };
