@@ -53,23 +53,35 @@ function isWikiLinkLike(node: unknown): node is WikiLinkLike {
   );
 }
 
+function textFromNode(node: unknown): string {
+  if (isWikiLinkLike(node)) {
+    const alias = node.data?.alias;
+    return alias && alias !== node.value
+      ? `[[${node.value}|${alias}]]`
+      : `[[${node.value}]]`;
+  }
+
+  if (typeof node === "object" && node !== null) {
+    const value =
+      "value" in node && typeof (node as { value?: unknown }).value === "string"
+        ? (node as { value: string }).value
+        : "";
+    const childText =
+      "children" in node && Array.isArray((node as ParentNode).children)
+        ? (node as ParentNode).children.map(textFromNode).join("")
+        : "";
+    return `${value}${childText}`;
+  }
+
+  return "";
+}
+
 function taskText(item: ListItem): string {
   const parts: string[] = [];
   for (const child of item.children) {
     if (child.type !== "paragraph") continue;
     for (const inline of child.children) {
-      if (inline.type === "text") {
-        parts.push(inline.value);
-        continue;
-      }
-      if (isWikiLinkLike(inline)) {
-        const alias = inline.data?.alias;
-        parts.push(
-          alias && alias !== inline.value
-            ? `[[${inline.value}|${alias}]]`
-            : `[[${inline.value}]]`,
-        );
-      }
+      parts.push(textFromNode(inline));
     }
   }
   return parts.join("").trim();
@@ -94,10 +106,7 @@ function sortTaskItems(items: ListItem[]): ListItem[] {
       if (a.doneTime !== b.doneTime) return b.doneTime - a.doneTime;
       return a.index - b.index;
     })
-    .map(({ item }) => ({
-      ...item,
-      spread: false,
-    }));
+    .map(({ item }) => item);
 }
 
 function areMergeCompatible(a: List, b: List): boolean {
@@ -147,7 +156,7 @@ function processParent(node: ParentNode): boolean {
       const replacement: List = {
         ...child,
         spread: false,
-        children: sortedItems,
+        children: sortedItems.map((item) => ({ ...item, spread: false })),
       };
       node.children.splice(i, lists.length, replacement);
       changed = true;
