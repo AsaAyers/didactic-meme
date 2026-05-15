@@ -59,6 +59,10 @@ If the pipeline does not modify the file, `tasks.md.expected` must be a copy of 
 | `rollover-no-recurrence`                  | task without `repeat:` is never cloned                      |
 | `rollover-not-today`                      | task with past `done:` date is skipped                      |
 
+## Release policy
+
+- Project is currently treated as `0.0.x`; do not add legacy migration compatibility layers unless explicitly requested.
+
 ## Code style
 
 ### Avoid pass-through wrapper functions

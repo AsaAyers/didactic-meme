@@ -91,33 +91,6 @@ describe("loadConfig", () => {
     });
   });
 
-  it("throws a descriptive error when only legacy markdown config exists", async () => {
-    await fs.writeFile(
-      join(tempVault, "onyx-vellum.config.md"),
-      "---\nrules: {}\n---\n",
-      "utf-8",
-    );
-
-    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrowError(
-      expect.objectContaining({
-        message: expect.stringContaining("legacy onyx-vellum.config.md"),
-      }),
-    );
-    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrowError(
-      expect.objectContaining({
-        message: expect.stringContaining(".onyx-vellum.json"),
-      }),
-    );
-    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrowError(
-      expect.objectContaining({ message: expect.stringContaining("--init") }),
-    );
-    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrowError(
-      expect.objectContaining({
-        message: expect.stringContaining("manually migrate"),
-      }),
-    );
-  });
-
   it("returns the stored config when it already contains all known rules", async () => {
     const customSources = [
       { type: "glob" as const, pattern: "custom/**/*.md" },

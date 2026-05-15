@@ -92,7 +92,6 @@ export type Config = z.infer<typeof zConfig>;
 
 /** The file name of the vault-level config, relative to the vault root. */
 export const CONFIG_FILENAME = ".onyx-vellum.json";
-const LEGACY_CONFIG_FILENAME = "onyx-vellum.config.md";
 
 /** The default top-level sources used when creating a new config file. */
 export const DEFAULT_SOURCES: Array<z.infer<typeof zSource>> = [
@@ -140,19 +139,6 @@ export async function loadConfig(
     raw = await fs.readFile(configPath, "utf-8");
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-    const legacyConfigPath = join(vaultPath, LEGACY_CONFIG_FILENAME);
-    try {
-      await fs.access(legacyConfigPath);
-      throw new Error(
-        `Found legacy ${LEGACY_CONFIG_FILENAME} but ${CONFIG_FILENAME} is missing. ` +
-        `Please create ${CONFIG_FILENAME} (or run --init to generate defaults), ` +
-        `manually migrate your config from ${LEGACY_CONFIG_FILENAME}, and re-run.`,
-      );
-    } catch (legacyErr) {
-      if ((legacyErr as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw legacyErr;
-      }
-    }
     // File does not exist — create it with all defaults.
     await fs.writeFile(configPath, serializeConfig(defaultConfig), "utf-8");
     return defaultConfig;
