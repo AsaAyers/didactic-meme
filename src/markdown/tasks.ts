@@ -88,9 +88,9 @@ function extractTags(text: string): string[] {
   const seen = new Set<string>();
   const urlSchemes = new Set(["http", "https", "mailto", "ftp", "file"]);
 
-  const hashTagMatches = text.matchAll(/#(\w+)/g);
+  const hashTagMatches = text.matchAll(/(?:^|\s)#(\w+)/g);
   for (const match of hashTagMatches) {
-    const tag = match[1];
+    const tag = match[1]?.toLowerCase();
     if (tag && !seen.has(tag)) {
       seen.add(tag);
       tags.push(tag);
@@ -100,10 +100,10 @@ function extractTags(text: string): string[] {
   // Match inline fields like `due:2026-05-03`/`sleep:2026-05-10`.
   // `(?!//)` avoids URL schemes such as `https://` at the value boundary.
   const inlineFieldMatches = text.matchAll(
-    /(?:^|\s)([a-z][a-z0-9-]+):(?!\/\/)\S+/g,
+    /(?:^|\s)([a-zA-Z][a-zA-Z0-9-]+):(?!\/\/)\S+/g,
   );
   for (const match of inlineFieldMatches) {
-    const tag = match[1];
+    const tag = match[1]?.toLowerCase();
     if (tag && !urlSchemes.has(tag) && !seen.has(tag)) {
       seen.add(tag);
       tags.push(tag);

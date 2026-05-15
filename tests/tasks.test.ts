@@ -56,7 +56,9 @@ describe("extractTasks", () => {
   });
 
   it("extracts inline-field keys as tags (due/sleep/etc.)", () => {
-    const tree = parseMarkdown("- [ ] Schedule follow-up due:2026-05-03 sleep:2026-05-10");
+    const tree = parseMarkdown(
+      "- [ ] Schedule follow-up due:2026-05-03 SLEEP:2026-05-10",
+    );
     const tasks = extractTasks(tree, "test.md");
 
     expect(tasks).toHaveLength(1);
