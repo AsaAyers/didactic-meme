@@ -3,18 +3,9 @@ import { join } from "node:path";
 import { joinFrontmatter, splitFrontmatter } from "../markdown/frontmatter.js";
 import { getInlineField } from "../markdown/inlineFields.js";
 import { parseMarkdown, stringifyMarkdown } from "../markdown/parse.js";
-import { Task, removeTask } from "../markdown/tasks.js";
+import type { Task } from "../markdown/tasks.js";
+import { removeTask } from "../markdown/tasks.js";
 import type { CustomAction, RuleSpec } from "./types.js";
-
-function ensureCheckedTaskLine(taskText: string): string {
-  const normalizedText = taskText.replace(/^\[[ xX]\] /, "");
-  return new Task({
-    text: normalizedText,
-    checked: true,
-    fields: {},
-    sourcePath: "",
-  }).toString();
-}
 
 const moveDoneTasksAction: CustomAction = {
   type: "custom",
@@ -22,8 +13,8 @@ const moveDoneTasksAction: CustomAction = {
     const dailyNotesFolder = config?.rules["moveDoneTasks"]?.dailyNotesFolder;
     if (!dailyNotesFolder) return;
 
-    const tasksByTranscript = new Map<string, string[]>();
-    const tasksByDailyNote = new Map<string, string[]>();
+    const tasksByTranscript = new Map<string, Task[]>();
+    const tasksByDailyNote = new Map<string, Task[]>();
 
     for (const task of tasks) {
       const done = getInlineField(task.text, "done");
@@ -39,18 +30,18 @@ const moveDoneTasksAction: CustomAction = {
       const transcriptPath = join(vaultPath, task.sourcePath);
       const existingTranscriptTasks =
         tasksByTranscript.get(transcriptPath) ?? [];
-      existingTranscriptTasks.push(task.text);
+      existingTranscriptTasks.push(task);
       tasksByTranscript.set(transcriptPath, existingTranscriptTasks);
 
       const existingDailyNoteTasks = tasksByDailyNote.get(dailyNotePath) ?? [];
-      existingDailyNoteTasks.push(task.text);
+      existingDailyNoteTasks.push(task);
       tasksByDailyNote.set(dailyNotePath, existingDailyNoteTasks);
     }
 
     for (const [dailyNotePath, movedTasks] of tasksByDailyNote) {
       const rawDailyNote = await readFile(dailyNotePath);
       const parts = splitFrontmatter(rawDailyNote);
-      const movedTaskLines = movedTasks.map(ensureCheckedTaskLine);
+      const movedTaskLines = movedTasks.map((task) => task.toString());
       const needsLeadingNewline =
         parts.body.length > 0 && !parts.body.endsWith("\n");
       const nextBody =
@@ -64,12 +55,12 @@ const moveDoneTasksAction: CustomAction = {
       }
     }
 
-    for (const [transcriptPath, taskTexts] of tasksByTranscript) {
+    for (const [transcriptPath, movedTasks] of tasksByTranscript) {
       const rawTranscript = await readFile(transcriptPath);
       const parts = splitFrontmatter(rawTranscript);
       const tree = parseMarkdown(parts.body);
-      for (const taskText of taskTexts) {
-        removeTask(tree, taskText);
+      for (const task of movedTasks) {
+        removeTask(tree, task.text);
       }
       const nextBody = stringifyMarkdown(tree);
       const nextContent = joinFrontmatter(parts, nextBody);
