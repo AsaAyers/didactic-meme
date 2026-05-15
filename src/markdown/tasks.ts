@@ -128,6 +128,7 @@ function splitKnownInlineFields(text: string): {
 
   const tokens = text.trim().split(/\s+/).filter((token) => token.length > 0);
   for (const token of tokens) {
+    // Parse `key:value` tokens; unknown keys are preserved in title.
     const match = token.match(/^([A-Za-z][A-Za-z0-9]*):(\S+)$/);
     if (!match) {
       titleTokens.push(token);
@@ -140,6 +141,7 @@ function splitKnownInlineFields(text: string): {
       continue;
     }
 
+    // First known value wins when duplicates appear (e.g. due:a due:b).
     if (fields[knownKey] === undefined) {
       fields[knownKey] = match[2];
     }
