@@ -252,4 +252,21 @@ describe("createAlertScheduler", () => {
     await vi.advanceTimersByTimeAsync(1_000);
     expect(alerts).toHaveLength(1); // no additional fire
   });
+
+  it("evaluates schedule times in configured timezone when provided", () => {
+    // 2026-05-07T00:30:00Z is 17:30 in America/Los_Angeles (previous day).
+    vi.setSystemTime(new Date("2026-05-07T00:30:00.000Z"));
+    const alerts: string[] = [];
+    const stop = createAlertScheduler(
+      () => ["17:30"],
+      async () => {
+        alerts.push("fired");
+      },
+      1_000,
+      () => "America/Los_Angeles",
+    );
+
+    expect(alerts).toHaveLength(1);
+    stop();
+  });
 });
