@@ -11,7 +11,7 @@ function ensureCheckedTaskLine(taskText: string): string {
   return new Task({
     text: normalizedText,
     checked: true,
-    tags: [],
+    fields: {},
     sourcePath: "",
   }).toString();
 }
