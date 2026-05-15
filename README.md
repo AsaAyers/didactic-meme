@@ -88,6 +88,10 @@ On first run, `onyx-vellum` creates a `.onyx-vellum.json` file in your vault roo
     "removeEphemeralOverdueTasks": {
       "sources": [{ "type": "glob", "pattern": "**/*.md" }],
     },
+    "moveDoneTranscriptTasksToDailyNote": {
+      "sources": [{ "type": "glob", "pattern": "**/*.transcript.md" }],
+      "dailyNotesFolder": "daily",
+    },
     "ensureAudioTranscripts": {
       "sources": [{ "type": "glob", "pattern": "**/*.md" }],
     },
@@ -441,6 +445,7 @@ registry.
 | `stampDone`                   | Adds `done:YYYY-MM-DD` to newly completed tasks that do not already have one.                                                                                |
 | `completedTaskRollover`       | Clones recurring completed tasks forward to their next cycle.                                                                                                |
 | `removeEphemeralOverdueTasks` | Removes unchecked overdue tasks marked `ephemeral`.                                                                                                          |
+| `moveDoneTranscriptTasksToDailyNote` | Moves checked tasks with `done:YYYY-MM-DD` from transcript notes into the matching daily note when that daily file already exists.                                     |
 | `ensureAudioTranscripts`      | For each embedded `.m4a`, inserts a mirrored transcript embed, creates a sibling `.transcript.md` placeholder when needed, and enqueues async transcription. |
 | `incompleteTaskAlert`         | Groups incomplete tasks and optionally posts them to a configured alert endpoint.                                                                            |
 
@@ -607,6 +612,7 @@ src/
     ├── normalizeTodayLiteral.ts # Rule 1
     ├── stampDone.ts            # Rule 2
     ├── completedTaskRollover.ts # Rule 3
+    ├── moveDoneTranscriptTasksToDailyNote.ts # Transcript -> daily-note move rule
     ├── removeEphemeralOverdueTasks.ts # Rule 5
     └── incompleteTaskAlert.ts  # Rule 4
 tests/
