@@ -8,7 +8,7 @@ export type WatcherOptions = {
    * Extra vault-relative file paths to watch in addition to `*.md` files.
    * A file-change event is forwarded to `onProcess` whenever the changed
    * file's relative path appears in this set.  Useful for watching
-   * configuration files such as `.onyx-vellum.json`.
+   * configuration files such as `onyx-vellum.config.md`.
    */
   additionalFiles?: string[];
 };
@@ -154,7 +154,20 @@ export function startVaultWatcher(
       const absPath = resolve(vaultPath, filename);
       const relPath = relative(vaultPath, absPath);
 
-      if (!relPath.endsWith(".md") && !extraFiles.has(relPath)) return;
+      if (extraFiles.has(relPath)) {
+        // Explicitly registered files (e.g. the config file) are always
+        // forwarded regardless of extension or hidden status.
+        debouncer.notify(relPath, eventType ?? "change");
+        return;
+      }
+
+      if (!relPath.endsWith(".md")) return;
+
+      // Skip hidden files and directories (any path segment starting with '.').
+      // Obsidian and other tools write to .obsidian/, .trash/, etc., and those
+      // events should never trigger rule processing.
+      const segments = relPath.split(/[/\\]/);
+      if (segments.some((seg) => seg.startsWith("."))) return;
 
       debouncer.notify(relPath, eventType ?? "change");
     },

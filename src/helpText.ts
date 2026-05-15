@@ -35,9 +35,13 @@ Options:
                            run selected rules after the vault has been idle for
                            the debounce period (default 60 s).  Only changed files
                            are processed. Uses a native filesystem watcher (no polling).
-                           Not compatible with --init.
-                           The debounce duration is configurable via the vault config:
-                             { "watch": { "debounce": 5000 } }
+                            Not compatible with --init.
+                            The debounce duration is configurable via
+                            onyx-vellum.config.md frontmatter:
+                              ---
+                              watch:
+                                debounce: 5000
+                              ---
   --init                   Normalize vault formatting and stamp done:unknown
                            on checked tasks that lack one.
                            Mutually exclusive with rule selection and --watch.
@@ -47,16 +51,14 @@ Environment variables:
   VAULT_PATH               (required) Absolute path to the vault root.
 
 Config:
-  .onyx-vellum.json      Configure rule sources under "rules".
+  onyx-vellum.config.md    Configure rule sources under frontmatter.
                            For alerts, set:
-                           {
-                             "rules": {
-                               "incompleteTaskAlert": {
-                                 "alertUrl": "http://localhost:8080/alert",
-                                 "alertToken": "<optional bearer token>"
-                               }
-                             }
-                           }
+                           ---
+                           rules:
+                             incompleteTaskAlert:
+                               alertUrl: http://localhost:8080/alert
+                               alertToken: <optional bearer token>
+                           ---
 
 Examples:
   # Run every rule against the vault

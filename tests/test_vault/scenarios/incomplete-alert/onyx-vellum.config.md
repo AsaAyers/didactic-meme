@@ -1,0 +1,39 @@
+---
+watch:
+  alertSchedule:
+    - "09:00"
+rules:
+  normalizeTodayLiteral:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  stampDone:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  completedTaskRollover:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  removeEphemeralOverdueTasks:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  moveDoneTranscriptTasksToDailyNote:
+    sources:
+      - type: glob
+        pattern: "**/*.transcript.md"
+    dailyNotesFolder: "daily"
+  incompleteTaskAlert:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+        exclude:
+          - "archive/**"
+          - "templates/**"
+    alertUrl: "http://localhost:8080/alert"
+  ensureAudioTranscripts:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+---

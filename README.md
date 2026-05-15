@@ -57,57 +57,60 @@ When a repeating task is completed, `due:` is always set to `newDue`. If `start:
 
 **Migration from `repeat:smtwhfa`:** replace with `repeat:d`. No other changes required.
 
-## Vault Configuration (`.onyx-vellum.json`)
+## Vault Configuration (`onyx-vellum.config.md`)
 
-On first run, `onyx-vellum` creates a `.onyx-vellum.json` file in your vault root populated with the default `sources` for every built-in rule. You can edit this file to customise which files each rule processes, alert delivery settings, and watch-mode options.
+On first run, `onyx-vellum` creates an `onyx-vellum.config.md` file in your vault root with frontmatter populated with the default `sources` for every built-in rule. You can edit this frontmatter to customise which files each rule processes, alert delivery settings, and watch-mode options.
 
 ### Config shape
 
-```jsonc
-{
-  // Optional watch-mode settings.
-    "watch": {
-      // Debounce duration in milliseconds (default: 60000 = 60 s).
-      "debounce": 60000,
-      // Optional scheduled run times (local time) for incompleteTaskAlert.
-      // Entries are normalized to HH:MM (e.g. "9:5" -> "09:05").
-      "alertSchedule": ["09:00"],
-    },
+```yaml
+---
+# Optional watch-mode settings.
+watch:
+  # Debounce duration in milliseconds (default: 60000 = 60 s).
+  debounce: 60000
+  # Optional scheduled run times (local time) for incompleteTaskAlert.
+  # Entries are normalized to HH:MM (e.g. "9:5" -> "09:05").
+  alertSchedule:
+    - "09:00"
 
-  // Rule-specific settings and source overrides.
-  "rules": {
-    "normalizeTodayLiteral": {
-      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-    },
-    "stampDone": {
-      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-    },
-    "completedTaskRollover": {
-      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-    },
-    "removeEphemeralOverdueTasks": {
-      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-    },
-    "moveDoneTranscriptTasksToDailyNote": {
-      "sources": [{ "type": "glob", "pattern": "**/*.transcript.md" }],
-      "dailyNotesFolder": "daily",
-    },
-    "ensureAudioTranscripts": {
-      "sources": [{ "type": "glob", "pattern": "**/*.md" }],
-    },
-    "incompleteTaskAlert": {
-      "sources": [
-        {
-          "type": "glob",
-          "pattern": "**/*.md",
-          "exclude": ["archive/**", "templates/**"],
-        },
-      ],
-      "alertUrl": "http://localhost:8080/alert",
-      "alertToken": "optional-token",
-    },
-  },
-}
+# Rule-specific settings and source overrides.
+rules:
+  normalizeTodayLiteral:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  stampDone:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  completedTaskRollover:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  removeEphemeralOverdueTasks:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  moveDoneTranscriptTasksToDailyNote:
+    sources:
+      - type: glob
+        pattern: "**/*.transcript.md"
+    dailyNotesFolder: "daily"
+  ensureAudioTranscripts:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+  incompleteTaskAlert:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
+        exclude:
+          - "archive/**"
+          - "templates/**"
+    alertUrl: "http://localhost:8080/alert"
+    alertToken: "optional-token"
+---
 ```
 
 ### Source types
@@ -119,7 +122,7 @@ On first run, `onyx-vellum` creates a `.onyx-vellum.json` file in your vault roo
 
 ### Auto-migration
 
-When a new rule is added in a future release, its default entry is merged into `rules` in your existing `.onyx-vellum.json` automatically on the next run. You do not need to edit the file by hand unless you want a non-default value.
+When a new rule is added in a future release, its default entry is merged into `rules` in your existing `onyx-vellum.config.md` automatically on the next run. You do not need to edit the file by hand unless you want a non-default value.
 
 ### Validation
 
@@ -156,12 +159,13 @@ VAULT_PATH=/my/vault onyx-vellum --watch stampDone
 
 ### Debounce configuration
 
-The debounce duration defaults to **60 seconds** and can be changed via the `watch.debounce` key in `.onyx-vellum.json`:
+The debounce duration defaults to **60 seconds** and can be changed via the `watch.debounce` key in `onyx-vellum.config.md` frontmatter:
 
-```json
-{
-  "watch": { "debounce": 5000 }
-}
+```yaml
+---
+watch:
+  debounce: 5000
+---
 ```
 
 Set `debounce` to the number of milliseconds the file must be idle before rules are triggered. Shorter values give faster feedback; the default 60 s is suitable for vaults edited by Obsidian, which can produce many rapid save events for a single logical edit.
@@ -490,7 +494,7 @@ Tasks without a `repeat:` field are **never** duplicated and never receive `copi
 Finds all **incomplete** (unchecked) tasks across all `**/*.md` files in the vault and:
 
 1. Groups them by file and sorts them by due date.
-2. If `rules.incompleteTaskAlert.alertUrl` is set in `.onyx-vellum.json`, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `rules.incompleteTaskAlert.alertToken` is set, `Authorization: Bearer <token>`.
+2. If `rules.incompleteTaskAlert.alertUrl` is set in `onyx-vellum.config.md`, performs an HTTP POST of the content to that URL with `Content-Type: text/markdown` and, if `rules.incompleteTaskAlert.alertToken` is set, `Authorization: Bearer <token>`.
 
 **Dependencies:** `stampDone`
 
@@ -565,14 +569,14 @@ Source audio: [[recordings/foo.m4a]]
 The rule uses the normal per-rule `sources` config model. For example, to limit
 it to `daily/**/*.md`:
 
-```json
-{
-  "rules": {
-    "ensureAudioTranscripts": {
-      "sources": [{ "type": "glob", "pattern": "daily/**/*.md" }]
-    }
-  }
-}
+```yaml
+---
+rules:
+  ensureAudioTranscripts:
+    sources:
+      - type: glob
+        pattern: "daily/**/*.md"
+---
 ```
 
 #### Dry-run behavior
@@ -596,7 +600,7 @@ Docker Compose section for details).
 src/
 ├── index.ts                    # CLI entrypoint
 ├── helpText.ts                 # --help output text (exported for testing)
-├── config.ts                   # Vault-level config (.onyx-vellum.json) — zod schemas + load/apply helpers
+├── config.ts                   # Vault-level config (onyx-vellum.config.md frontmatter) — zod schemas + load/apply helpers
 ├── markdown/
 │   ├── parse.ts                # unified/remark parse + stringify + gray-matter helpers
 │   ├── tasks.ts                # extract / toggle / remove / update GFM task items
