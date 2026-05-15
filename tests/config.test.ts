@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { joinFrontmatter, splitFrontmatter } from "../src/markdown/frontmatter.js";
 import {
   loadConfig,
   getDefaultConfig,
@@ -58,6 +59,21 @@ function configPath(): string {
   return join(tempVault, CONFIG_FILENAME);
 }
 
+function serializeConfigFrontmatter(config: unknown): string {
+  return joinFrontmatter(
+    { data: config as Record<string, unknown>, bodyPrefix: "", body: "" },
+    "",
+  );
+}
+
+async function writeConfig(config: unknown): Promise<void> {
+  await fs.writeFile(configPath(), serializeConfigFrontmatter(config), "utf-8");
+}
+
+async function readConfigFrontmatter(): Promise<Record<string, unknown>> {
+  return splitFrontmatter(await fs.readFile(configPath(), "utf-8")).data;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -73,7 +89,7 @@ describe("loadConfig", () => {
     });
 
     // File was written to disk with top-level sources and empty per-rule entries.
-    const written = JSON.parse(await fs.readFile(configPath(), "utf-8"));
+    const written = await readConfigFrontmatter();
     expect(written).toEqual({
       sources: [{ type: "glob", pattern: "**/*.md" }],
       rules: {
@@ -93,7 +109,7 @@ describe("loadConfig", () => {
         specB: { sources: [{ type: "glob", pattern: "notes/**/*.md" }] },
       },
     };
-    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+    await writeConfig(initial);
 
     const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
 
@@ -108,7 +124,7 @@ describe("loadConfig", () => {
         specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
       },
     };
-    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+    await writeConfig(initial);
 
     const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
 
@@ -116,12 +132,12 @@ describe("loadConfig", () => {
     expect(config.rules.specB).toEqual({});
 
     // The merged result was written back to disk.
-    const written = JSON.parse(await fs.readFile(configPath(), "utf-8"));
+    const written = await readConfigFrontmatter();
     expect(written.rules).toHaveProperty("specB");
   });
 
-  it("throws a descriptive error when the config contains invalid JSON", async () => {
-    await fs.writeFile(configPath(), "{ this is not json }", "utf-8");
+  it("throws a descriptive error when the config contains invalid frontmatter", async () => {
+    await fs.writeFile(configPath(), "---\nrules: [\n---\n", "utf-8");
 
     await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
       CONFIG_FILENAME,
@@ -131,7 +147,7 @@ describe("loadConfig", () => {
   it("throws a descriptive error when the config fails zod validation", async () => {
     // "sources" must be an array of Source objects — a string is invalid.
     const bad = { rules: { specA: { sources: "not-an-array" } } };
-    await fs.writeFile(configPath(), JSON.stringify(bad), "utf-8");
+    await writeConfig(bad);
 
     await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
       CONFIG_FILENAME,
@@ -142,7 +158,7 @@ describe("loadConfig", () => {
     const bad = {
       rules: { specA: { sources: [{ type: "unknown", pattern: "**" }] } },
     };
-    await fs.writeFile(configPath(), JSON.stringify(bad), "utf-8");
+    await writeConfig(bad);
 
     await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
       CONFIG_FILENAME,
@@ -158,7 +174,7 @@ describe("loadConfig", () => {
         specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
       },
     };
-    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+    await writeConfig(initial);
 
     const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
 
@@ -177,7 +193,7 @@ describe("loadConfig", () => {
         specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
       },
     };
-    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+    await writeConfig(initial);
 
     const config = await loadConfig(tempVault, [SPEC_A]);
 
@@ -195,7 +211,7 @@ describe("loadConfig", () => {
         specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
       },
     };
-    await fs.writeFile(configPath(), JSON.stringify(bad), "utf-8");
+    await writeConfig(bad);
 
     await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
       CONFIG_FILENAME,
@@ -211,13 +227,13 @@ describe("loadConfig", () => {
         specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
       },
     };
-    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+    await writeConfig(initial);
 
     const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
 
     expect(config.watch).toEqual({ debounce: 3000 });
 
-    const written = JSON.parse(await fs.readFile(configPath(), "utf-8"));
+    const written = await readConfigFrontmatter();
     expect(written.watch).toEqual({ debounce: 3000 });
     expect(written.rules).toHaveProperty("specB");
   });
@@ -229,7 +245,7 @@ describe("loadConfig", () => {
         specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
       },
     };
-    await fs.writeFile(configPath(), JSON.stringify(initial), "utf-8");
+    await writeConfig(initial);
 
     const config = await loadConfig(tempVault, [SPEC_A, SPEC_B]);
 
@@ -243,7 +259,7 @@ describe("loadConfig", () => {
       sources: "not-an-array",
       rules: { specA: { sources: [{ type: "glob", pattern: "**/*.md" }] } },
     };
-    await fs.writeFile(configPath(), JSON.stringify(bad), "utf-8");
+    await writeConfig(bad);
 
     await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
       CONFIG_FILENAME,
@@ -255,7 +271,7 @@ describe("loadConfig", () => {
       watch: { debounce: 3000 },
       specA: { sources: [{ type: "glob", pattern: "legacy/**/*.md" }] },
     };
-    await fs.writeFile(configPath(), JSON.stringify(bad), "utf-8");
+    await writeConfig(bad);
 
     await expect(loadConfig(tempVault, [SPEC_A, SPEC_B])).rejects.toThrow(
       CONFIG_FILENAME,
