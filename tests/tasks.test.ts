@@ -12,7 +12,7 @@ import {
 const SAMPLE_MARKDOWN = `
 # Tasks
 
-- [x] Buy milk #recurring due:2026-05-03
+- [x] Buy milk due:2026-05-03 repeat:m
 - [ ] Write tests
 - [x] Deploy to production done:2026-05-01
 - [ ] Review PR #urgent sleep:2026-05-08 due:2026-05-10
@@ -25,10 +25,10 @@ describe("extractTasks", () => {
     expect(tasks).toHaveLength(4);
 
     expect(tasks[0]).toMatchObject({
-      text: "Buy milk #recurring due:2026-05-03",
-      title: "Buy milk #recurring",
+      text: "Buy milk due:2026-05-03 repeat:m",
+      title: "Buy milk",
       checked: true,
-      fields: { due: "2026-05-03" },
+      fields: { due: "2026-05-03", repeat: "m" },
     });
     expect(tasks[1]).toMatchObject({
       text: "Write tests",
@@ -138,7 +138,7 @@ describe("Task model", () => {
 
   it("TaskSchema merges explicit fields with extracted known fields", () => {
     const parsed = TaskSchema.parse({
-      text: "Write tests due:2026-05-11",
+      text: "Write tests due:2026-05-11 start:2026-05-01",
       checked: true,
       fields: { start: "2026-05-10" },
     });
@@ -146,6 +146,9 @@ describe("Task model", () => {
       due: "2026-05-11",
       start: "2026-05-10",
     });
+    expect(parsed.toString()).toBe(
+      "* [x] Write tests due:2026-05-11 start:2026-05-10",
+    );
   });
 });
 
@@ -180,11 +183,11 @@ describe("setTaskChecked", () => {
 
   it("unchecks a checked task", () => {
     const tree = parseMarkdown(SAMPLE_MARKDOWN);
-    const result = setTaskChecked(tree, "Buy milk #recurring due:2026-05-03", false);
+    const result = setTaskChecked(tree, "Buy milk due:2026-05-03 repeat:m", false);
     expect(result).toBe(true);
 
     const tasks = extractTasks(tree, "test.md");
-    const task = tasks.find((t) => t.text === "Buy milk #recurring due:2026-05-03");
+    const task = tasks.find((t) => t.text === "Buy milk due:2026-05-03 repeat:m");
     expect(task?.checked).toBe(false);
   });
 
