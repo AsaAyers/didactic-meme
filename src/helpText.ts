@@ -39,11 +39,12 @@ Options:
                            are processed. Uses a native filesystem watcher (no polling).
                             Not compatible with --init.
                             The debounce duration is configurable via
-                            onyx-vellum.config.md frontmatter:
-                              ---
-                              watch:
-                                debounce: 5000
-                              ---
+                            .onyx-vellum.json:
+                              {
+                                "watch": {
+                                  "debounce": 5000
+                                }
+                              }
   --init                   Normalize vault formatting and stamp done:unknown
                            on checked tasks that lack one.
                            Mutually exclusive with rule selection and --watch.
@@ -53,14 +54,16 @@ Environment variables:
   VAULT_PATH               (required) Absolute path to the vault root.
 
 Config:
-  onyx-vellum.config.md    Configure rule sources under frontmatter.
-                           For alerts, set:
-                           ---
-                           rules:
-                             incompleteTaskAlert:
-                               alertUrl: http://localhost:8080/alert
-                               alertToken: <optional bearer token>
-                           ---
+  .onyx-vellum.json        Configure rule sources in JSON.
+                            For alerts, set:
+                            {
+                              "rules": {
+                                "incompleteTaskAlert": {
+                                  "alertUrl": "http://localhost:8080/alert",
+                                  "alertToken": "<optional bearer token>"
+                                }
+                              }
+                            }
 
 Examples:
   # Run every rule against the vault

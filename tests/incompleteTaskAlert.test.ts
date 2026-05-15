@@ -11,7 +11,6 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { runAllRules } from "../src/engine/runner.js";
-import { joinFrontmatter } from "../src/markdown/frontmatter.js";
 import { CONFIG_FILENAME } from "../src/config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -190,22 +189,19 @@ describe("incompleteTaskAlert — HTTP delivery", () => {
       await fs.writeFile(join(tempVault, "tasks.md"), "* [ ] Do laundry\n", "utf-8");
       await fs.writeFile(
         join(tempVault, CONFIG_FILENAME),
-        joinFrontmatter(
+        `${JSON.stringify(
           {
-            data: {
-              rules: {
-                incompleteTaskAlert: {
-                  sources: [{ type: "glob", pattern: "**/*.md" }],
-                  alertUrl: "http://localhost:8080/alert",
-                  alertToken: "test-token",
-                },
+            rules: {
+              incompleteTaskAlert: {
+                sources: [{ type: "glob", pattern: "**/*.md" }],
+                alertUrl: "http://localhost:8080/alert",
+                alertToken: "test-token",
               },
             },
-            bodyPrefix: "",
-            body: "",
           },
-          "",
-        ),
+          null,
+          2,
+        )}\n`,
         "utf-8",
       );
 
