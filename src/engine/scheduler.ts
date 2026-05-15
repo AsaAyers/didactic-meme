@@ -58,17 +58,13 @@ export function normalizeAlertSchedule(schedule: string[]): {
 export function createAlertScheduler(
   getSchedule: () => string[],
   onAlert: () => Promise<void>,
-  options?:
-    | number
-    | {
-        intervalMs?: number;
-        getTimezone?: () => string | undefined;
-      },
+  options?: {
+    intervalMs?: number;
+    getTimezone?: () => string | undefined;
+  },
 ): () => void {
-  const normalizedOptions =
-    typeof options === "number" ? { intervalMs: options } : options;
-  const intervalMs = normalizedOptions?.intervalMs ?? 60_000;
-  const getTimezone = normalizedOptions?.getTimezone;
+  const intervalMs = options?.intervalMs ?? 60_000;
+  const getTimezone = options?.getTimezone;
   // Track the last fired "YYYY-MM-DDTHH:MM" to prevent double-firing within
   // the same minute window while still allowing the same time on a future day.
   let lastFiredKey = "";

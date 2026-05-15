@@ -282,7 +282,7 @@ if (init) {
       .then((config) => run(onlyGlob, config.timezone))
       .catch((err: unknown) => {
         console.warn(
-          `Warning: could not load vault config — ${(err as Error).message}. Using local server timezone.`,
+          `Warning: could not load vault config — ${(err as Error).message}. Using built-in defaults and local server timezone.`,
         );
         return run(onlyGlob);
       })

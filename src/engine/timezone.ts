@@ -7,6 +7,21 @@ type DateParts = {
   second: number;
 };
 
+const DATE_PART_KEYS = [
+  "year",
+  "month",
+  "day",
+  "hour",
+  "minute",
+  "second",
+] as const;
+
+type DatePartKey = (typeof DATE_PART_KEYS)[number];
+
+function isDatePartKey(value: string): value is DatePartKey {
+  return (DATE_PART_KEYS as readonly string[]).includes(value);
+}
+
 /**
  * Convert an instant to a Date whose local-wall-clock components match
  * the requested IANA timezone at that instant.
@@ -26,14 +41,7 @@ export function toTimezoneDate(date: Date, timezone?: string): Date {
   }).formatToParts(date);
 
   const values = parts.reduce<Partial<DateParts>>((acc, part) => {
-    if (
-      part.type === "year" ||
-      part.type === "month" ||
-      part.type === "day" ||
-      part.type === "hour" ||
-      part.type === "minute" ||
-      part.type === "second"
-    ) {
+    if (isDatePartKey(part.type)) {
       acc[part.type] = Number(part.value);
     }
     return acc;
