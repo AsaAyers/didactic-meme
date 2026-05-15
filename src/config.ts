@@ -1,7 +1,7 @@
 /**
  * Vault-level configuration for onyx-vellum.
  *
- * The config file `.onyx-vellum.json` lives at the vault root and lets users
+ * The config file `onyx-vellum.config.md` lives at the vault root and lets users
  * customise which files each rule operates on by overriding its `sources`.
  *
  * Shape:
@@ -22,6 +22,8 @@
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import { joinFrontmatter, splitFrontmatter } from "./markdown/frontmatter.js";
+import type { SplitFrontmatterResult } from "./markdown/frontmatter.js";
 import type { RuleSpec } from "./rules/types.js";
 
 // ---------------------------------------------------------------------------
@@ -76,13 +78,13 @@ export const zConfig = z
 // Types
 // ---------------------------------------------------------------------------
 
-/** Per-rule configuration stored in `.onyx-vellum.json`. */
+/** Per-rule configuration stored in `onyx-vellum.config.md` frontmatter. */
 export type RuleConfig = z.infer<typeof zRuleConfig>;
 
-/** Watch-mode configuration stored under the `"watch"` key in `.onyx-vellum.json`. */
+/** Watch-mode configuration stored under the `"watch"` key in frontmatter. */
 export type WatchConfig = z.infer<typeof zWatchConfig>;
 
-/** Full vault-level config for `.onyx-vellum.json`. */
+/** Full vault-level config parsed from frontmatter. */
 export type Config = z.infer<typeof zConfig>;
 
 // ---------------------------------------------------------------------------
@@ -90,7 +92,7 @@ export type Config = z.infer<typeof zConfig>;
 // ---------------------------------------------------------------------------
 
 /** The file name of the vault-level config, relative to the vault root. */
-export const CONFIG_FILENAME = ".onyx-vellum.json";
+export const CONFIG_FILENAME = "onyx-vellum.config.md";
 
 /** The default top-level sources used when creating a new config file. */
 export const DEFAULT_SOURCES: Array<z.infer<typeof zSource>> = [
@@ -115,7 +117,7 @@ export function getDefaultConfig(specs: RuleSpec[]): Config["rules"] {
  *   - If the file does not exist: write the full default config and return it.
  *   - If the file exists but is valid: merge in defaults for any rule that is
  *     absent from the stored config, persist the merged result, and return it.
- *   - If the file exists but is invalid (bad JSON or fails zod validation):
+ *   - If the file exists but is invalid (bad frontmatter or fails zod validation):
  *     throw a descriptive error so the user knows they must fix the file.
  *
  * The `watch` key is validated as a WatchConfig by `zConfig` and is preserved
@@ -139,21 +141,19 @@ export async function loadConfig(
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
     // File does not exist — create it with all defaults.
-    await fs.writeFile(
-      configPath,
-      JSON.stringify(defaultConfig, null, 2) + "\n",
-      "utf-8",
-    );
+    await fs.writeFile(configPath, serializeConfig(defaultConfig), "utf-8");
     return defaultConfig;
   }
 
-  // Parse JSON.
+  // Parse YAML frontmatter.
   let parsed: unknown;
+  let parsedFrontmatter: SplitFrontmatterResult;
   try {
-    parsed = JSON.parse(raw);
+    parsedFrontmatter = splitFrontmatter(raw);
+    parsed = parsedFrontmatter.data;
   } catch (err) {
     throw new Error(
-      `Failed to parse ${CONFIG_FILENAME}: ${(err as Error).message}. ` +
+      `Failed to parse frontmatter in ${CONFIG_FILENAME}: ${(err as Error).message}. ` +
         `Please fix or delete the file and re-run.`,
     );
   }
@@ -183,7 +183,11 @@ export async function loadConfig(
   if (needsWrite) {
     await fs.writeFile(
       configPath,
-      JSON.stringify(merged, null, 2) + "\n",
+      serializeConfig(
+        merged,
+        parsedFrontmatter.bodyPrefix,
+        parsedFrontmatter.body,
+      ),
       "utf-8",
     );
   }
@@ -210,4 +214,15 @@ export function applyConfig(specs: RuleSpec[], config: Config): RuleSpec[] {
     }
     return spec;
   });
+}
+
+function serializeConfig(
+  config: Config,
+  bodyPrefix = "",
+  body = "",
+): string {
+  return joinFrontmatter(
+    { data: config as Record<string, unknown>, bodyPrefix, body },
+    body,
+  );
 }

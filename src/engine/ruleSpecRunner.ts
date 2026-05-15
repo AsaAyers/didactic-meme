@@ -14,6 +14,7 @@ import { getInlineField } from "../markdown/inlineFields.js";
 import { extractMarkdownLinks, matchesLinkQuery } from "../markdown/links.js";
 import type { MarkdownLink } from "../markdown/links.js";
 import { parseDateStr } from "../rules/scheduleUtils.js";
+import { CONFIG_FILENAME } from "../config.js";
 import { walkMarkdownFiles } from "./io.js";
 import { resolveToValue } from "./actions/dateHelpers.js";
 import { applyAdvanceRepeat } from "./actions/advanceRepeat.js";
@@ -146,8 +147,11 @@ async function resolveEffectiveSourcePaths(
       : filePaths.filter((p) =>
           onlyGlob.some((g) => matchesGlob(relative(vaultPath, p), g)),
         );
+  const nonConfigPaths = effectivePaths.filter(
+    (p) => relative(vaultPath, p) !== CONFIG_FILENAME,
+  );
 
-  for (const p of effectivePaths) {
+  for (const p of nonConfigPaths) {
     if (!p.endsWith(".md")) {
       throw new Error(
         `Engine only processes .md files; refusing to process: ${p}`,
@@ -155,7 +159,7 @@ async function resolveEffectiveSourcePaths(
     }
   }
 
-  return effectivePaths;
+  return nonConfigPaths;
 }
 
 /**
