@@ -30,9 +30,7 @@ const httpAlert: CustomAction = {
 
     const sections = sortedPaths.map((filePath) => {
       const fileTasks = byFile.get(filePath)!;
-      const taskLines = fileTasks
-        .map((t) => `- [${t.checked ? "x" : " "}] ${t.text}`)
-        .join("\n");
+      const taskLines = fileTasks.map((t) => t.toString()).join("\n");
       return `## ${filePath}\n\n${taskLines}`;
     });
     const content = sections.join("\n\n") + "\n";

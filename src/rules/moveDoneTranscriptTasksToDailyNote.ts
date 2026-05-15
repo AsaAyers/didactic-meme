@@ -3,11 +3,17 @@ import { join } from "node:path";
 import { joinFrontmatter, splitFrontmatter } from "../markdown/frontmatter.js";
 import { getInlineField } from "../markdown/inlineFields.js";
 import { parseMarkdown, stringifyMarkdown } from "../markdown/parse.js";
-import { removeTask } from "../markdown/tasks.js";
+import { Task, removeTask } from "../markdown/tasks.js";
 import type { CustomAction, RuleSpec } from "./types.js";
 
 function ensureCheckedTaskLine(taskText: string): string {
-  return /^\[[xX ]\]\s/.test(taskText) ? `* ${taskText}` : `* [x] ${taskText}`;
+  const normalizedText = taskText.replace(/^\[[xX ]\]\s/, "");
+  return new Task({
+    text: normalizedText,
+    checked: true,
+    tags: [],
+    sourcePath: "",
+  }).toString();
 }
 
 const moveDoneTranscriptTasksToDailyNoteAction: CustomAction = {

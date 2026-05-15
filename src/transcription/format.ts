@@ -70,10 +70,7 @@ ${errorMessage}
   }
 
   if (transcriptResult && (transcriptResult?.tasks.length ?? 0) > 0) {
-    const tasks = transcriptResult.tasks.map(
-      (task) =>
-        `- [${task.complete ? "x" : " "}] ${task.title} ${task.dueDate ? "due:" + task.dueDate : ""} - ${task.details}`,
-    );
+    const tasks = transcriptResult.tasks.map((task) => task.toString());
 
     parts.push(`# Tasks\n\n${tasks.join("\n")}`);
   }

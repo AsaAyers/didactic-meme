@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { parseMarkdown } from "../src/markdown/parse.js";
 import {
+  Task,
+  TaskSchema,
   extractTasks,
   removeTask,
   setTaskChecked,
@@ -51,6 +53,36 @@ describe("extractTasks", () => {
     for (const task of tasks) {
       expect(task.sourcePath).toBe("notes/work.md");
     }
+  });
+
+  it("extracts inline-field keys as tags (due/sleep/etc.)", () => {
+    const tree = parseMarkdown("- [ ] Schedule follow-up due:2026-05-03 sleep:2026-05-10");
+    const tasks = extractTasks(tree, "test.md");
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.tags).toEqual(["due", "sleep"]);
+  });
+});
+
+describe("Task model", () => {
+  it("renders markdown task lines via toString()", () => {
+    const task = new Task({
+      text: "Review PR due:2026-05-10",
+      checked: false,
+      tags: ["due"],
+      sourcePath: "notes/work.md",
+    });
+    expect(task.toString()).toBe("* [ ] Review PR due:2026-05-10");
+  });
+
+  it("TaskSchema transforms parsed input into Task instances", () => {
+    const parsed = TaskSchema.parse({
+      text: "Write tests sleep:2026-05-11",
+      checked: true,
+      tags: ["sleep"],
+    });
+    expect(parsed).toBeInstanceOf(Task);
+    expect(parsed.sourcePath).toBe("");
   });
 });
 

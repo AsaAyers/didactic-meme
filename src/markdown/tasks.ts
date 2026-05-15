@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { visit } from "unist-util-visit";
 import type { WikiLinkNode, parseMarkdown } from "./parse.js";
 
@@ -7,13 +8,45 @@ type ListItem = List["children"][number];
 type Paragraph = Extract<ListItem["children"][number], { type: "paragraph" }>;
 type Text = Extract<Paragraph["children"][number], { type: "text" }>;
 
-export type Task = {
+export const TaskInputSchema = z.object({
+  text: z
+    .string()
+    .describe(
+      "Task text; include inline fields like due:2026-05-03, sleep:2026-05-10, repeat:mwf when relevant.",
+    ),
+  checked: z.boolean().describe("Whether the task is complete."),
+  tags: z
+    .array(z.string())
+    .default([])
+    .describe("Task tags/field keys such as urgent, due, sleep, repeat, done."),
+  sourcePath: z
+    .string()
+    .default("")
+    .describe(
+      "Vault-relative source path for extracted tasks. Leave empty when unknown.",
+    ),
+});
+
+export class Task {
   text: string;
   checked: boolean;
   tags: string[];
   /** Vault-relative path of the file this task was extracted from. */
   sourcePath: string;
-};
+
+  constructor({ text, checked, tags, sourcePath }: z.input<typeof TaskInputSchema>) {
+    this.text = text;
+    this.checked = checked;
+    this.tags = tags;
+    this.sourcePath = sourcePath;
+  }
+
+  toString(): string {
+    return `* [${this.checked ? "x" : " "}] ${this.text}`;
+  }
+}
+
+export const TaskSchema = TaskInputSchema.transform((task) => new Task(task));
 
 function isWikiLinkNode(node: unknown): node is WikiLinkNode {
   if (typeof node !== "object" || node === null) return false;
@@ -46,9 +79,28 @@ function getListItemText(item: ListItem): string {
 }
 
 function extractTags(text: string): string[] {
-  const matches = text.match(/#(\w+)/g);
-  if (!matches) return [];
-  return matches.map((t) => t.slice(1));
+  const tags: string[] = [];
+  const seen = new Set<string>();
+
+  const hashTagMatches = text.matchAll(/#(\w+)/g);
+  for (const match of hashTagMatches) {
+    const tag = match[1];
+    if (tag && !seen.has(tag)) {
+      seen.add(tag);
+      tags.push(tag);
+    }
+  }
+
+  const inlineFieldMatches = text.matchAll(/\b([a-zA-Z][\w-]*):\S+/g);
+  for (const match of inlineFieldMatches) {
+    const tag = match[1];
+    if (tag && !seen.has(tag)) {
+      seen.add(tag);
+      tags.push(tag);
+    }
+  }
+
+  return tags;
 }
 
 export function extractTasks(tree: Root, sourcePath: string): Task[] {
@@ -56,12 +108,14 @@ export function extractTasks(tree: Root, sourcePath: string): Task[] {
   visit(tree, "listItem", (node: ListItem) => {
     if (node.checked !== null && node.checked !== undefined) {
       const text = getListItemText(node);
-      tasks.push({
-        text,
-        checked: node.checked,
-        tags: extractTags(text),
-        sourcePath,
-      });
+      tasks.push(
+        new Task({
+          text,
+          checked: node.checked,
+          tags: extractTags(text),
+          sourcePath,
+        }),
+      );
     }
   });
   return tasks;
