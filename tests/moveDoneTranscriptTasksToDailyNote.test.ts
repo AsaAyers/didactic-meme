@@ -26,8 +26,8 @@ describe("moveDoneTranscriptTasksToDailyNote - config opt-in", () => {
     const vaultPath = await createTempVault();
     await fs.mkdir(join(vaultPath, "audio"), { recursive: true });
     await fs.writeFile(
-      join(vaultPath, "onyx-vellum.config.md"),
-      "---\nrules:\n  moveDoneTranscriptTasksToDailyNote: {}\n---\n",
+      join(vaultPath, ".onyx-vellum.json"),
+      '{\n  "rules": {\n    "moveDoneTranscriptTasksToDailyNote": {}\n  }\n}\n',
       "utf-8",
     );
     await fs.writeFile(

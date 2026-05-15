@@ -11,7 +11,6 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { joinFrontmatter, splitFrontmatter } from "../src/markdown/frontmatter.js";
 import {
   loadConfig,
   getDefaultConfig,
@@ -59,19 +58,12 @@ function configPath(): string {
   return join(tempVault, CONFIG_FILENAME);
 }
 
-function serializeConfigFrontmatter(config: unknown): string {
-  return joinFrontmatter(
-    { data: config as Record<string, unknown>, bodyPrefix: "", body: "" },
-    "",
-  );
-}
-
 async function writeConfig(config: unknown): Promise<void> {
-  await fs.writeFile(configPath(), serializeConfigFrontmatter(config), "utf-8");
+  await fs.writeFile(configPath(), `${JSON.stringify(config, null, 2)}\n`, "utf-8");
 }
 
-async function readConfigFrontmatter(): Promise<Record<string, unknown>> {
-  return splitFrontmatter(await fs.readFile(configPath(), "utf-8")).data;
+async function readConfigFile(): Promise<Record<string, unknown>> {
+  return JSON.parse(await fs.readFile(configPath(), "utf-8"));
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +81,7 @@ describe("loadConfig", () => {
     });
 
     // File was written to disk with top-level sources and empty per-rule entries.
-    const written = await readConfigFrontmatter();
+    const written = await readConfigFile();
     expect(written).toEqual({
       sources: [{ type: "glob", pattern: "**/*.md" }],
       rules: {
@@ -97,6 +89,18 @@ describe("loadConfig", () => {
         specB: {},
       },
     });
+  });
+
+  it("throws a descriptive error when only legacy markdown config exists", async () => {
+    await fs.writeFile(
+      join(tempVault, "onyx-vellum.config.md"),
+      "---\nrules: {}\n---\n",
+      "utf-8",
+    );
+
+    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
+      "legacy onyx-vellum.config.md",
+    );
   });
 
   it("returns the stored config when it already contains all known rules", async () => {
@@ -132,12 +136,12 @@ describe("loadConfig", () => {
     expect(config.rules.specB).toEqual({});
 
     // The merged result was written back to disk.
-    const written = await readConfigFrontmatter();
+    const written = await readConfigFile();
     expect(written.rules).toHaveProperty("specB");
   });
 
-  it("throws a descriptive error when the config contains invalid frontmatter", async () => {
-    await fs.writeFile(configPath(), "---\nrules: [\n---\n", "utf-8");
+  it("throws a descriptive error when the config contains invalid JSON", async () => {
+    await fs.writeFile(configPath(), "{\n  \"rules\": [\n}\n", "utf-8");
 
     await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
       CONFIG_FILENAME,
@@ -233,7 +237,7 @@ describe("loadConfig", () => {
 
     expect(config.watch).toEqual({ debounce: 3000 });
 
-    const written = await readConfigFrontmatter();
+    const written = await readConfigFile();
     expect(written.watch).toEqual({ debounce: 3000 });
     expect(written.rules).toHaveProperty("specB");
   });

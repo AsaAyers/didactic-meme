@@ -1,8 +1,8 @@
 /**
  * Vault-level configuration for onyx-vellum.
  *
- * The config file `onyx-vellum.config.md` lives at the vault root and lets users
- * customise which files each rule operates on by overriding its `sources`.
+ * The config file `.onyx-vellum.json` lives at the vault root and lets users
+ * customize which files each rule operates on by overriding its `sources`.
  *
  * Shape:
  *   {
@@ -21,10 +21,7 @@
 
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
-import matter from "gray-matter";
 import { z } from "zod";
-import { splitFrontmatter } from "./markdown/frontmatter.js";
-import type { SplitFrontmatterResult } from "./markdown/frontmatter.js";
 import type { RuleSpec } from "./rules/types.js";
 
 // ---------------------------------------------------------------------------
@@ -80,13 +77,13 @@ export const zConfig = z
 // Types
 // ---------------------------------------------------------------------------
 
-/** Per-rule configuration stored in `onyx-vellum.config.md` frontmatter. */
+/** Per-rule configuration stored in `.onyx-vellum.json`. */
 export type RuleConfig = z.infer<typeof zRuleConfig>;
 
-/** Watch-mode configuration stored under the `"watch"` key in frontmatter. */
+/** Watch-mode configuration stored under the `"watch"` key in JSON. */
 export type WatchConfig = z.infer<typeof zWatchConfig>;
 
-/** Full vault-level config parsed from frontmatter. */
+/** Full vault-level config parsed from JSON. */
 export type Config = z.infer<typeof zConfig>;
 
 // ---------------------------------------------------------------------------
@@ -94,7 +91,8 @@ export type Config = z.infer<typeof zConfig>;
 // ---------------------------------------------------------------------------
 
 /** The file name of the vault-level config, relative to the vault root. */
-export const CONFIG_FILENAME = "onyx-vellum.config.md";
+export const CONFIG_FILENAME = ".onyx-vellum.json";
+const LEGACY_CONFIG_FILENAME = "onyx-vellum.config.md";
 
 /** The default top-level sources used when creating a new config file. */
 export const DEFAULT_SOURCES: Array<z.infer<typeof zSource>> = [
@@ -119,7 +117,7 @@ export function getDefaultConfig(specs: RuleSpec[]): Config["rules"] {
  *   - If the file does not exist: write the full default config and return it.
  *   - If the file exists but is valid: merge in defaults for any rule that is
  *     absent from the stored config, persist the merged result, and return it.
- *   - If the file exists but is invalid (bad frontmatter or fails zod validation):
+ *   - If the file exists but is invalid JSON (or fails zod validation):
  *     throw a descriptive error so the user knows they must fix the file.
  *
  * The `watch` key is validated as a WatchConfig by `zConfig` and is preserved
@@ -142,20 +140,30 @@ export async function loadConfig(
     raw = await fs.readFile(configPath, "utf-8");
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+    const legacyConfigPath = join(vaultPath, LEGACY_CONFIG_FILENAME);
+    try {
+      await fs.access(legacyConfigPath);
+      throw new Error(
+        `Found legacy ${LEGACY_CONFIG_FILENAME} but ${CONFIG_FILENAME} is missing. ` +
+          `Please migrate your config to ${CONFIG_FILENAME} JSON and re-run.`,
+      );
+    } catch (legacyErr) {
+      if ((legacyErr as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw legacyErr;
+      }
+    }
     // File does not exist — create it with all defaults.
     await fs.writeFile(configPath, serializeConfig(defaultConfig), "utf-8");
     return defaultConfig;
   }
 
-  // Parse YAML frontmatter.
+  // Parse JSON.
   let parsed: unknown;
-  let parsedFrontmatter: SplitFrontmatterResult;
   try {
-    parsedFrontmatter = splitFrontmatter(raw);
-    parsed = parsedFrontmatter.data;
+    parsed = JSON.parse(raw);
   } catch (err) {
     throw new Error(
-      `Failed to parse frontmatter in ${CONFIG_FILENAME}: ${(err as Error).message}. ` +
+      `Failed to parse JSON in ${CONFIG_FILENAME}: ${(err as Error).message}. ` +
         `Please fix or delete the file and re-run.`,
     );
   }
@@ -183,15 +191,7 @@ export async function loadConfig(
   }
 
   if (needsWrite) {
-    await fs.writeFile(
-      configPath,
-      serializeConfig(
-        merged,
-        parsedFrontmatter.bodyPrefix,
-        parsedFrontmatter.body,
-      ),
-      "utf-8",
-    );
+    await fs.writeFile(configPath, serializeConfig(merged), "utf-8");
   }
 
   return merged;
@@ -218,17 +218,6 @@ export function applyConfig(specs: RuleSpec[], config: Config): RuleSpec[] {
   });
 }
 
-function serializeConfig(
-  config: Config,
-  bodyPrefix = "",
-  body = "",
-): string {
-  const serialized = matter.stringify("", config as Record<string, unknown>);
-  const serializedParts = splitFrontmatter(serialized);
-  const trimmedLength =
-    serializedParts.bodyPrefix.length + serializedParts.body.length;
-  const frontmatterBlock =
-    trimmedLength > 0 ? serialized.slice(0, -trimmedLength) : serialized;
-  if (body.length === 0) return frontmatterBlock;
-  return `${frontmatterBlock}${bodyPrefix}${body}`;
+function serializeConfig(config: Config): string {
+  return `${JSON.stringify(config, null, 2)}\n`;
 }
