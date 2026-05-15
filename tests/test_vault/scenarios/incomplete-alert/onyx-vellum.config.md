@@ -19,6 +19,11 @@ rules:
     sources:
       - type: glob
         pattern: "**/*.md"
+  moveDoneTranscriptTasksToDailyNote:
+    sources:
+      - type: glob
+        pattern: "**/*.transcript.md"
+    dailyNotesFolder: "daily"
   incompleteTaskAlert:
     sources:
       - type: glob

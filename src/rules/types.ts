@@ -190,8 +190,10 @@ export type CustomAction = {
       frontmatter: Record<string, unknown>;
     }>;
     dryRun: boolean;
+    vaultPath: string;
     config?: Config;
     readFile: (path: string) => Promise<string>;
+    stageChange: (change: FileChange) => void;
     log: (msg: string) => void;
   }) => Promise<void>;
 };

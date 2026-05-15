@@ -48,6 +48,7 @@ const zRuleConfig = z.object({
   sources: z.array(zSource).optional(),
   alertUrl: z.string().optional(),
   alertToken: z.string().optional(),
+  dailyNotesFolder: z.string().optional(),
 });
 
 const zWatchConfig = z.object({

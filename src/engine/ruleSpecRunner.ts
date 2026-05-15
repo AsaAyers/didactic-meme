@@ -523,8 +523,10 @@ async function runActions(
             frontmatter: result.parts.data,
           })),
           dryRun: ctx.dryRun,
+          vaultPath: ctx.vaultPath,
           config: ctx.config,
           readFile: ctx.readFile,
+          stageChange: (change) => upsertFileChange(changes, change),
           log: logFn,
         });
       }

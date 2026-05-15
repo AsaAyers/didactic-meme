@@ -4,6 +4,7 @@ import { incompleteTaskAlertSpec } from "./incompleteTaskAlert.js";
 import { normalizeTodayLiteralSpec } from "./normalizeTodayLiteral.js";
 import { removeEphemeralOverdueTasksSpec } from "./removeEphemeralOverdueTasks.js";
 import { ensureAudioTranscriptsSpec } from "./ensureAudioTranscripts.js";
+import { moveDoneTranscriptTasksToDailyNoteSpec } from "./moveDoneTranscriptTasksToDailyNote.js";
 import type { RuleSpec } from "./types.js";
 
 /**
@@ -17,6 +18,7 @@ export const ruleSpecs: RuleSpec[] = [
   stampDoneSpec,
   completedTaskRolloverSpec,
   removeEphemeralOverdueTasksSpec,
+  moveDoneTranscriptTasksToDailyNoteSpec,
   ensureAudioTranscriptsSpec,
   incompleteTaskAlertSpec,
 ];

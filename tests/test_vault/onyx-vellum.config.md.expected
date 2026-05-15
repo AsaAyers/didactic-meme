@@ -19,6 +19,13 @@ rules:
     sources:
       - type: glob
         pattern: "**/*.md"
+  moveDoneTranscriptTasksToDailyNote:
+    sources:
+      - type: glob
+        pattern: "**/*.transcript.md"
+      - type: path
+        value: "scenarios/move-transcript-source-override/notes/tasks.md"
+    dailyNotesFolder: "scenarios/move-transcript-daily-notes/daily"
   incompleteTaskAlert:
     sources:
       - type: glob
