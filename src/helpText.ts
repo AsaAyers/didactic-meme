@@ -16,8 +16,10 @@ Available rules:
   completedTaskRollover    Advance due/start/snooze on repeating completed tasks and
                            uncheck them for the next cycle.
   moveDoneTranscriptTasksToDailyNote
-                           Move checked transcript tasks with done:<date> into
-                           existing daily notes (configurable folder).
+                            Move checked transcript tasks with done:<date> into
+                            existing daily notes (configurable folder).
+  sortTasks                Sort same-level task lists so incomplete tasks stay
+                           on top and completed tasks are ordered newest-first.
   ensureAudioTranscripts   For embedded .m4a links, ensure sibling transcript
                            embeds/files and enqueue transcription jobs.
   incompleteTaskAlert      Write overdue/incomplete tasks and optionally POST

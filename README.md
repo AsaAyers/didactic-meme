@@ -97,6 +97,10 @@ rules:
       - type: glob
         pattern: "**/*.transcript.md"
     dailyNotesFolder: "daily"
+  sortTasks:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
   ensureAudioTranscripts:
     sources:
       - type: glob
@@ -450,6 +454,7 @@ registry.
 | `completedTaskRollover`       | Clones recurring completed tasks forward to their next cycle.                                                                                                |
 | `removeEphemeralOverdueTasks` | Removes unchecked overdue tasks marked `ephemeral`.                                                                                                          |
 | `moveDoneTranscriptTasksToDailyNote` | Moves checked tasks with `done:YYYY-MM-DD` from transcript notes into the matching daily note when that daily file already exists.                                     |
+| `sortTasks`                   | Sorts same-level task lists so incomplete tasks stay at the top, and completed tasks are ordered by newest `done:` date first.                             |
 | `ensureAudioTranscripts`      | For each embedded `.m4a`, inserts a mirrored transcript embed, creates a sibling `.transcript.md` placeholder when needed, and enqueues async transcription. |
 | `incompleteTaskAlert`         | Groups incomplete tasks and optionally posts them to a configured alert endpoint.                                                                            |
 
@@ -617,6 +622,7 @@ src/
     ├── stampDone.ts            # Rule 2
     ├── completedTaskRollover.ts # Rule 3
     ├── moveDoneTranscriptTasksToDailyNote.ts # Transcript -> daily-note move rule
+    ├── sortTasks.ts            # Sorts incomplete-first and done-date-desc
     ├── removeEphemeralOverdueTasks.ts # Rule 5
     └── incompleteTaskAlert.ts  # Rule 4
 tests/

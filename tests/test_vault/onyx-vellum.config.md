@@ -34,6 +34,10 @@ rules:
           - "archive/**"
           - "templates/**"
     alertUrl: "http://localhost:8080/alert"
+  sortTasks:
+    sources:
+      - type: glob
+        pattern: "**/*.md"
   ensureAudioTranscripts:
     sources:
       - type: glob
