@@ -44,7 +44,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     await vi.advanceTimersByTimeAsync(5_000);
@@ -65,7 +65,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     await vi.advanceTimersByTimeAsync(1_000);
@@ -82,7 +82,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     expect(alerts).toHaveLength(1);
@@ -97,7 +97,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     await vi.advanceTimersByTimeAsync(1_000);
@@ -114,7 +114,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     expect(alerts).toHaveLength(1);
@@ -131,7 +131,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     await vi.advanceTimersByTimeAsync(1_000);
@@ -152,7 +152,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000, // check every second
+      { intervalMs: 1_000 }, // check every second
     );
 
     // Advance 5 seconds — five checks, all at 08:00 — only one alert.
@@ -174,7 +174,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     // First check fires at 08:00.
@@ -197,7 +197,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     await vi.advanceTimersByTimeAsync(1_000);
@@ -223,7 +223,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     // Cancel before the first interval tick reaches 08:01.
@@ -240,7 +240,7 @@ describe("createAlertScheduler", () => {
       async () => {
         alerts.push("fired");
       },
-      1_000,
+      { intervalMs: 1_000 },
     );
 
     await vi.advanceTimersByTimeAsync(1_000);
@@ -251,5 +251,24 @@ describe("createAlertScheduler", () => {
     vi.setSystemTime(new Date(2026, 4, 8, 8, 0, 0));
     await vi.advanceTimersByTimeAsync(1_000);
     expect(alerts).toHaveLength(1); // no additional fire
+  });
+
+  it("evaluates schedule times in configured timezone when provided", () => {
+    // 2026-05-07T00:30:00Z is 17:30 in America/Los_Angeles (previous day).
+    vi.setSystemTime(new Date("2026-05-07T00:30:00.000Z"));
+    const alerts: string[] = [];
+    const stop = createAlertScheduler(
+      () => ["17:30"],
+      async () => {
+        alerts.push("fired");
+      },
+      {
+        intervalMs: 1_000,
+        getTimezone: () => "America/Los_Angeles",
+      },
+    );
+
+    expect(alerts).toHaveLength(1);
+    stop();
   });
 });

@@ -65,6 +65,7 @@ On first run, `onyx-vellum` creates a `.onyx-vellum.json` file in your vault roo
 
 ```json
 {
+  "timezone": "America/New_York",
   "watch": {
     "debounce": 60000,
     "alertSchedule": ["09:00"]
@@ -106,6 +107,11 @@ On first run, `onyx-vellum` creates a `.onyx-vellum.json` file in your vault roo
   }
 }
 ```
+
+`timezone` is optional and must be a valid IANA timezone (for example
+`"America/New_York"` or `"UTC"`). When set, all date-sensitive processing
+(`today`/`yesterday`/`tomorrow`, rollover comparisons, and watch alert schedule
+times) is evaluated in that timezone instead of the server's local timezone.
 
 ### Source types
 

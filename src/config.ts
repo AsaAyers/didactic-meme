@@ -6,6 +6,7 @@
  *
  * Shape:
  *   {
+ *     "timezone": "America/New_York",          // optional IANA timezone
  *     "sources": [ ...Source objects... ],  // optional top-level sources (default for all rules)
  *     "watch": { "debounce": 60000 },        // optional watch-mode settings
  *     "rules": {
@@ -61,12 +62,31 @@ const zWatchConfig = z.object({
 
 /**
  * Full config schema:
+ *   - optional top-level timezone (IANA timezone, used for date processing)
  *   - optional top-level sources (default for all rules that don't specify their own)
  *   - optional watch config
  *   - required "rules" object keyed by rule name
  */
 export const zConfig = z
   .object({
+    timezone: z
+      .string()
+      .trim()
+      .min(1)
+      .refine(
+        (value) => {
+          try {
+            new Intl.DateTimeFormat("en-US", { timeZone: value });
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        {
+          message: "Invalid IANA timezone",
+        },
+      )
+      .optional(),
     sources: z.array(zSource).optional(),
     watch: zWatchConfig.optional(),
     rules: z.record(z.string(), zRuleConfig),

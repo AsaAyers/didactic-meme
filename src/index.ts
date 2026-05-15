@@ -11,6 +11,7 @@ import {
   selectWatchRuleSets,
   createStopAll,
 } from "./engine/watchMode.js";
+import { toTimezoneDate } from "./engine/timezone.js";
 import { HELP_TEXT } from "./helpText.js";
 import { ruleSpecs } from "./rules/index.js";
 import { loadConfig, CONFIG_FILENAME } from "./config.js";
@@ -97,10 +98,13 @@ if (init) {
 
   // Single shared entry-point for rule execution.  Closures in all parameters
   // so both the one-shot and watch paths use exactly the same runAllRules call.
-  const run = async (glob?: string[]): Promise<void> => {
+  const run = async (
+    glob?: string[],
+    timezone?: string,
+  ): Promise<void> => {
     await runAllRules({
       vaultPath,
-      today: new Date(),
+      today: toTimezoneDate(new Date(), timezone),
       dryRun,
       verbose,
       env: process.env,
@@ -119,6 +123,7 @@ if (init) {
           config.watch?.alertSchedule ?? [],
         );
         let alertSchedule: string[] = initialSchedule.valid;
+        let timezone = config.timezone;
 
         console.log(`Mode: watch${dryRun ? " (dry run)" : ""}`);
         console.log(`Debounce: ${debounce}ms`);
@@ -151,7 +156,7 @@ if (init) {
         console.log(`[watch] Running all rules on startup...`);
         await runAllRules({
           vaultPath,
-          today: new Date(),
+          today: toTimezoneDate(new Date(), timezone),
           dryRun,
           verbose,
           env: process.env,
@@ -170,6 +175,7 @@ if (init) {
                   newConfig.watch?.alertSchedule ?? [],
                 );
                 alertSchedule = normalized.valid;
+                timezone = newConfig.timezone;
                 if (alertSchedule.length > 0) {
                   console.log(
                     `[watch] Alert schedule updated: ${alertSchedule.join(", ")}`,
@@ -199,7 +205,7 @@ if (init) {
             if (allFileChangeRuleNames.length > 0) {
               await runAllRules({
                 vaultPath,
-                today: new Date(),
+                today: toTimezoneDate(new Date(), timezone),
                 dryRun,
                 verbose,
                 env: process.env,
@@ -223,7 +229,7 @@ if (init) {
                   );
                   await runAllRules({
                     vaultPath,
-                    today: new Date(),
+                    today: toTimezoneDate(new Date(), timezone),
                     dryRun,
                     verbose,
                     env: process.env,
@@ -242,13 +248,14 @@ if (init) {
             console.log("[watch] Running scheduled alert...");
             await runAllRules({
               vaultPath,
-              today: new Date(),
+              today: toTimezoneDate(new Date(), timezone),
               dryRun,
               verbose,
               env: process.env,
               selectedRuleNames: [ALERT_RULE],
             });
           },
+          { getTimezone: () => timezone },
         );
 
         const stopAll = createStopAll([stop, stopFastPath, stopScheduler]);
@@ -271,9 +278,17 @@ if (init) {
     }
     console.log("");
 
-    run(onlyGlob).catch((err: unknown) => {
-      console.error("Fatal error:", (err as Error).message);
-      process.exit(1);
-    });
+    loadConfig(vaultPath, ruleSpecs)
+      .then((config) => run(onlyGlob, config.timezone))
+      .catch((err: unknown) => {
+        console.warn(
+          `Warning: could not load vault config — ${(err as Error).message}. Using built-in defaults and local server timezone.`,
+        );
+        return run(onlyGlob);
+      })
+      .catch((err: unknown) => {
+        console.error("Fatal error:", (err as Error).message);
+        process.exit(1);
+      });
   }
 }

@@ -199,6 +199,34 @@ describe("loadConfig", () => {
     });
   });
 
+  it("accepts and returns top-level timezone", async () => {
+    const initial = {
+      timezone: "America/New_York",
+      rules: {
+        specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+      },
+    };
+    await writeConfig(initial);
+
+    const config = await loadConfig(tempVault, [SPEC_A]);
+
+    expect(config.timezone).toBe("America/New_York");
+  });
+
+  it("rejects an invalid top-level timezone via zod validation", async () => {
+    const bad = {
+      timezone: "Not/A_Real_Timezone",
+      rules: {
+        specA: { sources: [{ type: "glob", pattern: "**/*.md" }] },
+      },
+    };
+    await writeConfig(bad);
+
+    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
+      CONFIG_FILENAME,
+    );
+  });
+
   it("rejects an invalid 'watch' value via zod validation", async () => {
     // debounce must be a positive integer — a string is invalid.
     const bad = {

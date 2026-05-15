@@ -54,10 +54,14 @@ Environment variables:
   VAULT_PATH               (required) Absolute path to the vault root.
 
 Config:
-  .onyx-vellum.json        Configure rule sources in JSON.
-                            For alerts, set:
+  .onyx-vellum.json        Configure rule sources and optional timezone in JSON.
+                            Example timezone:
                             {
-                              "rules": {
+                              "timezone": "America/New_York"
+                            }
+                             For alerts, set:
+                             {
+                               "rules": {
                                 "incompleteTaskAlert": {
                                   "alertUrl": "http://localhost:8080/alert",
                                   "alertToken": "<optional bearer token>"

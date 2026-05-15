@@ -1,3 +1,5 @@
+import { toTimezoneDate } from "./timezone.js";
+
 /**
  * Schedule-based alert runner for watch mode.
  *
@@ -56,8 +58,13 @@ export function normalizeAlertSchedule(schedule: string[]): {
 export function createAlertScheduler(
   getSchedule: () => string[],
   onAlert: () => Promise<void>,
-  intervalMs = 60_000,
+  options?: {
+    intervalMs?: number;
+    getTimezone?: () => string | undefined;
+  },
 ): () => void {
+  const intervalMs = options?.intervalMs ?? 60_000;
+  const getTimezone = options?.getTimezone;
   // Track the last fired "YYYY-MM-DDTHH:MM" to prevent double-firing within
   // the same minute window while still allowing the same time on a future day.
   let lastFiredKey = "";
@@ -66,7 +73,7 @@ export function createAlertScheduler(
     const schedule = normalizeAlertSchedule(getSchedule()).valid;
     if (schedule.length === 0) return;
 
-    const now = new Date();
+    const now = toTimezoneDate(new Date(), getTimezone?.());
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const currentMinute = `${hh}:${mm}`;
