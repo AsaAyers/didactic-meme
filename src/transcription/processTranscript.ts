@@ -1,21 +1,9 @@
 import { Ollama } from "ollama";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { TaskSchema } from "../markdown/tasks.js";
 
-const TranscriptTask = z.object({
-  title: z.string().describe("Short imperative title for the task."),
-  complete: z.boolean().describe("Whether the task is already complete."),
-  dueDate: z
-    .string()
-    .nullable()
-    .describe(
-      "Due date in YYYY-MM-DD format if explicitly mentioned, otherwise null.",
-    ),
-  details: z
-    .string()
-    .nullable()
-    .describe("Relevant context from the transcript."),
-});
+const TranscriptTask = TaskSchema;
 
 const TranscriptResult = z.object({
   filename: z

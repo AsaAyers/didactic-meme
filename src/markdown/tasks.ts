@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { visit } from "unist-util-visit";
 import type { WikiLinkNode, parseMarkdown } from "./parse.js";
 
@@ -7,13 +8,57 @@ type ListItem = List["children"][number];
 type Paragraph = Extract<ListItem["children"][number], { type: "paragraph" }>;
 type Text = Extract<Paragraph["children"][number], { type: "text" }>;
 
-export type Task = {
+export const TaskInputSchema = z.object({
+  text: z
+    .string()
+    .describe(
+      "Task title and inline fields, e.g. 'Pay rent due:2026-05-03 repeat:mwf'.",
+    ),
+  checked: z.boolean().describe("Whether the task is complete."),
+  fields: z
+    .record(z.string())
+    .default({})
+    .describe(
+      "Inline fields as key/value pairs (e.g. due/start/snooze/done/repeat).",
+    ),
+  sourcePath: z
+    .string()
+    .default("")
+    .describe(
+      "Vault-relative source path for extracted tasks. Leave empty when unknown.",
+    ),
+});
+
+export class Task {
   text: string;
+  title: string;
   checked: boolean;
-  tags: string[];
+  fields: Record<string, string>;
   /** Vault-relative path of the file this task was extracted from. */
   sourcePath: string;
-};
+
+  constructor({
+    text,
+    fields = {},
+    checked,
+    sourcePath = "",
+  }: z.input<typeof TaskInputSchema>) {
+    const { title, fields: extractedFields } = splitKnownInlineFields(text);
+    const normalizedFields = normalizeKnownFields(fields);
+    this.text = text;
+    this.title = title;
+    this.checked = checked;
+    this.fields = { ...extractedFields, ...normalizedFields };
+    this.sourcePath = sourcePath;
+  }
+
+  toString(): string {
+    const serialized = serializeTaskText(this.title, this.fields);
+    return `* [${this.checked ? "x" : " "}] ${serialized}`;
+  }
+}
+
+export const TaskSchema = TaskInputSchema.transform((task) => new Task(task));
 
 function isWikiLinkNode(node: unknown): node is WikiLinkNode {
   if (typeof node !== "object" || node === null) return false;
@@ -45,10 +90,81 @@ function getListItemText(item: ListItem): string {
   return parts.join("").trim();
 }
 
-function extractTags(text: string): string[] {
-  const matches = text.match(/#(\w+)/g);
-  if (!matches) return [];
-  return matches.map((t) => t.slice(1));
+const KNOWN_INLINE_FIELD_ORDER = [
+  "due",
+  "sleep",
+  "start",
+  "snooze",
+  "done",
+  "repeat",
+  "copied",
+  "ephemeral",
+] as const;
+type KnownInlineFieldKey = (typeof KNOWN_INLINE_FIELD_ORDER)[number];
+
+function normalizeKnownFieldKey(key: string): KnownInlineFieldKey | undefined {
+  const lower = key.toLowerCase();
+  return KNOWN_INLINE_FIELD_ORDER.find((known) => known === lower);
+}
+
+function normalizeKnownFields(
+  fields: Record<string, string>,
+): Partial<Record<KnownInlineFieldKey, string>> {
+  const normalized: Partial<Record<KnownInlineFieldKey, string>> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    const knownKey = normalizeKnownFieldKey(key);
+    if (!knownKey) continue;
+    normalized[knownKey] = value;
+  }
+  return normalized;
+}
+
+function splitKnownInlineFields(text: string): {
+  title: string;
+  fields: Partial<Record<KnownInlineFieldKey, string>>;
+} {
+  const fields: Partial<Record<KnownInlineFieldKey, string>> = {};
+  const titleTokens: string[] = [];
+
+  const tokens = text.trim().split(/\s+/).filter((token) => token.length > 0);
+  for (const token of tokens) {
+    // Parse `key:value` tokens; unknown keys are preserved in title.
+    const match = token.match(/^([A-Za-z][A-Za-z0-9]*):(\S+)$/);
+    if (!match) {
+      titleTokens.push(token);
+      continue;
+    }
+
+    const knownKey = normalizeKnownFieldKey(match[1]);
+    if (!knownKey) {
+      titleTokens.push(token);
+      continue;
+    }
+
+    // First known value wins when duplicates appear (e.g. due:a due:b).
+    if (fields[knownKey] === undefined) {
+      fields[knownKey] = match[2];
+    }
+  }
+
+  return {
+    title: titleTokens.join(" ").trim(),
+    fields,
+  };
+}
+
+function serializeTaskText(
+  title: string,
+  fields: Record<string, string>,
+): string {
+  const fieldTokens = KNOWN_INLINE_FIELD_ORDER.map((key) =>
+    fields[key] !== undefined ? `${key}:${fields[key]}` : undefined,
+  ).filter((token): token is string => token !== undefined);
+
+  const base = title.trim();
+  if (base.length === 0) return fieldTokens.join(" ").trim();
+  if (fieldTokens.length === 0) return base;
+  return `${base} ${fieldTokens.join(" ")}`;
 }
 
 export function extractTasks(tree: Root, sourcePath: string): Task[] {
@@ -56,12 +172,14 @@ export function extractTasks(tree: Root, sourcePath: string): Task[] {
   visit(tree, "listItem", (node: ListItem) => {
     if (node.checked !== null && node.checked !== undefined) {
       const text = getListItemText(node);
-      tasks.push({
-        text,
-        checked: node.checked,
-        tags: extractTags(text),
-        sourcePath,
-      });
+      tasks.push(
+        new Task({
+          text,
+          checked: node.checked,
+          fields: {},
+          sourcePath,
+        }),
+      );
     }
   });
   return tasks;
