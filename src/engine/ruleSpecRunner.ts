@@ -136,14 +136,16 @@ async function resolveSources(
 async function resolveEffectiveSourcePaths(
   sources: RuleSpec["sources"],
   vaultPath: string,
-  onlyGlob?: string,
+  onlyGlob?: string[],
 ): Promise<string[]> {
   const filePaths = await resolveSources(vaultPath, sources);
 
   const effectivePaths =
-    onlyGlob !== undefined
-      ? filePaths.filter((p) => matchesGlob(relative(vaultPath, p), onlyGlob))
-      : filePaths;
+    onlyGlob === undefined
+      ? filePaths
+      : filePaths.filter((p) =>
+          onlyGlob.some((g) => matchesGlob(relative(vaultPath, p), g)),
+        );
 
   for (const p of effectivePaths) {
     if (!p.endsWith(".md")) {
