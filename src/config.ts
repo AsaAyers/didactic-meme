@@ -2,7 +2,7 @@
  * Vault-level configuration for onyx-vellum.
  *
  * The config file `.onyx-vellum.json` lives at the vault root and lets users
- * customize which files each rule operates on by overriding its `sources`.
+ * customise which files each rule operates on by overriding its `sources`.
  *
  * Shape:
  *   {
@@ -145,7 +145,8 @@ export async function loadConfig(
       await fs.access(legacyConfigPath);
       throw new Error(
         `Found legacy ${LEGACY_CONFIG_FILENAME} but ${CONFIG_FILENAME} is missing. ` +
-          `Please migrate your config to ${CONFIG_FILENAME} JSON and re-run.`,
+        `Please create ${CONFIG_FILENAME} (or run --init to generate defaults), ` +
+        `manually migrate your config from ${LEGACY_CONFIG_FILENAME}, and re-run.`,
       );
     } catch (legacyErr) {
       if ((legacyErr as NodeJS.ErrnoException).code !== "ENOENT") {

@@ -98,8 +98,23 @@ describe("loadConfig", () => {
       "utf-8",
     );
 
-    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
-      "legacy onyx-vellum.config.md",
+    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrowError(
+      expect.objectContaining({
+        message: expect.stringContaining("legacy onyx-vellum.config.md"),
+      }),
+    );
+    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrowError(
+      expect.objectContaining({
+        message: expect.stringContaining(".onyx-vellum.json"),
+      }),
+    );
+    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrowError(
+      expect.objectContaining({ message: expect.stringContaining("--init") }),
+    );
+    await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrowError(
+      expect.objectContaining({
+        message: expect.stringContaining("manually migrate"),
+      }),
     );
   });
 
