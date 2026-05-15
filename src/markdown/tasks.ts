@@ -97,6 +97,8 @@ function extractTags(text: string): string[] {
     }
   }
 
+  // Match inline fields like `due:2026-05-03`/`sleep:2026-05-10`.
+  // `(?!//)` avoids URL schemes such as `https://` at the value boundary.
   const inlineFieldMatches = text.matchAll(
     /(?:^|\s)([a-z][a-z0-9-]+):(?!\/\/)\S+/g,
   );
