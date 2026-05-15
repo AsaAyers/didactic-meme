@@ -21,8 +21,9 @@
 
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
+import matter from "gray-matter";
 import { z } from "zod";
-import { joinFrontmatter, splitFrontmatter } from "./markdown/frontmatter.js";
+import { splitFrontmatter } from "./markdown/frontmatter.js";
 import type { SplitFrontmatterResult } from "./markdown/frontmatter.js";
 import type { RuleSpec } from "./rules/types.js";
 
@@ -221,8 +222,12 @@ function serializeConfig(
   bodyPrefix = "",
   body = "",
 ): string {
-  return joinFrontmatter(
-    { data: config as Record<string, unknown>, bodyPrefix, body },
-    body,
-  );
+  const serialized = matter.stringify("", config as Record<string, unknown>);
+  const serializedParts = splitFrontmatter(serialized);
+  const trimmedLength =
+    serializedParts.bodyPrefix.length + serializedParts.body.length;
+  const frontmatterBlock =
+    trimmedLength > 0 ? serialized.slice(0, -trimmedLength) : serialized;
+  if (body.length === 0) return frontmatterBlock;
+  return `${frontmatterBlock}${bodyPrefix}${body}`;
 }

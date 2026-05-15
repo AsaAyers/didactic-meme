@@ -32,7 +32,7 @@ Options:
                            run selected rules after the vault has been idle for
                            the debounce period (default 60 s).  Only changed files
                            are processed. Uses a native filesystem watcher (no polling).
-                           Not compatible with --init.
+                            Not compatible with --init.
                             The debounce duration is configurable via
                             onyx-vellum.config.md frontmatter:
                               ---
@@ -48,14 +48,14 @@ Environment variables:
   VAULT_PATH               (required) Absolute path to the vault root.
 
 Config:
-  onyx-vellum.config.md  Configure rule sources under frontmatter.
-                            For alerts, set:
-                            ---
-                            rules:
-                              incompleteTaskAlert:
-                                alertUrl: http://localhost:8080/alert
-                                alertToken: <optional bearer token>
-                            ---
+  onyx-vellum.config.md    Configure rule sources under frontmatter.
+                           For alerts, set:
+                           ---
+                           rules:
+                             incompleteTaskAlert:
+                               alertUrl: http://localhost:8080/alert
+                               alertToken: <optional bearer token>
+                           ---
 
 Examples:
   # Run every rule against the vault
