@@ -98,10 +98,10 @@ if (init) {
 
   // Single shared entry-point for rule execution.  Closures in all parameters
   // so both the one-shot and watch paths use exactly the same runAllRules call.
-  const run = async (glob?: string[]): Promise<void> => {
-    const timezone = await loadConfig(vaultPath, ruleSpecs)
-      .then((config) => config.timezone)
-      .catch(() => undefined);
+  const run = async (
+    glob?: string[],
+    timezone?: string,
+  ): Promise<void> => {
     await runAllRules({
       vaultPath,
       today: toTimezoneDate(new Date(), timezone),
@@ -255,7 +255,7 @@ if (init) {
               selectedRuleNames: [ALERT_RULE],
             });
           },
-          undefined,
+          60_000,
           () => timezone,
         );
 
@@ -279,9 +279,12 @@ if (init) {
     }
     console.log("");
 
-    run(onlyGlob).catch((err: unknown) => {
-      console.error("Fatal error:", (err as Error).message);
-      process.exit(1);
-    });
+    loadConfig(vaultPath, ruleSpecs)
+      .then((config) => run(onlyGlob, config.timezone))
+      .catch(() => run(onlyGlob))
+      .catch((err: unknown) => {
+        console.error("Fatal error:", (err as Error).message);
+        process.exit(1);
+      });
   }
 }
