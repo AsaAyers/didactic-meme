@@ -15,7 +15,7 @@
     "removeEphemeralOverdueTasks": {
       "sources": [{ "type": "glob", "pattern": "**/*.md" }]
     },
-    "moveDoneTranscriptTasksToDailyNote": {
+    "moveDoneTasks": {
       "sources": [
         { "type": "glob", "pattern": "**/*.transcript.md" },
         {

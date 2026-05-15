@@ -16,11 +16,10 @@ function ensureCheckedTaskLine(taskText: string): string {
   }).toString();
 }
 
-const moveDoneTranscriptTasksToDailyNoteAction: CustomAction = {
+const moveDoneTasksAction: CustomAction = {
   type: "custom",
   run: async ({ tasks, vaultPath, config, readFile, stageChange }) => {
-    const dailyNotesFolder =
-      config?.rules["moveDoneTranscriptTasksToDailyNote"]?.dailyNotesFolder;
+    const dailyNotesFolder = config?.rules["moveDoneTasks"]?.dailyNotesFolder;
     if (!dailyNotesFolder) return;
 
     const tasksByTranscript = new Map<string, string[]>();
@@ -81,8 +80,8 @@ const moveDoneTranscriptTasksToDailyNoteAction: CustomAction = {
   },
 };
 
-export const moveDoneTranscriptTasksToDailyNoteSpec: RuleSpec = {
-  name: "moveDoneTranscriptTasksToDailyNote",
+export const moveDoneTasksSpec: RuleSpec = {
+  name: "moveDoneTasks",
   dependencies: ["stampDone"],
   sources: [{ type: "glob", pattern: "**/*.transcript.md" }],
   query: {
@@ -92,5 +91,5 @@ export const moveDoneTranscriptTasksToDailyNoteSpec: RuleSpec = {
       predicates: [{ type: "checked" }, { type: "fieldExists", key: "done" }],
     },
   },
-  actions: [moveDoneTranscriptTasksToDailyNoteAction],
+  actions: [moveDoneTasksAction],
 };

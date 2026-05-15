@@ -21,13 +21,13 @@ afterEach(async () => {
   );
 });
 
-describe("moveDoneTranscriptTasksToDailyNote - config opt-in", () => {
+describe("moveDoneTasks - config opt-in", () => {
   it("does not move anything when dailyNotesFolder is not configured", async () => {
     const vaultPath = await createTempVault();
     await fs.mkdir(join(vaultPath, "audio"), { recursive: true });
     await fs.writeFile(
       join(vaultPath, ".onyx-vellum.json"),
-      '{\n  "rules": {\n    "moveDoneTranscriptTasksToDailyNote": {}\n  }\n}\n',
+      '{\n  "rules": {\n    "moveDoneTasks": {}\n  }\n}\n',
       "utf-8",
     );
     await fs.writeFile(

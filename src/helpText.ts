@@ -15,7 +15,7 @@ Available rules:
                            Depends on: normalizeTodayLiteral.
   completedTaskRollover    Advance due/start/snooze on repeating completed tasks and
                            uncheck them for the next cycle.
-  moveDoneTranscriptTasksToDailyNote
+  moveDoneTasks
                             Move checked transcript tasks with done:<date> into
                             existing daily notes (configurable folder).
   sortTasks                Sort same-level task lists so incomplete tasks stay
