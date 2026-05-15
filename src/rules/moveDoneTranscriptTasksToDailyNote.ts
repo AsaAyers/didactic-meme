@@ -19,7 +19,11 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-const moveCompletedTasksToDailyNote: CustomAction = {
+function toCheckedTaskLine(taskText: string): string {
+  return /^\[[xX ]\]\s/.test(taskText) ? `* ${taskText}` : `* [x] ${taskText}`;
+}
+
+const moveDoneTasksToDailyNote: CustomAction = {
   type: "custom",
   run: async ({ tasks, vaultPath, config, readFile, stageChange }) => {
     const dailyNotesFolder =
@@ -53,7 +57,7 @@ const moveCompletedTasksToDailyNote: CustomAction = {
     for (const [dailyNotePath, movedTasks] of tasksByDailyNote) {
       const rawDailyNote = await readFile(dailyNotePath);
       const parts = splitFrontmatter(rawDailyNote);
-      const movedTaskLines = movedTasks.map((taskText) => `* [x] ${taskText}`);
+      const movedTaskLines = movedTasks.map(toCheckedTaskLine);
       const needsLeadingNewline =
         parts.body.length > 0 && !parts.body.endsWith("\n");
       const nextBody =
@@ -94,5 +98,5 @@ export const moveDoneTranscriptTasksToDailyNoteSpec: RuleSpec = {
       predicates: [{ type: "checked" }, { type: "fieldExists", key: "done" }],
     },
   },
-  actions: [moveCompletedTasksToDailyNote],
+  actions: [moveDoneTasksToDailyNote],
 };
