@@ -59,7 +59,11 @@ function configPath(): string {
 }
 
 async function writeConfig(config: unknown): Promise<void> {
-  await fs.writeFile(configPath(), `${JSON.stringify(config, null, 2)}\n`, "utf-8");
+  await fs.writeFile(
+    configPath(),
+    `${JSON.stringify(config, null, 2)}\n`,
+    "utf-8",
+  );
 }
 
 async function readConfigFile(): Promise<Record<string, unknown>> {
@@ -129,7 +133,7 @@ describe("loadConfig", () => {
   });
 
   it("throws a descriptive error when the config contains invalid JSON", async () => {
-    await fs.writeFile(configPath(), "{\n  \"rules\": [\n}\n", "utf-8");
+    await fs.writeFile(configPath(), '{\n  "rules": [\n}\n', "utf-8");
 
     await expect(loadConfig(tempVault, [SPEC_A])).rejects.toThrow(
       CONFIG_FILENAME,
@@ -297,7 +301,9 @@ describe("applyConfig", () => {
   });
 
   it("falls back to top-level sources when rule has no sources", () => {
-    const topSources = [{ type: "glob" as const, pattern: "top-level/**/*.md" }];
+    const topSources = [
+      { type: "glob" as const, pattern: "top-level/**/*.md" },
+    ];
     const config = {
       sources: topSources,
       rules: { specA: {} },

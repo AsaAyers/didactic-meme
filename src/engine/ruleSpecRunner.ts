@@ -528,7 +528,11 @@ async function runActions(
     }
     for (const result of queryResults) {
       const newContent = joinFrontmatter(result.parts, result.currentBody);
-      const change = buildMarkdownFileChange(result.filePath, result.raw, newContent);
+      const change = buildMarkdownFileChange(
+        result.filePath,
+        result.raw,
+        newContent,
+      );
       if (change) {
         upsertFileChange(changes, change);
       }

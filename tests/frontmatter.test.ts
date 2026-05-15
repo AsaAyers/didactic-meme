@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { joinFrontmatter, splitFrontmatter } from "../src/markdown/frontmatter.js";
+import {
+  joinFrontmatter,
+  splitFrontmatter,
+} from "../src/markdown/frontmatter.js";
 
 describe("frontmatter parsing/serialization", () => {
   it("serializes frontmatter when data is added after parsing", () => {

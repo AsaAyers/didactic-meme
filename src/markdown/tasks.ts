@@ -126,7 +126,10 @@ function splitKnownInlineFields(text: string): {
   const fields: Partial<Record<KnownInlineFieldKey, string>> = {};
   const titleTokens: string[] = [];
 
-  const tokens = text.trim().split(/\s+/).filter((token) => token.length > 0);
+  const tokens = text
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
   for (const token of tokens) {
     // Parse `key:value` tokens; unknown keys are preserved in title.
     const match = token.match(/^([A-Za-z][A-Za-z0-9]*):(\S+)$/);

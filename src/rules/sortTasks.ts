@@ -136,7 +136,11 @@ function processParent(node: ParentNode): boolean {
     let j = i + 1;
     while (j < node.children.length) {
       const next = node.children[j];
-      if (!isList(next) || !isTaskOnlyList(next) || !areMergeCompatible(child, next))
+      if (
+        !isList(next) ||
+        !isTaskOnlyList(next) ||
+        !areMergeCompatible(child, next)
+      )
         break;
       lists.push(next);
       j++;

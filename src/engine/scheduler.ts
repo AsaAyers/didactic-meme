@@ -19,9 +19,10 @@
  * @param intervalMs   Check period in milliseconds. Defaults to 60 000 (1 min).
  * @returns            A stop function — call it to cancel the interval.
  */
-export function normalizeAlertSchedule(
-  schedule: string[],
-): { valid: string[]; invalid: string[] } {
+export function normalizeAlertSchedule(schedule: string[]): {
+  valid: string[];
+  invalid: string[];
+} {
   const valid = new Set<string>();
   const invalid: string[] = [];
 

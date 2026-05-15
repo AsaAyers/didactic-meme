@@ -21,7 +21,9 @@ function makeCtx(vaultPath: string): RuleContext {
 
 describe("sortTasks", () => {
   it("does not sort lists that include non-task items", async () => {
-    const vaultPath = await fs.mkdtemp(join(tmpdir(), "onyx-vellum-sort-tasks-"));
+    const vaultPath = await fs.mkdtemp(
+      join(tmpdir(), "onyx-vellum-sort-tasks-"),
+    );
     const tasksPath = join(vaultPath, "tasks.md");
 
     await fs.writeFile(
@@ -42,7 +44,9 @@ describe("sortTasks", () => {
   });
 
   it("treats invalid done dates as older than valid completion dates", async () => {
-    const vaultPath = await fs.mkdtemp(join(tmpdir(), "onyx-vellum-sort-tasks-"));
+    const vaultPath = await fs.mkdtemp(
+      join(tmpdir(), "onyx-vellum-sort-tasks-"),
+    );
     const tasksPath = join(vaultPath, "tasks.md");
 
     await fs.writeFile(

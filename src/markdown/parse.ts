@@ -2,7 +2,9 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
-import remarkStringify, { type Options as RemarkStringifyOptions } from "remark-stringify";
+import remarkStringify, {
+  type Options as RemarkStringifyOptions,
+} from "remark-stringify";
 import matter from "gray-matter";
 import { visit, SKIP } from "unist-util-visit";
 
@@ -38,7 +40,9 @@ export interface WikiLinkNode {
 
 const OBSIDIAN_EMBED_RE = /(!\[\[(?:[^\][]|\][^\]])*\]\])/g;
 
-function splitObsidianEmbedText(value: string): Array<Text | ObsidianEmbedNode> {
+function splitObsidianEmbedText(
+  value: string,
+): Array<Text | ObsidianEmbedNode> {
   const parts: Array<Text | ObsidianEmbedNode> = [];
   let lastIndex = 0;
   OBSIDIAN_EMBED_RE.lastIndex = 0;
@@ -486,12 +490,15 @@ export function stringifyMarkdown(tree: Root): string {
   protectObsidianEmbeds(tree);
   protectObsidianTags(tree);
   protectInertAsterisks(tree);
-  const processor = unified().use(remarkGfm).use(remarkWikiLink).use(remarkStringify, {
-    bullet: "*",
-    listItemIndent: "one",
-    rule: "-",
-    handlers: customHandlers,
-  });
+  const processor = unified()
+    .use(remarkGfm)
+    .use(remarkWikiLink)
+    .use(remarkStringify, {
+      bullet: "*",
+      listItemIndent: "one",
+      rule: "-",
+      handlers: customHandlers,
+    });
   return processor.stringify(tree);
 }
 

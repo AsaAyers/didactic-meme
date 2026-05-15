@@ -183,11 +183,17 @@ describe("setTaskChecked", () => {
 
   it("unchecks a checked task", () => {
     const tree = parseMarkdown(SAMPLE_MARKDOWN);
-    const result = setTaskChecked(tree, "Buy milk due:2026-05-03 repeat:m", false);
+    const result = setTaskChecked(
+      tree,
+      "Buy milk due:2026-05-03 repeat:m",
+      false,
+    );
     expect(result).toBe(true);
 
     const tasks = extractTasks(tree, "test.md");
-    const task = tasks.find((t) => t.text === "Buy milk due:2026-05-03 repeat:m");
+    const task = tasks.find(
+      (t) => t.text === "Buy milk due:2026-05-03 repeat:m",
+    );
     expect(task?.checked).toBe(false);
   });
 

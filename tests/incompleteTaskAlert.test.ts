@@ -186,7 +186,11 @@ describe("incompleteTaskAlert — HTTP delivery", () => {
       join(tmpdir(), "onyx-vellum-incomplete-alert-token-"),
     );
     try {
-      await fs.writeFile(join(tempVault, "tasks.md"), "* [ ] Do laundry\n", "utf-8");
+      await fs.writeFile(
+        join(tempVault, "tasks.md"),
+        "* [ ] Do laundry\n",
+        "utf-8",
+      );
       await fs.writeFile(
         join(tempVault, CONFIG_FILENAME),
         `${JSON.stringify(
@@ -224,14 +228,12 @@ describe("incompleteTaskAlert — HTTP delivery", () => {
   });
 
   it("reports an error when alert endpoint returns non-2xx", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        new Response("server exploded", {
-          status: 500,
-          statusText: "Internal Server Error",
-        }),
-      );
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("server exploded", {
+        status: 500,
+        statusText: "Internal Server Error",
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const { report } = await runAllRules({

@@ -30,11 +30,7 @@ const moveDoneTranscriptTasksToDailyNoteAction: CustomAction = {
       const done = getInlineField(task.text, "done");
       if (!done || !/^\d{4}-\d{2}-\d{2}$/.test(done)) continue;
 
-      const dailyNotePath = join(
-        vaultPath,
-        dailyNotesFolder,
-        `${done}.md`,
-      );
+      const dailyNotePath = join(vaultPath, dailyNotesFolder, `${done}.md`);
       try {
         await fs.access(dailyNotePath, fsConstants.F_OK);
       } catch {
@@ -42,7 +38,8 @@ const moveDoneTranscriptTasksToDailyNoteAction: CustomAction = {
       }
 
       const transcriptPath = join(vaultPath, task.sourcePath);
-      const existingTranscriptTasks = tasksByTranscript.get(transcriptPath) ?? [];
+      const existingTranscriptTasks =
+        tasksByTranscript.get(transcriptPath) ?? [];
       existingTranscriptTasks.push(task.text);
       tasksByTranscript.set(transcriptPath, existingTranscriptTasks);
 
