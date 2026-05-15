@@ -34,7 +34,12 @@ export class Task {
   /** Vault-relative path of the file this task was extracted from. */
   sourcePath: string;
 
-  constructor({ text, checked, tags, sourcePath }: z.input<typeof TaskInputSchema>) {
+  constructor({
+    text,
+    checked,
+    tags,
+    sourcePath,
+  }: z.output<typeof TaskInputSchema>) {
     this.text = text;
     this.checked = checked;
     this.tags = tags;
