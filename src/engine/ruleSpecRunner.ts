@@ -1,4 +1,4 @@
-import { join, relative } from "node:path";
+import { basename, join, relative } from "node:path";
 import { parseMarkdown, stringifyMarkdown } from "../markdown/parse.js";
 import { joinFrontmatter, splitFrontmatter } from "../markdown/frontmatter.js";
 import type { SplitFrontmatterResult } from "../markdown/frontmatter.js";
@@ -148,7 +148,7 @@ async function resolveEffectiveSourcePaths(
           onlyGlob.some((g) => matchesGlob(relative(vaultPath, p), g)),
         );
   const nonConfigPaths = effectivePaths.filter(
-    (p) => relative(vaultPath, p) !== CONFIG_FILENAME,
+    (p) => basename(p) !== CONFIG_FILENAME,
   );
 
   for (const p of nonConfigPaths) {
