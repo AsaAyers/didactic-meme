@@ -86,6 +86,7 @@ function getListItemText(item: ListItem): string {
 function extractTags(text: string): string[] {
   const tags: string[] = [];
   const seen = new Set<string>();
+  const urlSchemes = new Set(["http", "https", "mailto", "ftp", "file"]);
 
   const hashTagMatches = text.matchAll(/#(\w+)/g);
   for (const match of hashTagMatches) {
@@ -97,11 +98,11 @@ function extractTags(text: string): string[] {
   }
 
   const inlineFieldMatches = text.matchAll(
-    /(?:^|\s)([a-zA-Z][\w-]*):(?!\/\/)\S+/g,
+    /(?:^|\s)([a-z][a-z0-9-]+):(?!\/\/)\S+/g,
   );
   for (const match of inlineFieldMatches) {
     const tag = match[1];
-    if (tag && !seen.has(tag)) {
+    if (tag && !urlSchemes.has(tag) && !seen.has(tag)) {
       seen.add(tag);
       tags.push(tag);
     }
