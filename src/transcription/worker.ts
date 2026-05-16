@@ -51,16 +51,11 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
 
   await recoverStaleProcessingJobs(options.stateDir);
 
-  let counter = 0;
   while (options.shouldContinue?.() ?? true) {
     try {
       const job = await claimNext(options.stateDir);
       if (!job) {
-        await sleep(pollIntervalMs);
-        if (counter++ > 5) {
-          counter = 0;
-          console.log("No transcription jobs found, waiting...");
-        }
+        await (options.sleep ?? sleep)(pollIntervalMs);
         continue;
       }
       console.log(`Claimed job ${job.id} for audio ${job.audioPath}`);

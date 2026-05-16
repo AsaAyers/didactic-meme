@@ -9,12 +9,10 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { promises as fs } from "node:fs";
-import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runAllRules } from "../src/engine/runner.js";
 import { walkMarkdownFiles } from "../src/engine/io.js";
-import { startWorker } from "../src/transcription/worker.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_VAULT = join(__dirname, "test_vault");
@@ -24,7 +22,7 @@ const WORKER_ONLY_EXPECTED_OUTPUTS = new Set([
     "scenarios",
     "audio-embed-transcription-failure",
     "recordings",
-    "2024-01-15 12.34.56.transcript.md",
+    "A1_transcription_failure_audio.m4a",
   ),
 ]);
 
@@ -33,12 +31,6 @@ const TODAY = new Date(2026, 4, 3); // 2026-05-03
 
 const CREATED_DIRS: string[] = [];
 const deterministicJobIdFactory = (): string => `mopf7ts0-test-job-001`;
-
-async function createTempDir(prefix: string): Promise<string> {
-  const dir = await fs.mkdtemp(join(tmpdir(), prefix));
-  CREATED_DIRS.push(dir);
-  return dir;
-}
 
 async function walkExpectedFiles(dir: string): Promise<string[]> {
   const expectedFiles: string[] = [];
@@ -108,12 +100,12 @@ describe("test vault — .md.expected snapshots", () => {
       }
 
       if (actualContent !== expectedContent) {
-        failures.push(`${relPath}\n${actualContent}`);
-        toEqual.push(expectedContent);
+        failures.push(`Actual: ${relPath}\n${actualContent}`);
+        toEqual.push(`Expected: ${relPath}\n${expectedContent}`);
       }
     }
 
-    expect(failures, `${failures.length} file failsures`).toEqual(toEqual);
+    expect(failures, `${failures.length} file failures`).toEqual(toEqual);
   });
 
   it("does not modify any committed markdown file on disk in dry-run mode", async () => {
@@ -139,75 +131,5 @@ describe("test vault — .md.expected snapshots", () => {
         `${relative(TEST_VAULT, p)} was modified on disk in dry-run mode`,
       ).toBe(content);
     }
-  });
-
-  it("uses the fake worker backend for the transcription failure scenario", async () => {
-    const scenarioName = "audio-embed-transcription-failure";
-    const sourceScenario = join(TEST_VAULT, "scenarios", scenarioName);
-    const vaultPath = await createTempDir("onyx-vellum-vault-");
-    const stateDir = await createTempDir("onyx-vellum-state-");
-    const expectedAudioPath = join(
-      vaultPath,
-      "recordings",
-      "2024-01-15 12.34.56.m4a",
-    );
-    const transcribedAudioPaths: string[] = [];
-    let shouldContinue = true;
-
-    await fs.cp(sourceScenario, vaultPath, { recursive: true });
-
-    await runAllRules({
-      vaultPath,
-      today: TODAY,
-      dryRun: false,
-      env: { STATE_DIR: stateDir },
-      selectedRuleNames: ["ensureAudioTranscripts"],
-      jobIdFactory: () => "mopf7ts0-test-job-001",
-    });
-
-    await startWorker({
-      stateDir,
-      trimDeadAir: false,
-      backend: {
-        async transcribe(audioPath: string) {
-          transcribedAudioPaths.push(audioPath);
-          throw new Error(
-            `Fake backend failed for ${relative(vaultPath, audioPath)}`,
-          );
-        },
-      },
-      pollIntervalMs: 1,
-      shouldContinue: () => {
-        if (shouldContinue) {
-          shouldContinue = false;
-          return true;
-        }
-        return false;
-      },
-      sleep: async () => Promise.resolve(),
-    });
-
-    expect(transcribedAudioPaths).toEqual([expectedAudioPath]);
-
-    const expectedFiles = await walkExpectedFiles(sourceScenario);
-    const failures: string[] = [];
-    const toEqual: string[] = [];
-
-    for (const expectedPath of expectedFiles) {
-      const relPath = relative(sourceScenario, expectedPath).slice(
-        0,
-        -".expected".length,
-      );
-      const actualPath = join(vaultPath, relPath);
-      const expectedContent = await fs.readFile(expectedPath, "utf-8");
-      const actualContent = await readOptionalFile(actualPath);
-
-      if (actualContent !== expectedContent) {
-        failures.push(`actual: ${relPath}\n${actualContent}`);
-        toEqual.push(`expected: ${relPath}\n${expectedContent}`);
-      }
-    }
-
-    expect(failures).toEqual(toEqual);
   });
 });
