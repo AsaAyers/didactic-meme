@@ -2,6 +2,7 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
+import remarkFrontmatter from "remark-frontmatter";
 import remarkStringify, {
   type Options as RemarkStringifyOptions,
 } from "remark-stringify";
@@ -11,7 +12,11 @@ import { visit, SKIP } from "unist-util-visit";
 type Text = { type: "text"; value: string };
 type Parent = { children: unknown[] };
 const createParseProcessor = () =>
-  unified().use(remarkParse).use(remarkGfm).use(remarkWikiLink);
+  unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkFrontmatter)
+    .use(remarkWikiLink);
 type Root = ReturnType<ReturnType<typeof createParseProcessor>["parse"]>;
 type Handlers = NonNullable<RemarkStringifyOptions["handlers"]>;
 

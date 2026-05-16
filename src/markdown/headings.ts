@@ -6,7 +6,7 @@ type Heading = Extract<RootContent, { type: "heading" }>;
 type Paragraph = Extract<RootContent, { type: "paragraph" }>;
 type Text = Extract<Heading["children"][number], { type: "text" }>;
 
-function getHeadingText(node: Heading): string {
+export function getHeadingText(node: Heading): string {
   return node.children
     .map((child) => (child.type === "text" ? (child as Text).value : ""))
     .join("");

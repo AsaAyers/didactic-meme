@@ -24,6 +24,7 @@
     "gray-matter": "^4.0.3",
     "ollama": "^0.6.3",
     "remark": "^15.0.1",
+    "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",

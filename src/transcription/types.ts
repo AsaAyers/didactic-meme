@@ -11,6 +11,7 @@ export type TranscriberBackend = {
 };
 
 export type WorkerOptions = {
+  ollamaHost?: string;
   trimDeadAir?: boolean;
   stateDir: string;
   backend: TranscriberBackend;

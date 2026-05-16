@@ -1,17 +1,20 @@
 import { promises as fs } from "node:fs";
 import path, { dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { taskArraySchema } from "../markdown/tasks.js";
 import { createFasterWhisperBackend } from "./fasterWhisperBackend.js";
 import { formatTranscriptFile, type TranscriptionStatus } from "./format.js";
 import { claimNext, markDone, markFailed } from "./queue.js";
 import { resolveStateDir } from "./runtime.js";
 import type { TranscriptionJob, WorkerOptions } from "./types.js";
 import {
+  gatherTasks,
   processTranscript,
   type TranscriptResult,
 } from "./processTranscript.js";
 import { trimDeadAir } from "./trimDeadAir.js";
 import os from "node:os";
+import type z from "zod";
 
 const DEFAULT_POLL_INTERVAL_MS = 2_000;
 
@@ -48,21 +51,34 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
 
   await recoverStaleProcessingJobs(options.stateDir);
 
+  let counter = 0;
   while (options.shouldContinue?.() ?? true) {
     try {
       const job = await claimNext(options.stateDir);
       if (!job) {
         await sleep(pollIntervalMs);
+        if (counter++ > 5) {
+          counter = 0;
+          console.log("No transcription jobs found, waiting...");
+        }
         continue;
       }
+      console.log(`Claimed job ${job.id} for audio ${job.audioPath}`);
 
       const sourceAudioWikilink = buildSourceAudioWikilink(job);
       let transcriptText: string | undefined;
       let transcriptResult: TranscriptResult | undefined;
       let trimmedFile = job.audioPath;
+      let tasks: z.infer<typeof taskArraySchema> = [];
 
-      const writeFile = (status: TranscriptionStatus, errorMessage?: string) =>
-        fs.writeFile(
+      let lastStatus: TranscriptionStatus = "pending";
+      const writeFile = async (
+        status: TranscriptionStatus,
+        errorMessage?: string,
+      ) => {
+        lastStatus = status;
+        console.log("Writing file with status", status);
+        await fs.writeFile(
           job.transcriptPath,
           formatTranscriptFile({
             jobId: job.id,
@@ -71,23 +87,19 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
             transcriptText,
             transcriptResult,
             status,
+            tasks,
             errorMessage,
           }),
           "utf-8",
         );
-
+      };
       try {
-        await writeFile("removingDeadAir");
+        await writeFile("trimDeadAir");
 
         if (options.trimDeadAir) {
           trimmedFile = path.join(
             os.tmpdir(),
             `trimmed-${Math.random().toString(16).slice(2)}.m4a`,
-          );
-
-          trimmedFile = path.join(
-            dirname(job.audioPath),
-            `trimmed-${path.basename(job.audioPath)}`,
           );
 
           await writeFile("trimDeadAir");
@@ -99,22 +111,21 @@ export async function startWorker(options: WorkerOptions): Promise<void> {
         }
 
         await writeFile("transcribing");
-
-        console.log({ trimmedFile });
         transcriptText = await options.backend.transcribe(trimmedFile);
 
-        if (process.env.OLLAMA_HOST) {
+        if (options.ollamaHost) {
+          await writeFile("processingTranscript");
           transcriptResult = await processTranscript(transcriptText);
+
+          await writeFile("gatheringTasks");
+          tasks = await gatherTasks(transcriptResult.cleanedTranscript);
         }
 
         await writeFile("done");
         await markDone(options.stateDir, job.id);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await writeFile(
-          transcriptText ? "failedDeadAir" : "failedTranscription",
-          message,
-        );
+        await writeFile("fail", `lastStatus: ${lastStatus}\n\n${message}`);
         await markFailed(options.stateDir, job.id, message);
       }
     } catch (err) {
@@ -141,7 +152,12 @@ async function main(): Promise<void> {
   console.log(`Vault: ${vaultPath}`);
   console.log(`State dir: ${stateDir}`);
 
-  await startWorker({ stateDir, backend, trimDeadAir: true });
+  await startWorker({
+    stateDir,
+    backend,
+    trimDeadAir: true,
+    ollamaHost: process.env.OLLAMA_HOST,
+  });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

@@ -203,8 +203,8 @@ describe("test vault — .md.expected snapshots", () => {
       const actualContent = await readOptionalFile(actualPath);
 
       if (actualContent !== expectedContent) {
-        failures.push(`${relPath}\n${actualContent}`);
-        toEqual.push(expectedContent);
+        failures.push(`actual: ${relPath}\n${actualContent}`);
+        toEqual.push(`expected: ${relPath}\n${expectedContent}`);
       }
     }
 

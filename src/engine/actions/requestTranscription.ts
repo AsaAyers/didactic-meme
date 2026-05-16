@@ -43,6 +43,7 @@ export function applyRequestTranscription(
         jobId: job.id,
         sourceAudioWikilink: `[[${link.target}]]`,
         status: "pending",
+        tasks: [],
       }),
     },
     transcriptionJobs: [job],

@@ -61,15 +61,42 @@ export async function trimDeadAir({
     `stop_threshold=${thresholdDb}dB`,
     `stop_silence=${keepSilenceSeconds}`,
     "detection=rms",
-    "window=0.05",
+    "window=0.05,asetpts=N/SR/TB",
   ].join(":");
+
+  const controller = new AbortController();
+  const cancelSignal = controller.signal;
+
+  setTimeout(() => {
+    controller.abort();
+  }, 30_000);
+
+  console.log("====================================");
 
   await execa(
     ffmpegPath,
-    ["-y", "-i", input, "-af", filter, "-c:a", "aac", "-b:a", bitrate, output],
+    [
+      "-i",
+      input,
+      "-vn",
+      "-map",
+      "0:a:0",
+      "-af",
+      filter,
+      "-c:a",
+      "aac",
+      "-b:a",
+      bitrate,
+      "-movflags",
+      "+faststart",
+      output,
+    ],
     {
       stdout: "inherit",
       stderr: "inherit",
+      cancelSignal,
     },
   );
+
+  console.log("====================================");
 }

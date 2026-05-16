@@ -1,14 +1,15 @@
 import type { TranscriptResult } from "./processTranscript.js";
+import { taskArraySchema } from "../markdown/tasks.js";
+import { z } from "zod";
 
 export type TranscriptionStatus =
   | "pending"
-  | "removingDeadAir"
-  | "transcribing"
   | "trimDeadAir"
+  | "transcribing"
   | "processingTranscript"
-  | "failedDeadAir"
-  | "failedTranscription"
-  | "done";
+  | "gatheringTasks"
+  | "done"
+  | "fail";
 
 export type TranscriptionJob = {
   jobId: string;
@@ -16,6 +17,7 @@ export type TranscriptionJob = {
   status: TranscriptionStatus;
   transcriptText?: string;
   errorMessage?: string;
+  tasks: z.infer<typeof taskArraySchema>;
   transcriptResult?: TranscriptResult;
   trimmed?: boolean;
 };
@@ -28,6 +30,7 @@ export function formatTranscriptFile({
   errorMessage,
   transcriptText,
   trimmed,
+  tasks,
 }: TranscriptionJob) {
   const frontmatter = `---
 status: ${status}
@@ -51,14 +54,8 @@ Source audio: ${sourceAudioWikilink}
     case "processingTranscript":
       parts.push("> Transcript is being processed.");
       break;
-    case "removingDeadAir":
+    case "trimDeadAir":
       parts.push("> Removing dead air before final transcription.");
-      break;
-    case "failedDeadAir":
-      parts.push("> Dead air removal failed.");
-      break;
-    case "failedTranscription":
-      parts.push("> Transcription failed during audio processing.");
       break;
     case "done": /* do nothing */
   }
@@ -79,9 +76,7 @@ ${errorMessage}
     parts.push(`# Summary\n\n${transcriptResult.summary}`);
   }
 
-  if (transcriptResult && (transcriptResult?.tasks.length ?? 0) > 0) {
-    const tasks = transcriptResult.tasks.map((task) => task.toString());
-
+  if (Array.isArray(tasks) && tasks.length > 0) {
     parts.push(`# Tasks\n\n${tasks.join("\n")}`);
   }
 
